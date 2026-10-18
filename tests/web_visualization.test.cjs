@@ -1,5 +1,38 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
+const {networkLayout,networkNodeLabel} = require('../src/aworker/lab/resources/web/visualization.js');
+
+test('one model uses the field around the hub without overlapping evidence-sized nodes',()=>{
+  const nodes=Array.from({length:8},(_,i)=>({id:i+1,name:(i%2?'deepseek-':'gpt-')+String(Math.floor(i/2)+1).padStart(3,'0'),model:'deepseek-flash',state:'testing'}));
+  const ranks=new Map(nodes.map(n=>[n.name,{passed:14,total:15}]));
+  for(const [w,h] of [[790,600],[600,400],[320,260]])for(const time of [0,60,180]){
+    const points=networkLayout(nodes,w,h,time,1,ranks);
+    for(const [i,a] of points.entries()){
+      assert.ok(a.x-a.size/2>=10&&a.x+a.size/2<=w-10,'horizontal bounds');
+      assert.ok(a.y-a.size/2>=20&&a.y+a.size/2<=h-20,'vertical bounds');
+      assert.ok(Math.hypot(a.x-w*.5,a.y-h*.52)>=a.size/2+Math.min(w,h)*.085+11,'hub remains clear');
+      for(const b of points.slice(i+1))assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>=(a.size+b.size)/2+6,'circles remain separated');
+    }
+    assert.ok(Math.max(...points.map(p=>p.y))-Math.min(...points.map(p=>p.y))>h*.45,'uses lower field too');
+  }
+  assert.equal(new Set(nodes.map(n=>networkNodeLabel(n,8))).size,8,'historical provider suffixes cannot duplicate labels');
+  assert.equal(networkNodeLabel(nodes[0],8),'DS\n001');
+  assert.equal(networkNodeLabel(nodes[1],8),'DS\n002');
+  assert.notEqual(networkLayout(nodes,790,600,0)[0].x,networkLayout(nodes,790,600,60)[0].x,'orbital motion remains enabled');
+});
+
+test('dense and mixed model layouts remain within bounds and preserve hidden slots',()=>{
+  for(const mixed of [false,true]){
+    const nodes=Array.from({length:100},(_,i)=>({id:i+1,name:'team-'+i,model:mixed?['GPT','DeepSeek','Qwen','GLM'][i%4]:'DeepSeek',state:'waiting'}));
+    nodes.push({id:101,name:'offline',model:'GPT',state:'unconfigured'});
+    const points=networkLayout(nodes,720,520,20,1);
+    assert.equal(points[100],null);
+    for(const [i,a] of points.slice(0,100).entries()){
+      assert.ok(Number.isFinite(a.x)&&Number.isFinite(a.y));
+      for(const b of points.slice(i+1,100))assert.ok(Math.hypot(a.x-b.x,a.y-b.y)>=(a.size+b.size)/2+3,'dense nodes do not overlap');
+    }
+  }
+});
 const {View,attemptsFromEvents, performanceGroup, rankTeams, connectedTeams, networkGroups, networkProjection,messageActive,motionEnabled,workActive,networkNodeSize, officialAttemptsFromEvents,rankOfficialTeams} = require('../src/aworker/lab/resources/web/visualization.js');
 
 test('sparse teams grow and official coverage affects size without becoming a score',()=>{

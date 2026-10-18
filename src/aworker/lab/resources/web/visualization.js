@@ -17,7 +17,7 @@
     const labels=['GPT','GLM','DeepSeek','Qwen'],counts=new Map();
     nodes.filter(visibleNode).forEach(n=>{const key=modelGroup(n.groupKey||n.model);counts.set(key,(counts.get(key)||0)+1);});
     const count=counts.size;
-    const centers=count===1?[[.5,.28]]:count===2?[[.27,.38],[.73,.68]]:count===3?[[.25,.38],[.75,.38],[.5,.76]]:[[.24,.34],[.76,.34],[.24,.76],[.76,.76]];
+    const centers=count===1?[[.5,.52]]:count===2?[[.27,.38],[.73,.68]]:count===3?[[.25,.38],[.75,.38],[.5,.76]]:[[.24,.34],[.76,.34],[.24,.76],[.76,.76]];
     const captions=count===1?[[50,8]]:count===2?[[25,9],[75,91]]:count===3?[[25,9],[75,9],[50,94]]:[[23,9],[77,9],[23,94],[77,94]];
     return [...counts.entries()].sort((a,b)=>a[0]-b[0]).map(([key,total],i)=>({key,count:total,label:labels[key],center:centers[i],caption:captions[i]}));
   }
@@ -56,6 +56,58 @@
     const dense=count>16,base=Math.min(Math.max(Math.min(width,height)/(Math.sqrt(Math.max(count,1))*2.6),dense?10:38),dense?26:76);
     const gain=number(evidence.score)&&maxScore>0 ? .35*Math.max(0,evidence.score)/maxScore : evidence.total>0 ? .18*Math.min(1,evidence.passed/evidence.total) : 0;
     return Math.min(base*(1+gain)+(selected?4:0),dense?34:94);
+  }
+
+  // ---- fill the field, preserve the hub and separate actual node footprints --
+  function networkLayout(nodes,width,height,time=0,selected=null,ranks=new Map(),maxScore=0){
+    const groups=networkGroups(nodes),count=groups.reduce((sum,g)=>sum+g.count,0);
+    const hub={x:width*.5,y:height*.52,r:Math.min(width,height)*.085+12};
+    const indices=new Map(groups.map(g=>[g.key,0])),single=groups.length===1,gap=count>16?7:14;
+    const positions=nodes.map(n=>{
+      if(!visibleNode(n))return null;
+      const key=modelGroup(n.groupKey||n.model),g=groups.find(g=>g.key===key);
+      const index=indices.get(key);indices.set(key,index+1);
+      const size=networkNodeSize(count,width,height,ranks?.get(n.name),n.id===selected,maxScore);
+      const angle=(single&&count<=12?index*2*Math.PI/count-Math.PI/2:index*2.39996+key*.7)+time*.026*(key%2?-1:1);
+      const radial=single&&count<=12?1:Math.sqrt((index+.8)/g.count);
+      const rx=single?Math.max(12,width*.46-size/2-14):width*.22;
+      const ry=single?Math.max(12,height*.43-size/2-20):height*.25;
+      return {n,size,x:width*g.center[0]+Math.cos(angle)*rx*radial,
+        y:height*g.center[1]+Math.sin(angle)*ry*radial};
+    });
+    const points=positions.filter(Boolean);
+    const constrain=p=>{
+      let dx=p.x-hub.x,dy=p.y-hub.y,distance=Math.hypot(dx,dy),min=hub.r+p.size/2+gap;
+      if(distance<min){if(distance<.001){dx=1;dy=0;distance=1;}p.x=hub.x+dx/distance*min;p.y=hub.y+dy/distance*min;}
+      const margin=p.size/2+12,top=p.size/2+28,bottom=height-p.size/2-28;
+      p.x=Math.max(margin,Math.min(width-margin,p.x));p.y=Math.max(top,Math.min(bottom,p.y));
+    };
+    for(let fit=0;fit<8;fit++){
+      for(let pass=0;pass<60;pass++){
+        let overlap=0;
+        for(let i=0;i<points.length;i++)for(let j=i+1;j<points.length;j++){
+          const a=points[i],b=points[j];let dx=b.x-a.x,dy=b.y-a.y,distance=Math.hypot(dx,dy);
+          const missing=(a.size+b.size)/2+gap-distance;
+          if(missing<=0)continue;
+          if(distance<.001){const angle=(i+j+1)*2.39996;dx=Math.cos(angle);dy=Math.sin(angle);distance=1;}
+          const push=(missing+.1)/2;a.x-=dx/distance*push;a.y-=dy/distance*push;b.x+=dx/distance*push;b.y+=dy/distance*push;
+          overlap=Math.max(overlap,missing);
+        }
+        points.forEach(constrain);
+        if(overlap<.1)break;
+      }
+      const collision=points.some((a,i)=>points.slice(i+1).some(b=>Math.hypot(a.x-b.x,a.y-b.y)<(a.size+b.size)/2+gap-.25));
+      if(!collision)break;
+      // Small containers must fit evidence-sized nodes without covering each other.
+      points.forEach(p=>{p.size*=.91;});
+    }
+    return positions;
+  }
+
+  // ---- one display ID per team, independent of historical provider names ----
+  function networkNodeLabel(node,count){
+    const id=String(node.id).padStart(3,'0');
+    return count<=12?['GPT','GLM','DS','QW'][modelGroup(node.groupKey||node.model)]+'\n'+id:id;
   }
 
   // ---- attemptsFromEvents --------------------------------------------------
@@ -441,36 +493,23 @@
       const d=this.data, w=this.width,h=this.height;
       const t=this.reduced?0:d.paused||d.recording&&!d.playbackPlaying?this.frozenTime||0:now/1000;
       this.frozenTime=t;
-      const groups=[[],[],[],[]],layout=networkGroups(d.nodes);
-      d.nodes.forEach((n,i) => {if(visibleNode(n))groups[modelGroup(n.groupKey || n.model)].push(i);});
-      const radius=Math.min(w*.22,h*.25);
-      const positions=d.nodes.map((n,i) => {
-        const node=this.$('agentGrid').children[i],visible=visibleNode(n);
+      const count=d.nodes.filter(visibleNode).length;
+      const positions=networkLayout(d.nodes,w,h,t,d.selected,this.networkRanks,this.networkMaxScore);
+      d.nodes.forEach((n,i) => {
+        const node=this.$('agentGrid').children[i],visible=Boolean(positions[i]);
         node.hidden=!visible;node.style.display=visible?'':'none';
-        if(!visible){node.tabIndex=-1;return null;}
-        let x,y;
-          const group=modelGroup(n.groupKey || n.model), list=groups[group], index=list.indexOf(i);
-          const angle=index*2.39996+group*.7+t*.026*(group%2?-1:1), r=Math.sqrt((index+.8)/Math.max(list.length,4))*radius;
-          const center=layout.find(g=>g.key===group).center;
-          x=w*center[0]+Math.cos(angle)*r;
-          y=h*center[1]+Math.sin(angle)*r*.85;
-          const drift=Math.min(w,h)*.014;
-          x+=Math.sin(t*.32+i*.79)*drift; y+=Math.cos(t*.28+i*.83)*drift;
+        if(!visible){node.tabIndex=-1;return;}
+        const {x,y,size}=positions[i];
         const dense=this.$('swarmField').classList.contains('network-dense');
-        const count=layout.reduce((sum,g)=>sum+g.count,0);
-        const size=networkNodeSize(count,w,h,this.networkRanks?.get(n.name),n.id===d.selected,this.networkMaxScore);
         const proof=this.networkRanks?.get(n.name);
-        node.title=n.name+' · '+n.model+(n.effort?' · '+n.effort:'')+' · '+(number(proof?.score)?'官测 '+proof.score+' 分':proof?.total?'官测通过 '+proof.passed+'/'+proof.total+'（尚未全过）':d.demo?'演示节点':'暂无本队官测回执');
-        x=Math.max(size/2+8,Math.min(w-size/2-8,x));y=Math.max(size/2+16,Math.min(h-size/2-16,y));
-        const suffix=n.name.match(/(\d+)$/)?.[1]||String(n.id).padStart(3,'0');
-        const label=count<=12?['GPT','GLM','DS','QW'][group]+'\n'+suffix:String(n.id).padStart(3,'0');
+        node.title='A'+String(n.id).padStart(3,'0')+' · '+n.name+' · '+n.model+(n.effort?' · '+n.effort:'')+' · '+(number(proof?.score)?'官测 '+proof.score+' 分':proof?.total?'官测通过 '+proof.passed+'/'+proof.total+'（尚未全过）':d.demo?'演示节点':'暂无本队官测回执');
+        const label=networkNodeLabel(n,count);
         if(node.textContent!==label)node.textContent=label;
         node.style.whiteSpace='pre';node.style.fontSize=dense&&n.id!==d.selected&&n.state!=='testing'?'0':Math.max(9,Math.min(16,size*.22))+'px';
         node.style.setProperty('line-height','1.15','important');
         node.style.width=size+'px';node.style.setProperty('height',size+'px','important');
         node.style.transform=`translate(${(x-size/2).toFixed(2)}px,${(y-size/2).toFixed(2)}px)`;
         node.tabIndex=0;
-        return {x,y,n,size};
       });
       const ctx=this.$('linksCanvas').getContext('2d');
       if(!ctx)return;
@@ -528,6 +567,6 @@
       }
     }
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports={View,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,officialAttemptsFromEvents,rankOfficialTeams};
+  if (typeof module !== 'undefined' && module.exports) module.exports={View,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,networkLayout,networkNodeLabel,officialAttemptsFromEvents,rankOfficialTeams};
   else root.JustKernelVisuals={View,connectedTeams};
 })(typeof window === 'undefined' ? {} : window);
