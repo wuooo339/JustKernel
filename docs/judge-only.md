@@ -39,6 +39,8 @@ bash tools/start_simulator_worker.sh LINUX_ROOT CANN_ROOT PYTHON SHARED_SPOOL 2
 
 默认实验分两段：全部选定输入运行 PVModel 功能仿真并校验两个输出；全部通过后，按输入包固定选择每种归约轴类别中元素数最少的一个代表点，运行 CAModel / `msopprof` 详细性能采集。代表点由控制器决定，团队不能通过只挑简单点来通过完整送测门槛。不同团队的功能仿真可以并行，详细性能采集仍共用一个独占槽。
 
+功能仿真默认每点最多 **1800 秒**、整次实验最多 **3600 秒**，可在本机 `.env` 分别配置 `AWORKER_LAB_SIMULATION_CASE_TIMEOUT_SECONDS` 和 `AWORKER_LAB_SIMULATION_TIMEOUT_SECONDS`（30–3600 秒）。这是 CPU 上的墙钟执行预算，不是 NPU 耗时；大输入不再因统一的 600 秒限制而反复被中止。总体预算始终优先，超时仍记为失败，输入、精度校验和完整送测门槛不变。编译和详细性能采集的单阶段上限仍为 600 秒。预算随请求冻结，旧请求保留原预算；升级启动器后正常重启工作台与 Linux Worker，新请求才使用新默认值。
+
 参数使用实际绝对路径。`LINUX_ROOT` 是原始构建、仿真输出、缓存和临时文件目录；`CANN_ROOT` 是 CANN 根目录；`PYTHON` 是兼容 CANN 的独立 Python。`SHARED_SPOOL` 对应工作台 `.justkernel/simulator`，Windows / WSL 通过同一个目录交换请求和回执。具体布局以面板的环境状态和 Worker 诊断为准。新目录不自动迁移旧记录，重复启动保留正在运行的 Worker。
 
 Windows 盘符的默认 WSL 挂载权限可能被官方 profiler 拒绝。为仿真选择有正常 Linux 私有权限的目录；必要时只对专用目录配置启用 metadata、正确 UID/GID 和私有 umask 的 DrvFS 挂载。不要关闭 profiler 检查或修改全部磁盘权限。[WSL 文件权限说明](https://learn.microsoft.com/en-us/windows/wsl/file-permissions)。

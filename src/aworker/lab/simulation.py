@@ -32,7 +32,8 @@ class SimulationRequest(BaseModel):
     worker_sha256: str
     hypothesis: str = Field(max_length=6000)
     learned_from: list[str] = Field(default_factory=list, max_length=30)
-    timeout_seconds: int = Field(default=1800, ge=30, le=3600)
+    timeout_seconds: int = Field(default=3600, ge=30, le=3600)
+    functional_timeout_seconds: int = Field(default=1800, ge=30, le=3600)
     created_at: float
     evaluation_mode: Literal["full-profile", "functional-then-profile"] = "full-profile"
     profile_case_ids: list[str] = Field(default_factory=list, max_length=100)
@@ -499,6 +500,8 @@ class Simulator:
                 created_at=time.time(),
                 evaluation_mode="functional-then-profile",
                 profile_case_ids=[c for c in self.profile_cases() if c in selected],
+                timeout_seconds=self.service.settings.lab_simulation_timeout_seconds,
+                functional_timeout_seconds=self.service.settings.lab_simulation_case_timeout_seconds,
             )
             folder = self.spool / "jobs" / key
             folder.mkdir(parents=True)

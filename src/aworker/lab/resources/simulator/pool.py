@@ -32,6 +32,11 @@ class PipelineJob(SimulationJob):
 
     # ---- one performance collector per logical Device -----------------------
     def run(self, args, phase, custom=None, timeout=600):
+        if phase.startswith("functional:"):
+            timeout = min(
+                3600, max(30, int(self.request.get("functional_timeout_seconds", timeout)))
+            )
+            self.record["functional_timeout_seconds"] = timeout
         if not phase.startswith("simulate:"):
             return super().run(args, phase, custom, timeout)
         label = "waiting-profiler:"

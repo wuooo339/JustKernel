@@ -22,6 +22,30 @@ def atomic_fixture(path, data):
 # ---- PipelineTests ----------------------------------------------------------
 @unittest.skipIf(sys.platform == "win32", "Linux Worker file-lock semantics")
 class PipelineTests(unittest.TestCase):
+    # ---- execution budgets never change measurements or profiler timeouts ----
+    def test_functional_budget_is_explicit_bounded_and_separate_from_compile(self):
+        class BaseJob:
+            def run(self, args, phase, custom=None, timeout=600):
+                return timeout
+
+        fake = types.SimpleNamespace(
+            SimulationJob=BaseJob, SimulatorWorker=object, atomic_json=atomic_fixture
+        )
+        path = Path(__file__).resolve().parents[1] / "src/aworker/lab/resources/simulator/pool.py"
+        spec = importlib.util.spec_from_file_location("fixture_budget_pool", path)
+        module = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, {"worker": fake}):
+            spec.loader.exec_module(module)
+        job = module.PipelineJob.__new__(module.PipelineJob)
+        job.request, job.record = {"functional_timeout_seconds": 1800}, {}
+        self.assertEqual(job.run([], "functional:large-input"), 1800)
+        self.assertEqual(job.record["functional_timeout_seconds"], 1800)
+        self.assertEqual(job.run([], "compile"), 600)
+        job.request = {}
+        self.assertEqual(job.run([], "functional:legacy-request"), 600)
+        job.request = {"functional_timeout_seconds": 100000}
+        self.assertEqual(job.run([], "functional:bounded"), 3600)
+
     # ---- bounded compile overlap and exclusive profiler ---------------------
     def test_two_builds_overlap_but_collectors_never_overlap(self):
         stats = {

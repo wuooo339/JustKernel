@@ -89,6 +89,8 @@ class Settings(BaseSettings):
     lab_team_concurrency: int = Field(default=4, ge=1, le=100)
     lab_simulator_concurrency: int = Field(default=1, ge=1, le=32)
     lab_simulation_wait_seconds: float = Field(default=2, ge=0.01, le=60)
+    lab_simulation_timeout_seconds: int = Field(default=3600, ge=30, le=3600)
+    lab_simulation_case_timeout_seconds: int = Field(default=1800, ge=30, le=3600)
     lab_require_simulation: bool = False
     lab_judge_browser_channel: str | None = Field(default_factory=default_judge_browser_channel)
     lab_judge_browser_disable_gpu: bool = False

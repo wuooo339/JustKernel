@@ -246,6 +246,31 @@ def test_retry_waits_for_same_pending_own_source_instead_of_enqueuing_again(lab,
 
 
 # ---- waiting experiments yield model capacity and retry one background task ---
+def test_new_request_freezes_explicit_execution_budgets(lab):
+    lab.settings = lab.settings.model_copy(
+        update={
+            "lab_simulation_wait_seconds": 0.01,
+            "lab_simulation_timeout_seconds": 900,
+            "lab_simulation_case_timeout_seconds": 480,
+        }
+    )
+    worker_heartbeat(lab)
+
+    async def exercise():
+        try:
+            queued = await lab.simulator.evaluate("gpt-001", "fixture-budget")
+            assert queued["pending"]
+            path = lab.simulator.spool / "jobs" / queued["job_id"] / "request.json"
+            request = json.loads(path.read_text(encoding="utf-8"))
+            assert request["timeout_seconds"] == 900
+            assert request["functional_timeout_seconds"] == 480
+            assert request["case_ids"] == lab.simulator.default_cases()
+        finally:
+            await lab.simulator.close()
+
+    asyncio.run(exercise())
+
+
 def test_pending_simulation_returns_without_waiting_for_worker_or_duplicating(lab, monkeypatch):
     lab.settings = lab.settings.model_copy(update={"lab_simulation_wait_seconds": 0.01})
     worker_heartbeat(lab)
