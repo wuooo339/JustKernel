@@ -676,3 +676,16 @@ def test_browser_runtime_fallback_keeps_sandbox_and_does_not_retry_policy_denial
         assert asyncio.run(worker._open("https://cannjudge.cn/"))["state"] == "awaiting-login"
     assert len(launches) == expected_launches
     assert all(call["chromium_sandbox"] is True and call["headless"] is False for call in launches)
+
+
+# ---- missing evidence must not masquerade as a running selector --------------
+def test_no_qualified_candidate_is_explicitly_waiting_not_selecting(lab):
+    connected_lab(lab)
+    auto = lab.judger.automation
+    lab.settings = lab.settings.model_copy(update={"lab_require_simulation": True})
+    lab.judger.write("automation.json", {"enabled": True, "max_submissions": 50})
+    asyncio.run(auto.tick())
+    assert auto.phase == "awaiting-qualified-candidate"
+    assert "完整仿真" in auto.message
+    assert auto.budget()["used"] == 0
+    assert not auto.selector.status()["running"]

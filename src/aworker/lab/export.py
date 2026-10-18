@@ -19,7 +19,8 @@ def execution_record(service) -> dict:
     snapshot["simulation"] = {
         "required": service.simulator.required,
         "target_soc": "Ascend910B4",
-        "concurrency": 1,
+        "concurrency": service.simulator.status()["concurrency"],
+        "profiling_concurrency": service.simulator.status()["profiling_concurrency"],
     }
     sources = {}
     for team in snapshot["teams"]:

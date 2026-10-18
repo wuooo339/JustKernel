@@ -62,7 +62,7 @@
     const jobs=simulationJobs.filter(j=>j.team===team);
     const simulation=jobs.find(j=>j.state==='running')||jobs.find(j=>j.state==='queued')||jobs.find(j=>j.state!=='cancelled')||jobs[0];
     const phaseLabels={configure:'配置构建',compile:'编译 Host 与 Kernel',package:'打包算子',install:'部署算子',runner:'准备执行程序',inputs:'生成本队输入',completed:'实验完成'};
-    const simulationPhase=phaseLabels[simulation?.phase]||String(simulation?.phase||'等待 CPU 资源').replace(/^simulate:/,'运行用例 ');
+    const simulationPhase=phaseLabels[simulation?.phase]||String(simulation?.phase||'等待 CPU 资源').replace(/^waiting-profiler:/,'等待性能采集槽 · ').replace(/^simulate:/,'运行用例 ');
     const active=operations.some(o=>o.team===team&&o.state==='running');
     const modelBusy=Boolean(begin&&!end&&active);
     const simulatorOffline=simulatorAvailable===false&&['running','queued'].includes(simulation?.state);

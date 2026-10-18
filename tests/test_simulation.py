@@ -265,3 +265,21 @@ def test_observer_records_available_then_offline_worker(lab):
     asyncio.run(observe_once())
     events = [e for e in lab.store.events() if e["kind"] == "simulation.worker.updated"]
     assert [e["data"]["available"] for e in events] == [True, False]
+
+
+# ---- pipeline capacity is actual worker state, not the configured model count -
+def test_actual_worker_reports_pipeline_and_profiler_slots_separately(lab):
+    worker_heartbeat(lab)
+    path = lab.simulator.spool / "heartbeat.json"
+    value = json.loads(path.read_text())
+    value.update(
+        concurrency=2,
+        profiling_concurrency=1,
+        active_jobs=[{"id": "fixture-job", "team": "gpt-001", "phase": "compile"}],
+    )
+    path.write_text(json.dumps(value))
+    status = lab.simulator.status()
+    assert status["available"]
+    assert status["concurrency"] == 2
+    assert status["profiling_concurrency"] == 1
+    assert status["active_jobs"][0]["phase"] == "compile"

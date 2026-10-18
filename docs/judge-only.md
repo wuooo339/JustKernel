@@ -21,8 +21,12 @@ python3 tools/check_simulator_environment.py --output /tmp/justkernel-preflight.
 在 Linux 安装匹配的 CANN Toolkit、910B ops / simulator 库及编译依赖，为 Worker 建立独立 Python 环境并安装 numpy。按实际 CANN 版本完成官方环境配置，再运行：
 
 ```sh
-bash tools/start_simulator_worker.sh LINUX_ROOT CANN_ROOT PYTHON SHARED_SPOOL
+bash tools/start_simulator_worker.sh LINUX_ROOT CANN_ROOT PYTHON SHARED_SPOOL 2
 ```
+
+最后的 `2` 是并行实验槽数（1–8，省略默认 1），允许不同团队重叠编译和准备。**性能采集始终只有 1 槽**：官方工具不支持在同一个 Device 同时拉起多个采集任务，不能将实验槽数当作性能仿真并行数。等待采集锁的时间不计入实验执行预算；它也不是 NPU 耗时。进一步并行采集需要独立并经过验证的 Device 环境。参见 [官方约束](https://github.com/Ascend/msopprof/blob/master/docs/zh/user_guide/msopprof_simulator_user_guide.md)。
+
+新流水线重复运行启动器可更新实验槽数，正在执行的实验自然收尾；`pool-control.json` 保存实际容量。旧串行 Worker 需要一次受控交接，保留未完成回执并按原冻结源码重排。面板区分排队、编译、等待采集和执行用例。调度器另记 SHA256；未修改的测量适配器身份与旧证据保持一致。
 
 参数使用实际绝对路径。`LINUX_ROOT` 是原始构建、仿真输出、缓存和临时文件目录；`CANN_ROOT` 是 CANN 根目录；`PYTHON` 是兼容 CANN 的独立 Python。`SHARED_SPOOL` 对应工作台 `.justkernel/simulator`，Windows / WSL 通过同一个目录交换请求和回执。具体布局以面板的环境状态和 Worker 诊断为准。新目录不自动迁移旧记录，重复启动保留正在运行的 Worker。
 

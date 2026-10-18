@@ -300,10 +300,22 @@ class JudgeAutomation:
         self.selector.schedule()
         nomination = self.selector.nomination()
         if not nomination:
-            self.phase, self.message = (
-                "selecting",
-                "独立筛选器比较候选与已验证冠军；不按团队轮流送测。",
-            )
+            if not self.selector.pool():
+                self.phase, self.message = (
+                    "awaiting-qualified-candidate",
+                    "暂无满足门槛的未测候选：等待本队完整仿真通过及源码复核；"
+                    "官测已连接，不占用额度。",
+                )
+            elif self.selector.status()["running"]:
+                self.phase, self.message = (
+                    "selecting",
+                    "独立筛选器正在比较合格候选与已验证冠军。",
+                )
+            else:
+                self.phase, self.message = (
+                    "awaiting-nomination",
+                    "合格候选尚未获独立提名；等待新候选或筛选器重试，团队继续优化。",
+                )
             return
         if time.time() < self.configuration().get("next_submission_after", 0):
             self.phase, self.message = (

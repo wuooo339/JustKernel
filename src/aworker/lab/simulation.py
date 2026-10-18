@@ -186,9 +186,14 @@ class Simulator:
             "required": self.required,
             "state": worker.get("state", "not-configured") if ready else "unavailable",
             "target_soc": "Ascend910B4",
-            "concurrency": 1,
+            "concurrency": worker.get("concurrency", 1) if ready else 0,
+            "profiling_concurrency": worker.get("profiling_concurrency", 1) if ready else 0,
+            "active_jobs": worker.get("active_jobs", []) if ready else [],
             "worker": worker if ready else None,
-            "message": "每队独立仿真，CPU 资源共享排队"
+            "message": (
+                f"{worker.get('concurrency', 1)} 个并行实验槽 · "
+                f"{worker.get('profiling_concurrency', 1)} 个独占性能采集槽"
+            )
             if ready
             else "等待本机 Linux/CANN 仿真 Worker",
         }

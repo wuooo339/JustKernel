@@ -80,7 +80,7 @@
     const session=judgeState.session||{},auto=judgeState.automation||{};
     $('judgeSessionText').textContent=session.connected?'已登录 '+(session.nickname||'CANN Judge')+' · '+session.message:session.message||'尚未连接官测登录会话';
     const budget=auto.budget||{},selection=auto.selection||{},champion=judgeState.champion;
-    $('judgeAutomationText').textContent=(auto.enabled?'官测已开启 · ':'官测已暂停 · ')+`今日 ${budget.used||0}/${budget.limit||50} · 上海时间零点换日 · `+(auto.message||'');
+    $('judgeAutomationText').textContent=(auto.enabled?'官测已开启 · ':'官测已暂停 · ')+`今日 ${budget.used||0}/${budget.limit||50} · 上海时间零点换日 · `+(auto.phase==='selecting'&&!selection.running?'尚无新提名；等待各队独立仿真与修正，当前不送测。':auto.message||'');
     $('judgeSelectionText').textContent=(champion?`已验证 SOTA：${champion.team} · ${champion.official.score} 分`:'等待首次官测通过')+(selection.nomination?' · 当前挑战：'+selection.nomination.source_sha256.slice(0,10)+' · '+selection.nomination.reason:selection.running?' · 正在比较候选':' · 候选池持续更新');
     $('toggleJudgeAutomation').textContent=auto.enabled?'暂停自动官测':'开启自动官测';
     $('disconnectJudgeSession').disabled=!session.opened||Boolean(auto.busy);

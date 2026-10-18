@@ -555,7 +555,7 @@
     const verified=new Set((live.runs || []).filter((r)=>r.state==='completed').map((r)=>r.team)).size;
     const continuous=Boolean(live.continuous?.enabled);
     const budget=live.judge_budget,simulation=live.simulation,waiting=live.continuous?.waiting_for==='simulator';
-    $('liveStatusLine').textContent=`${count} 支团队 · ${waiting?'等待仿真环境':continuous?'持续搜索':'已暂停'} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?'910B4 独立仿真':'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
+    $('liveStatusLine').textContent=`${count} 支团队 · ${waiting?'等待仿真环境':continuous?'持续搜索':'已暂停'} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?`实验 ${simulation.worker?.concurrency||simulation.concurrency||1} 槽 / 采集 ${simulation.worker?.profiling_concurrency||simulation.profiling_concurrency||1} 槽`:'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
     $('playButton').textContent=continuous?'暂停持续优化':'启动持续优化';
     $('playButton').title=continuous?'暂停派发新一轮，当前任务继续完成；官测独立控制':'持续搜索、相互学习和提出候选，直到暂停';
     $('liveStatusLine').title=live.latestError || `${verified} 支团队完成过模型会话`;
