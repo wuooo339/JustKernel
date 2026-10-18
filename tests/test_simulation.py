@@ -3,7 +3,9 @@
 import asyncio
 import hashlib
 import json
+import os
 import time
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -74,6 +76,52 @@ def fixture_receipt(service, team="gpt-001", state="completed"):
 
 
 # ---- independent ownership and source/input integrity -----------------------
+def test_job_listing_caches_decoding_but_never_returns_mutable_cache_entries(lab, monkeypatch):
+    record = fixture_receipt(lab)
+    folder = lab.simulator.spool / "jobs" / record["id"]
+    reads = []
+    original = Path.read_text
+
+    def counted(path, *args, **kwargs):
+        if path.parent == folder:
+            reads.append(path.name)
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counted)
+    first = lab.simulator.jobs(record["team"])
+    first[0]["cases"][0]["pass"] = False
+    second = lab.simulator.jobs(record["team"])
+    assert second[0]["cases"][0]["pass"] is True
+    assert reads.count("request.json") == reads.count("result.json") == 1
+    cached = lab.simulator._request_cache[folder / "request.json"][1]
+    assert "files" not in cached and "cases_json" not in cached
+
+
+def test_job_cache_refreshes_worker_receipt_changes(lab):
+    record = fixture_receipt(lab)
+    assert lab.simulator.evidence(record["team"], record["source_sha256"])
+    path = lab.simulator.spool / "jobs" / record["id"] / "result.json"
+    previous = path.stat()
+    record.update(state="failed", functional_pass=False)
+    path.write_text(json.dumps(record), encoding="utf-8")
+    os.utime(path, ns=(previous.st_atime_ns, previous.st_mtime_ns + 1_000_000))
+    assert lab.simulator.jobs(record["team"])[0]["state"] == "failed"
+    assert lab.simulator.evidence(record["team"], record["source_sha256"]) is None
+
+
+def test_cached_request_metadata_cannot_bypass_original_byte_integrity(lab):
+    record = fixture_receipt(lab)
+    assert lab.simulator.evidence(record["team"], record["source_sha256"])
+    path = lab.simulator.spool / "jobs" / record["id"] / "request.json"
+    previous = path.stat()
+    raw = path.read_bytes()
+    changed = raw.replace(b"fixture", b"FIXTURE")
+    assert changed != raw and len(changed) == len(raw)
+    path.write_bytes(changed)
+    os.utime(path, ns=(previous.st_atime_ns, previous.st_mtime_ns))
+    assert lab.simulator.evidence(record["team"], record["source_sha256"]) is None
+
+
 def test_default_is_all_fifteen_and_an_authentic_subset_is_only_a_probe(lab):
     cases = json.loads((lab.root / "challenge/cases.json").read_text(encoding="utf-8"))
     assert len(lab.simulator.default_cases()) == len(cases) == 15

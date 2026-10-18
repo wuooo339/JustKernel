@@ -1,6 +1,7 @@
 """Independent source/input-bound experiments through a local Linux CANN worker."""
 
 import asyncio
+import copy
 import hashlib
 import json
 import math
@@ -46,6 +47,8 @@ class Simulator:
         self.team_locks = {}
         self.team_tasks = {}
         self.observer = None
+        self._request_cache = {}
+        self._receipt_cache = {}
 
     # ---- replayable progress survives model cancellation/service restart -----
     async def start(self):
@@ -207,15 +210,27 @@ class Simulator:
             else "等待本机 Linux/CANN 仿真 Worker",
         }
 
+    # ---- cache file decoding only; evidence still verifies original request bytes ----
+    def cached_json(self, path, cache, metadata=False):
+        stat = path.stat()
+        signature = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
+        cached = cache.get(path)
+        if cached is None or cached[0] != signature:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if metadata:
+                data = {k: v for k, v in data.items() if k not in {"files", "cases_json"}}
+            cache[path] = signature, data
+        return copy.deepcopy(cache[path][1])
+
     def jobs(self, team=None):
         rows = []
         for path in self.spool.glob("jobs/*/request.json"):
-            request = json.loads(path.read_text(encoding="utf-8"))
+            request = self.cached_json(path, self._request_cache, metadata=True)
             if request.get("workspace_id") != self.workspace_id or team and request["team"] != team:
                 continue
             result = path.with_name("result.json")
             row = (
-                json.loads(result.read_text(encoding="utf-8"))
+                self.cached_json(result, self._receipt_cache)
                 if result.is_file()
                 else {
                     "id": request["id"],
