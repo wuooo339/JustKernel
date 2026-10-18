@@ -637,6 +637,7 @@
     document.querySelector('.sota-caption').textContent = '相对初始候选';
   }
   async function startLive() {
+    if(window.JUSTKERNEL_DEMO_ONLY){toast('当前为轻量预演，真实优化请启动 justkernel serve');return;}
     live.recording=null; for(const id of ['playButton','teamButton','evaluateButton','resetButton'])$(id).disabled=false;
     stopLive(); live.seq = 0; live.events = []; live.totalEvents=0; live.latest = null; live.latestError = '';
     const generation = liveGeneration;
@@ -970,9 +971,13 @@
   });
   window.addEventListener('justkernel:workspace-changed',()=>startLive());
   window.addEventListener('justkernel:models-changed',()=>{refreshLive();if($('teamDialog').open)refreshModels();});
-  reset('external');
-  setPaused(true);
-  startLive();
+  if(window.JUSTKERNEL_DEMO_ONLY){
+    reset('demo');setPaused(false);
+    const liveOption=$('executionMode').querySelector('[value=live]');if(liveOption)liveOption.disabled=true;
+    for(const id of ['operatorAddButton','taskButton','teamButton','evaluateButton','modelSettingsButton','serverSettingsButton']){
+      $(id).disabled=true;$(id).title='真实配置与优化请启动 justkernel serve';
+    }
+  }else{reset('external');setPaused(true);startLive();}
   let previousTick = performance.now();
   setInterval(() => {
     $('clock').textContent = new Date().toLocaleTimeString('zh-CN', { hour12: false, timeZone: 'Asia/Shanghai' });

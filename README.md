@@ -24,18 +24,28 @@ JustKernel 将 **Deep Agents / LangGraph、A2A 通信、独立 CANN 仿真和精
 
 ## 快速启动
 
-需要 Git、[uv](https://docs.astral.sh/uv/) 和 Python 3.13+。Windows、macOS、Linux 使用相同命令；本地面板不依赖 Node.js。
+普通笔记本可先运行面板预演：支持主流 Windows、macOS、Linux，不要求独显、NPU、CANN、模型 Key 或官方算子工程。需要 Git 和 [uv](https://docs.astral.sh/uv/)，uv 会准备项目要求的 Python 3.13+ 与依赖；首次安装需要联网。
 
 ```sh
 git clone https://github.com/wuooo339/JustKernel.git
 cd JustKernel
+uv run justkernel demo --open
+```
+
+打开 **http://127.0.0.1:4173/** 后自动播放预演，使用完整服务的同一套前端。轻量入口只提供模拟展示和记录导入导出，不创建团队工作区、不读取模型凭据、不连接官网或仿真器。Ctrl+C 停止；端口占用时加 `--port 4174`。依赖安装完成后，预演无需联网或 Node.js。
+
+### 启动完整工作台
+
+需要配置模型、团队、服务器或运行真实优化时：
+
+```sh
 uv sync --locked
 cp .env.example .env
 uv run python tools/import_official_template.py
 uv run justkernel serve --open --supervise
 ```
 
-打开 **http://127.0.0.1:4173/**，选择「预演模式」即可体验动态流程、A2A 团队网络、优化曲线和日志，**不需要模型 Key、服务器或 NPU**。演示功能就在面板中。
+完整工作台内仍可切换「真实运行」和「预演模式」，演示功能不需要单独的 Windows 启动文件。
 
 官方模板单独下载到本机并核验 34 个文件，不纳入本仓库的 MIT 授权或发行包。也可先在[官方题目页](https://cannjudge.cn/public/ladder_october/confusionmulgrad)下载，再运行：
 
@@ -46,6 +56,17 @@ uv run python tools/import_official_template.py --zip /path/to/official-template
 `cp` 在 PowerShell、macOS 和 Linux shell 均可使用；复制 `.env` 时不要覆盖自己的现有配置。
 
 随后也可用 `sh start.sh`、macOS 的 `start.command` 或 Windows 的 `启动演示.cmd` 启动。修改端口：`uv run justkernel serve --port 4174`。首次启动需要下载 Python 依赖和官方模板；完成后预演不调用模型。
+
+## 普通笔记本能运行哪些部分
+
+| 使用方式 | 本机条件 |
+| --- | --- |
+| 面板预演、导入记录回放 | 普通 CPU + 浏览器，Windows / macOS / Linux；无模型或硬件调用 |
+| 真实团队调用 GPT / DeepSeek 等 | 普通笔记本 + 可用模型 API / 网络；计算由模型服务承担 |
+| 本地 CANN 指令仿真 | 另需兼容 Linux/CANN 环境及足够内存、磁盘；Windows 可使用已验收的 WSL2 路径 |
+| NPU 实机测试 | 连接具备匹配环境的昇腾服务器，本机不要求安装 NPU |
+
+重型仿真不属于“任意笔记本都能轻量运行”的范围。实验槽位与模型并发可按资源调整；每个逻辑 Device 的性能采集仍保持独占。
 
 ## 能做什么
 

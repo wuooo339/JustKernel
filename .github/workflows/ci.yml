@@ -17,6 +17,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check src tests tools
       - run: uv run ruff format --check src tests tools
+      - name: Preview without official template or CANN
+        run: uv run pytest -q tests/test_demo.py
       - run: uv run python tools/import_official_template.py
       - run: uv run pytest -q
       - uses: actions/setup-node@v4

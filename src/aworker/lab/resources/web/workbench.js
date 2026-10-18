@@ -1,6 +1,7 @@
 /* Local configuration stays out of the agent workspace and browser storage. */
 (() => {
   'use strict';
+  if(window.JUSTKERNEL_DEMO_ONLY)return;
   const $=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   let catalog=null, models=[], images=[], terminal=null, socket=null;

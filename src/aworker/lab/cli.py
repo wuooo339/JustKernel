@@ -26,6 +26,10 @@ def arguments():
     )
     parser.add_argument("--root", type=Path)
     sub = parser.add_subparsers(dest="action")
+    demo = sub.add_parser("demo", help="lightweight preview; no template, API key, CANN or NPU")
+    demo.add_argument("--host")
+    demo.add_argument("--port", type=int)
+    demo.add_argument("--open", action="store_true", dest="open_browser")
     serve = sub.add_parser("serve", help="serve dashboard, API and A2A in one process")
     serve.add_argument("--host")
     serve.add_argument("--port", type=int)
@@ -108,6 +112,11 @@ def serve(service, settings, open_browser=False):
 # ---- main -------------------------------------------------------------------
 def main():
     args = arguments()
+    if args.action == "demo":
+        from aworker.lab.dashboard import serve_demo
+
+        serve_demo(args.host or "127.0.0.1", args.port or 4173, args.open_browser)
+        return
     overrides = {}
     if args.root is not None:
         overrides["lab_root"] = args.root
