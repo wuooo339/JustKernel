@@ -1,0 +1,25 @@
+# Model transport changes here; every team still uses the same Deep Agents harness.
+[models.gpt-chatgpt]
+name = "GPT · ChatGPT login"
+provider = "chatgpt"
+model = "gpt-6.1-sol"
+auth_file = "~/.codex/auth.json"
+effort = "high"
+
+[models.gpt-api]
+name = "GPT · OpenAI API"
+provider = "openai"
+model = "gpt-6-astra"
+base_url = "https://api.openai.com/v1"
+secret = "openai"
+effort = "high"
+
+[models.deepseek]
+name = "DeepSeek · API"
+provider = "deepseek"
+model = "deepseek-flash"
+base_url = "https://api.deepseek.com/v1"
+secret = "deepseek"
+effort = "high"
+extra_body = { thinking = { type = "enabled" } }
+# Set your endpoint's actual model ID and effort in models.local.toml.

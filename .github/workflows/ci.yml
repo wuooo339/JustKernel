@@ -1,0 +1,30 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check src tests tools
+      - run: uv run ruff format --check src tests tools
+      - run: uv run python tools/import_official_template.py
+      - run: uv run pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/web_visualization.test.cjs tests/web_activity.test.cjs
+      - run: node --check src/aworker/lab/resources/web/app.js
+      - run: node --check src/aworker/lab/resources/web/visualization.js
+      - run: node --check src/aworker/lab/resources/web/workbench.js
+      - run: uv build
+      - run: uv run python tools/package_source.py

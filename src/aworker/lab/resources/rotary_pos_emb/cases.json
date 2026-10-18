@@ -1,0 +1,257 @@
+[
+  {
+    "id": "geometry-01",
+    "contest_point": 1,
+    "shape": [
+      1,
+      7,
+      1,
+      16
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101701,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-02",
+    "contest_point": 2,
+    "shape": [
+      2,
+      11,
+      3,
+      24
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101702,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-03",
+    "contest_point": 3,
+    "shape": [
+      3,
+      96,
+      6,
+      32
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101703,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-04",
+    "contest_point": 4,
+    "shape": [
+      5,
+      64,
+      10,
+      40
+    ],
+    "dtype": "float16",
+    "theta": 1000000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101704,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-05",
+    "contest_point": 5,
+    "shape": [
+      2,
+      256,
+      12,
+      72
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101705,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-06",
+    "contest_point": 6,
+    "shape": [
+      4,
+      256,
+      8,
+      56
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101706,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-07",
+    "contest_point": 7,
+    "shape": [
+      2,
+      384,
+      16,
+      52
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101707,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-08",
+    "contest_point": 8,
+    "shape": [
+      1,
+      512,
+      16,
+      128
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101708,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-09",
+    "contest_point": 9,
+    "shape": [
+      4,
+      256,
+      24,
+      88
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101709,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-10",
+    "contest_point": 10,
+    "shape": [
+      20,
+      5555,
+      32,
+      144
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101710,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-11",
+    "contest_point": 11,
+    "shape": [
+      2,
+      512,
+      32,
+      192
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101711,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-12",
+    "contest_point": 12,
+    "shape": [
+      4,
+      512,
+      28,
+      224
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101712,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-13",
+    "contest_point": 13,
+    "shape": [
+      1,
+      1024,
+      32,
+      1024
+    ],
+    "dtype": "float32",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101713,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-14",
+    "contest_point": 14,
+    "shape": [
+      2,
+      2047,
+      48,
+      384
+    ],
+    "dtype": "float32",
+    "theta": 1000000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101714,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  },
+  {
+    "id": "geometry-15",
+    "contest_point": 15,
+    "shape": [
+      3,
+      899,
+      32,
+      640
+    ],
+    "dtype": "float16",
+    "theta": 10000.0,
+    "positions": "random",
+    "position_upper": 8192,
+    "seed": 2026101715,
+    "source": "INPUTS.md geometry (timing-inferred); tensor values self-defined",
+    "official_tensor_values_known": false
+  }
+]

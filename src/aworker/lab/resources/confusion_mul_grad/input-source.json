@@ -1,0 +1,44 @@
+{
+  "problem_url": "https://cannjudge.cn/public/ladder_october/confusionmulgrad",
+  "problem_api": "https://cannjudge.cn/api/problems/6acef021e769892927127ff1",
+  "problem_id": "6acef021e769892927127ff1",
+  "problem_number": 2266,
+  "version": 1,
+  "cann_version": "9.0.0",
+  "template_url": "https://cannjudge.cn/api/problems/6acef021e769892927127ff1/package",
+  "template_sha256": "372c4bc22ac4cdc6afb822cbeb53c3d8be62585136d46ced7070650514232489",
+  "editable_paths": [
+    "op_host/confusion_mul_grad_def.cpp",
+    "op_host/confusion_mul_grad_infershape.cpp",
+    "op_host/confusion_mul_grad_tiling.cpp",
+    "op_kernel/confusion_mul_grad_tiling_data.h",
+    "op_kernel/confusion_mul_grad_tiling_key.h",
+    "op_kernel/confusion_mul_grad.cpp",
+    "op_kernel/confusion_mul_grad.h"
+  ],
+  "official_testcase_ids": [
+    "6acef021e769892927127ff9",
+    "6acef021e769892927127ffe",
+    "6acef021e769892927128005",
+    "6acef021e76989292712800b",
+    "6acef021e76989292712800f",
+    "6acef021e769892927128013",
+    "6acef021e769892927128017",
+    "6acef021e76989292712801b",
+    "6acef021e76989292712801f",
+    "6acef021e769892927128025",
+    "6acef021e76989292712802a",
+    "6acef021e769892927128030",
+    "6acef021e76989292712803a",
+    "6acef021e769892927128044",
+    "6acef021e76989292712804c"
+  ],
+  "official_case_count": 15,
+  "official_tensor_values_known": false,
+  "local_inputs_status": "provisional",
+  "notes": [
+    "Official package is unchanged; only local evaluation metadata is added.",
+    "Official 15 test point IDs are known, individual input shapes and values are not fully published.",
+    "The shipped UT targets Ascend910B1 and has a single 3x64 example; it does not prove 15 official cases pass."
+  ]
+}

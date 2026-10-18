@@ -1,0 +1,19 @@
+{
+  "file": "INPUTS.md",
+  "source_sha256": "b95cdd580af35ca29db0f5e57c1f8da2a51afd83a9509a0748f314643f2bbfa0",
+  "section": "唯一逐点表",
+  "extracted_fields": [
+    "point",
+    "B",
+    "S",
+    "H",
+    "D",
+    "dtype",
+    "theta"
+  ],
+  "geometry_basis": "timing-coded inference recorded in INPUTS.md; not official raw inputs",
+  "official_tensor_values_known": false,
+  "generated_data": "NumPy default_rng(seed); x uniform[-10,10), C contiguous; positions int32 random[0,8192); seeds and geometry in cases.json",
+  "case_pack_sha256": "d45e02fce50933cf5b9b7e29b16475a1be4009b677344edd8ccab2f4837f617e",
+  "count": 15
+}

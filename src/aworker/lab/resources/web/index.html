@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>JustKernel · 算子优化工作台</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="monitor.css">
+  <link rel="stylesheet" href="visualization.css">
+  <link rel="stylesheet" href="vendor/xterm.css">
+  <link rel="stylesheet" href="workbench.css">
+</head>
+<body>
+<main class="terminal" id="terminal">
+  <header class="window-bar">
+    <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <span class="window-title">JUSTKERNEL / swarm-control</span>
+    <span class="window-path">~/ascend/kernel-lab</span>
+    <span id="clock">00:00:00</span>
+  </header>
+  <section class="masthead">
+    <div>
+      <div class="eyebrow"><span class="tiny-mark">JK</span> KERNEL ENGINEERING <span class="dim">// THE SWARM</span></div>
+      <h1>JUSTKERNEL<span class="cursor" aria-hidden="true">_</span></h1>
+      <p>算子优化工作台</p>
+    </div>
+    <div class="run-summary">
+      <span class="mode-badge" id="modeBadge"><i></i> 演示预演 / SIMULATION</span>
+      <div class="run-id">RUN <span id="runId">JK-DEMO-001</span></div>
+      <div class="connection"><span class="status-dot"></span><span id="connectionText">本地事件驱动 · NPU 未连接</span></div>
+    </div>
+  </section>
+  <section class="command-bar" aria-label="演示控制">
+    <label class="operator-picker"><span class="prompt">›</span><select id="operator" aria-label="算子"><option value="ConfusionMulGrad">ConfusionMulGrad</option></select></label>
+    <button id="operatorAddButton" class="quiet-button">＋ 新增算子</button>
+    <button id="taskButton" class="quiet-button">任务设置</button>
+    <label class="mode-picker"><select id="executionMode" aria-label="运行模式"><option value="live" selected>真实运行</option><option value="demo">预演模式</option></select></label>
+    <button id="teamButton" class="quiet-button">组建团队 ＋</button>
+    <button id="evaluateButton" class="quiet-button">验证当前代码</button>
+    <button id="modelSettingsButton" class="quiet-button">模型</button>
+    <button id="serverSettingsButton" class="quiet-button">服务器</button>
+    <div class="command-spacer"></div>
+    <label class="speed-picker">速度 <select id="speed" aria-label="演示速度"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select></label>
+    <button id="motionButton" class="quiet-button" type="button" aria-pressed="true">动效开启</button>
+    <button id="resetButton" class="quiet-button" title="重新播放预演">↺ 重置</button>
+    <button id="playButton" class="primary-button">Ⅱ 暂停预演</button>
+    <button id="fullscreenButton" class="square-button" aria-label="全屏展示" title="全屏展示 · F">⛶</button>
+  </section>
+  <section class="phase-strip" aria-label="核心技术">
+    <button class="phase selected" data-core="search"><span>01 /</span> 百智能体蜂群搜索 <i id="searchPhase">exploring</i></button>
+    <button class="phase" data-core="knowledge"><span>02 /</span> 经验蒸馏知识进化 <i id="knowledgePhase">learning</i></button>
+    <button class="phase" data-core="sparse"><span>03 /</span> 稀疏结构感知加速 <i id="sparsePhase">standby</i></button>
+  </section>
+  <div id="liveStatusLine" class="live-status-line" role="status">正在连接真实执行服务…</div>
+  <div class="main-grid">
+    <section class="panel loop-panel">
+      <div class="panel-heading"><h2>优化轨迹</h2><span class="mini-label" id="loopState">RUNNING</span></div>
+      <div class="trajectory">
+        <div class="trajectory-controls"><span class="plot-kicker" id="plotProvenance">DEVICE RECEIPTS</span><div><select id="trajectoryScope" aria-label="曲线团队范围"><option value="all">全部团队</option><option value="selected">当前团队</option></select><select id="trajectoryMetric" aria-label="曲线指标"><option value="correctness">正确率</option><option value="latency">全点耗时</option></select></div></div>
+        <div class="trajectory-metrics"><div><span id="attemptLabel">LATEST ATTEMPT</span><strong id="attemptValue">—</strong><small id="attemptDetail">等待首个设备回执</small></div><div class="trajectory-best"><span id="bestLabel">BEST VERIFIED</span><strong id="attemptBest">—</strong><small id="attemptCount">0 次尝试</small></div></div>
+        <div class="trajectory-plot" id="trajectoryPlot"><svg id="attemptChart" viewBox="0 0 600 240" role="group" aria-label="优化尝试曲线，每个数据点可查看原始评测回执"></svg><div id="plotTooltip" class="plot-tooltip" role="status" hidden></div></div>
+        <div class="trajectory-legend"><span><i class="trace-key latest"></i>每次尝试</span><span><i class="trace-key best"></i>当前最好</span><span><i class="trace-key failed"></i>失败</span><span id="plotDirection">↑ 正确率越高越好</span></div>
+        <div id="stageRail" class="stage-rail" aria-label="优化阶段与执行证据"></div>
+        <div id="trajectoryActivity" class="trajectory-activity" role="status">等待真实事件</div>
+        <button id="attemptFailureButton" class="text-button failure-details" hidden>查看这次记录与日志 ↗</button>
+      </div>
+      <div class="flow-wrap"><div id="liveFlow" class="live-flow" hidden></div>
+        <svg id="flow" viewBox="0 0 360 390" role="group" aria-label="算子输入、蜂群搜索、规则检查、NPU实测、验证、SOTA发布和经验蒸馏组成的优化闭环">
+          <defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="#536475"/></marker><filter id="flowGlow"><feGaussianBlur stdDeviation="3"/></filter></defs>
+          <path class="flow-line" d="M175 48V355" marker-end="url(#arrow)"/>
+          <path class="flow-return" d="M109 322H34V78H109" marker-end="url(#arrow)"/>
+          <path class="flow-return" d="M242 226H323V127H242" marker-end="url(#arrow)"/>
+          <path class="flow-share" d="M241 274H290V78H242"/>
+          <text x="13" y="188" class="flow-side" transform="rotate(-90 13 188)">SKILL FEEDBACK</text>
+          <text x="336" y="188" class="flow-side" transform="rotate(-90 336 188)">REJECT → REVISE</text>
+          <g class="flow-node" data-stage="0" tabindex="0" role="button" aria-label="查看任务规格"><rect x="108" y="12" width="134" height="36" rx="3"/><text x="119" y="27" class="node-title">task · specification</text><text x="119" y="40" class="node-value" id="flowTask">ConfusionMulGrad / FP32</text><text x="94" y="34" text-anchor="end" class="node-index">IN</text></g>
+          <g class="flow-node blue-node" data-stage="1" tabindex="0" role="button" aria-label="查看蜂群候选生成"><rect x="108" y="60" width="134" height="36" rx="3"/><text x="119" y="75" class="node-title">swarm · propose</text><text x="119" y="88" class="node-value">100 agents / 多路搜索</text><text x="94" y="82" text-anchor="end" class="node-index">01</text></g>
+          <g class="flow-node green-node" data-stage="2" tabindex="0" role="button" aria-label="查看规则过滤"><rect x="108" y="108" width="134" height="36" rx="3"/><text x="119" y="123" class="node-title">code · policy gate</text><text x="119" y="136" class="node-value">Host / single kernel</text><text x="94" y="130" text-anchor="end" class="node-index">02</text></g>
+          <g class="flow-node orange-node" data-stage="3" tabindex="0" role="button" aria-label="查看NPU队列"><rect x="108" y="156" width="134" height="36" rx="3"/><text x="119" y="171" class="node-title">npu · execute</text><text x="119" y="184" class="node-value" id="flowNpu">8 virtual slots / 预演</text><text x="94" y="178" text-anchor="end" class="node-index">03</text></g>
+          <g class="flow-node green-node" data-stage="4" tabindex="0" role="button" aria-label="查看精度验证"><rect x="108" y="204" width="134" height="36" rx="3"/><text x="119" y="219" class="node-title">judge · verify</text><text x="119" y="232" class="node-value">correctness + latency</text><text x="94" y="226" text-anchor="end" class="node-index">04</text></g>
+          <g class="flow-node orange-node" data-stage="5" tabindex="0" role="button" aria-label="查看公共SOTA"><rect x="108" y="252" width="134" height="36" rx="3"/><text x="119" y="267" class="node-title">sota · broadcast</text><text x="119" y="280" class="node-value" id="flowSota">public / version v001</text><text x="94" y="274" text-anchor="end" class="node-index">05</text></g>
+          <g class="flow-node purple-node" data-stage="6" tabindex="0" role="button" aria-label="查看经验蒸馏"><rect x="108" y="300" width="134" height="36" rx="3"/><text x="119" y="315" class="node-title">skill · distill</text><text x="119" y="328" class="node-value">条件 / 动作 / 证据</text><text x="94" y="322" text-anchor="end" class="node-index">06</text></g>
+          <text x="175" y="365" text-anchor="middle" class="flow-caption" id="flowCaption">每个候选留下代码与评测记录</text>
+          <circle class="flow-packet" r="3" cx="175" cy="52"/>
+          <circle class="return-packet" r="2.5" cx="34" cy="78"/>
+        </svg>
+      </div>
+      <div class="loop-foot"><span class="status-dot green"></span> propose → measure → share → evolve</div>
+    </section>
+    <section class="panel swarm-panel">
+      <div class="panel-heading"><h2><span>//</span> 100-agent swarm</h2><span class="mini-label">点击节点查看路径</span></div>
+      <div class="swarm-toolbar"><span><strong id="activeCount">0</strong> 活跃</span><span><strong id="queueCount">0</strong> 等待</span><span class="swarm-models"><label><input type="checkbox" value="GPT" checked> GPT</label><label><input type="checkbox" value="DeepSeek" checked> DeepSeek</label></span></div>
+      <div class="swarm-field" id="swarmField">
+        <canvas id="linksCanvas" aria-hidden="true"></canvas>
+        <div class="network-hub" aria-hidden="true"><i></i><span>A2A</span><small>SHARED CONTEXT</small></div>
+        <div class="network-clusters" id="networkClusters" aria-hidden="true"></div>
+        <div class="agent-grid" id="agentGrid" aria-label="100个智能体节点"></div>
+        <div class="broadcast" id="broadcast" aria-live="polite"><span>↑</span> 共享成果已更新 <b id="broadcastVersion">v002</b></div>
+      </div>
+      <div class="network-caption"><span id="networkSelection">点击节点查看团队轨迹</span><span id="networkEdges">真实通信驱动</span></div>
+      <div class="legend"><span><i class="legend-dot blue"></i>生成</span><span><i class="legend-dot orange"></i>验证</span><span><i class="legend-dot green"></i>通过</span><span><i class="legend-dot red"></i>修正</span><span><i class="legend-dot muted"></i>等待</span></div>
+      <div class="device-strip" id="deviceStrip" aria-label="8个预演NPU槽位"></div>
+    </section>
+    <section class="panel inspector-panel">
+      <div class="panel-heading"><h2><span>//</span> agent inspector</h2><span id="agentModel" class="model-tag">GPT</span></div>
+      <div class="agent-identity"><div class="agent-avatar" id="agentAvatar">017</div><div><h3 id="agentName">AGENT_017</h3><span class="dim" id="agentRole">访存与数据复用</span></div><span id="agentStatus" class="agent-status">生成候选</span></div>
+      <dl class="agent-meta"><div><dt>TEAM</dt><dd id="agentTeam">04 / memory</dd></div><div><dt>BRANCH</dt><dd id="agentBranch">a017/buffer-reuse</dd></div><div><dt>PARENT</dt><dd id="agentParent">public/sota-v001</dd></div></dl>
+      <div class="inspector-tabs" role="tablist" aria-label="智能体详情"><button role="tab" aria-selected="true" data-tab="path">实时监督</button><button role="tab" aria-selected="false" data-tab="overview">全队进展</button><button role="tab" aria-selected="false" data-tab="code">源码</button><button role="tab" aria-selected="false" data-tab="chat">A2A 通信</button></div>
+      <section id="teamProgress" class="team-progress" aria-live="polite"></section>
+      <div id="inspectorContent" class="inspector-content"></div>
+      <div class="agent-bottom"><span id="agentFooter">独立工作区 · 共享已验证候选</span><button id="followButton" class="text-button">跟随此智能体 ↗</button></div>
+    </section>
+  </div>
+  <div class="bottom-grid">
+    <section class="panel receipts-panel"><div class="panel-heading"><h2><span>//</span> execution receipts</h2><span><i class="live-dot"></i> <span id="receiptCount">0</span> 条</span></div><div class="receipt-labels"><span>时间</span><span>团队</span><span>活动 / 结果</span></div><div class="receipt-list" id="receiptList" role="log" aria-label="预演执行记录" aria-live="off"></div></section>
+    <section class="panel sota-panel"><div class="panel-heading"><h2><span>//</span> public sota</h2><span class="mini-label">示例性能曲线</span></div><div class="sota-value"><div><span id="sotaValue">1.00</span><small>×</small><span class="sota-caption">相对初始候选</span></div><span class="sota-version" id="sotaVersion">v001</span></div><svg id="sotaChart" viewBox="0 0 380 110" role="img" aria-label="演示候选性能随轮次变化"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6a078" stop-opacity=".18"/><stop offset="1" stop-color="#e6a078" stop-opacity="0"/></linearGradient></defs><path class="chart-grid" d="M32 15H365M32 47H365M32 79H365"/><text x="0" y="20" class="chart-label">3.0×</text><text x="0" y="52" class="chart-label">2.0×</text><text x="0" y="84" class="chart-label">1.0×</text><path id="chartArea" fill="url(#chartFill)"/><path id="chartLine" fill="none" stroke="#e6a078" stroke-width="2"/><circle id="chartDot" r="3" fill="#e6a078"/><text x="32" y="104" class="chart-label">round 0</text><text x="325" y="104" class="chart-label" id="chartRound">round 1</text></svg><div class="sota-foot"><span id="candidateCount">0 candidates</span><span id="sotaAuthor">public baseline</span></div></section>
+    <section class="panel knowledge-panel" id="knowledgePanel"><div class="panel-heading"><h2><span>//</span> evolving knowledge</h2><span class="mini-label" id="skillCount">0 skills</span></div><div class="knowledge-view" id="knowledgeView"><div class="skill-row"><span class="skill-symbol">◇</span><div><b>等待经验蒸馏</b><p>从候选补丁与评测轨迹形成可复用方法</p></div><span class="skill-state">pending</span></div></div><div class="knowledge-foot"><span id="knowledgeFooter">同算子复用 / 跨算子迁移 / 反例修订</span><button class="text-button" id="knowledgeButton">查看条目 ↗</button></div></section>
+  </div>
+  <section id="replayBar" class="replay-bar" hidden aria-label="真实记录回放控制"><button id="replayPause" type="button">暂停</button><input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="回放时间"><span id="replayPosition"></span><select id="replaySpeed" aria-label="回放速度"><option value="1">1×</option><option value="20" selected>20×</option><option value="100">100×</option><option value="300">300×</option></select><button id="replayExit" type="button">返回实时</button></section>
+  <footer class="terminal-footer"><span><i class="live-dot"></i> <span id="footerStatus">DEMO ENGINE RUNNING</span></span><span class="footer-disclaimer" id="disclaimer">预演事件与示例成绩 · 未调用模型 API / NPU</span><span><button id="replayCurrent">回放本轮</button><button id="importButton">导入回放</button><button id="exportButton">导出记录</button><kbd>F</kbd> 全屏 <kbd>SPACE</kbd> 暂停</span></footer>
+</main>
+<dialog id="taskDialog"><form id="taskForm"><div class="dialog-heading"><span>// task specification</span><button type="button" class="close-dialog" aria-label="关闭">×</button></div><h2>输入算子，开始蜂群搜索</h2><label>算子描述<textarea id="taskDescription" rows="3">实现 ConfusionMulGrad，保持前后两半配对旋转语义。生成 AscendC Kernel、Host 和 Tiling 工程。</textarea></label><div class="form-columns"><label>测试规格<input id="taskShape" value="x=[2,2048,32,128], dtype=FP32"></label><label>目标环境<input id="taskTarget" value="Ascend 910B · CANN（待接入）"></label></div><fieldset><legend>硬约束 / 示例任务策略</legend><label><input type="checkbox" checked disabled> Host 仅负责参数校验、Tiling 和启动配置</label><label><input type="checkbox" checked disabled> 禁止硬编码计算结果与跨调用缓存</label><label><input type="checkbox" checked disabled> 保持参考语义和精度校验</label><label><input type="checkbox" checked disabled> 单次调用一个计算 Kernel</label></fieldset><p class="dialog-note">此版本播放本地预演事件；配置保存在当前浏览器，不会发送至服务器。</p><button class="primary-button" type="submit">应用并重新预演 →</button></form></dialog>
+<dialog id="knowledgeDialog"><div class="dialog-heading"><span>// skill details</span><button class="close-dialog" aria-label="关闭">×</button></div><div id="knowledgeDetail"></div></dialog>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<dialog id="runDialog">
+  <div class="dialog-heading"><span>优化任务</span><button class="close-dialog" aria-label="关闭">×</button></div>
+  <form id="runForm" class="control-form">
+    <h2>ConfusionMulGrad · 真实优化任务</h2>
+    <p class="control-note">选择团队和优化目标，任务过程与实测结果会自动保留。</p>
+    <label>执行团队<select id="runTeam" required aria-label="执行团队"></select></label>
+    <label>本轮优化目标<textarea id="runPrompt" rows="4">读取 TEAM.md、算子规格、cases.json 和约束。只优化当前 ConfusionMulGrad。先验证当前代码，再提出一个可解释的一般性优化假设，修改 kernel.asc 并再次验证；本轮最多两次设备评测。保留真实源码、日志、失败与性能结果，不把本地结果冒充官方成绩。只能通过 evaluate_kernel 工具使用设备，不读取原 CANN 工程历史。</textarea></label>
+    <details open><summary id="liveCaseTitle">测试 INPUT · 15 点规格</summary><p id="liveCaseSource" class="control-note"></p><div id="liveCaseTable" class="input-table"></div><details><summary>可复现的数据生成定义</summary><pre id="liveCases"></pre></details></details>
+    <details><summary>完整算子规格</summary><pre id="liveStatement"></pre></details>
+    <details><summary>硬约束</summary><pre id="liveConstraints"></pre></details>
+    <p id="runStatus" class="control-note" role="status"></p>
+    <div class="control-actions"><button class="primary-button" type="submit">启动真实优化 →</button><button id="rosterButton" class="quiet-button" type="button">配置团队成员</button><button id="dialogEvaluate" class="quiet-button" type="button">只验证当前代码</button><button id="cancelOperation" class="quiet-button" type="button">停止该队模型任务</button></div>
+  </form>
+</dialog>
+<dialog id="teamDialog">
+  <div class="dialog-heading"><span>组建团队</span><button class="close-dialog" aria-label="关闭">×</button></div>
+  <form id="teamForm" class="control-form"><h2>自动组建团队</h2>
+    <label>模型分配<select id="newTeamPreset"></select></label>
+    <label>新增团队数量<input id="newTeamCount" type="number" min="1" max="100" step="1" value="1" required></label><p id="modelStatus" class="control-note"></p>
+    <button id="refreshModels" class="quiet-button" type="button">刷新模型配置</button>
+    <p class="control-note">名称自动编号，如 gpt-001、deepseek-001。自动分配会均衡使用已配置的模型；每队包含分析、开发、审查三名成员，可在任务设置中调整。创建团队不会立即调用模型或占用 NPU。</p>
+    <div class="control-actions"><button class="primary-button" type="submit">创建团队</button><button id="leaveTeam" class="quiet-button" type="button">退出当前团队</button></div>
+  </form>
+</dialog>
+<dialog id="rosterDialog"><div class="dialog-heading"><span>// team specialists</span><button class="close-dialog" aria-label="关闭">×</button></div><form id="rosterForm" class="control-form"><h2 id="rosterTitle">团队成员</h2><p class="control-note">每行：name, role, model（可空，沿用主力）。role 为 analyst / implementer / reviewer。任务结束后可以自由调整；分析与审查成员仅有文件读取工具。</p><label>成员列表<textarea id="rosterText" rows="6"></textarea></label><button class="primary-button" type="submit">保存成员分工</button></form></dialog>
+<dialog id="messageDialog"><div class="dialog-heading"><span>// team collaboration</span><button class="close-dialog" aria-label="关闭">×</button></div><form id="messageForm" class="control-form"><h2>跨团队通信</h2><label>接收团队<select id="messageTeam" required></select></label><label>消息<textarea id="messageText" rows="4" required></textarea></label><button class="primary-button" type="submit">发送并记录</button></form></dialog>
+<dialog id="eventDialog"><div class="dialog-heading"><span>记录详情</span><button class="close-dialog" aria-label="关闭">×</button></div><div id="friendlyEvidence" class="friendly-evidence"></div><details class="raw-evidence"><summary>查看原始记录</summary><pre id="eventDetail" class="event-detail"></pre></details></dialog>
+<div id="toast" class="toast" role="status"></div>
+<script src="visualization.js"></script>
+<script src="activity.js"></script>
+<script src="app.js"></script>
+<script src="vendor/xterm.js"></script>
+<script src="workbench.js"></script>
+</body>
+</html>

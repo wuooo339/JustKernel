@@ -1,0 +1,380 @@
+[
+  {
+    "id": "draft-01",
+    "shape": [
+      3,
+      64
+    ],
+    "dtype": "float32",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1700,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "official-public-template-example",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-02",
+    "shape": [
+      5,
+      113
+    ],
+    "dtype": "float16",
+    "axis": [
+      1
+    ],
+    "keep_dims": true,
+    "seed": 1701,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-03",
+    "shape": [
+      127,
+      503
+    ],
+    "dtype": "float32",
+    "axis": [
+      0
+    ],
+    "keep_dims": false,
+    "seed": 1702,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-04",
+    "shape": [
+      64,
+      127
+    ],
+    "dtype": "float16",
+    "axis": [
+      0
+    ],
+    "keep_dims": true,
+    "seed": 1703,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-05",
+    "shape": [
+      17,
+      31
+    ],
+    "dtype": "float32",
+    "axis": [
+      0,
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1704,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-06",
+    "shape": [
+      32,
+      64
+    ],
+    "dtype": "float16",
+    "axis": [
+      0,
+      1
+    ],
+    "keep_dims": true,
+    "seed": 1705,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-07",
+    "shape": [
+      1,
+      2048
+    ],
+    "dtype": "float32",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1706,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-08",
+    "shape": [
+      2048,
+      1
+    ],
+    "dtype": "float16",
+    "axis": [
+      0
+    ],
+    "keep_dims": false,
+    "seed": 1707,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-09",
+    "shape": [
+      128,
+      1032
+    ],
+    "dtype": "float32",
+    "axis": [
+      -1
+    ],
+    "keep_dims": true,
+    "seed": 1708,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-10",
+    "shape": [
+      1024,
+      3072
+    ],
+    "dtype": "float16",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1709,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-11",
+    "shape": [
+      4096,
+      4099
+    ],
+    "dtype": "float32",
+    "axis": [
+      0,
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1710,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-12",
+    "shape": [
+      8191,
+      2053
+    ],
+    "dtype": "float32",
+    "axis": [
+      0
+    ],
+    "keep_dims": true,
+    "seed": 1711,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-13",
+    "shape": [
+      65536,
+      113
+    ],
+    "dtype": "float16",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1712,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-14",
+    "shape": [
+      64,
+      65536
+    ],
+    "dtype": "float32",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1713,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  },
+  {
+    "id": "draft-15",
+    "shape": [
+      65535,
+      2048
+    ],
+    "dtype": "float32",
+    "axis": [
+      1
+    ],
+    "keep_dims": false,
+    "seed": 1714,
+    "inputs": [
+      "input0",
+      "input1",
+      "input2"
+    ],
+    "distribution": {
+      "kind": "uniform",
+      "low": -1.0,
+      "high": 1.0
+    },
+    "provenance": "provisional-local-design",
+    "official_case_id": null
+  }
+]

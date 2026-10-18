@@ -1,0 +1,41 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.runtime-tools/
+.protocol-schema/
+.protocol-opencode-v2.json
+.justkernel/
+.env
+
+# Local state and credentials
+.justkernel*/
+models.local.toml
+.env.*
+!.env.example
+.pytest_cache/
+.ruff_cache/
+pytest-of-*/
+/lab/
+/reports/
+.protocol*
+/source-packages/
+
+# Downloaded contest sources have separate redistribution terms.
+/src/aworker/lab/resources/confusion_mul_grad/project/
+# Private historical optimization baseline; not part of the public example.
+/src/aworker/lab/resources/rotary_pos_emb/kernel.asc
+/docs/images/execution-record.png
+/docs/images/simulation.png
+auth.json
+*.pem
+*.key
+cookies*.json
+storage-state*.json
