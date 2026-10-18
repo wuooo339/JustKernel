@@ -76,6 +76,23 @@ def fixture_receipt(service, team="gpt-001", state="completed"):
 
 
 # ---- independent ownership and source/input integrity -----------------------
+def test_expanding_input_range_invalidates_an_otherwise_complete_cached_proof(lab):
+    path = lab.root / "challenge/cases.json"
+    cases = json.loads(path.read_text(encoding="utf-8"))
+    for case in cases:
+        case["distribution"].update(low=-1.0, high=1.0)
+    path.write_text(json.dumps(cases), encoding="utf-8")
+    record = fixture_receipt(lab)
+    assert lab.simulator.evidence(record["team"], record["source_sha256"], require_coverage=True)
+    for case in cases:
+        case["distribution"].update(low=-10.0, high=10.0)
+    path.write_text(json.dumps(cases), encoding="utf-8")
+    assert (
+        lab.simulator.evidence(record["team"], record["source_sha256"], require_coverage=True)
+        is None
+    )
+
+
 def test_job_listing_caches_decoding_but_never_returns_mutable_cache_entries(lab, monkeypatch):
     record = fixture_receipt(lab)
     folder = lab.simulator.spool / "jobs" / record["id"]

@@ -48,6 +48,12 @@ def test_new_default_is_official_confusion_project_with_provisional_inputs(lab):
     cases = json.loads((team / "cases.json").read_text(encoding="utf-8"))
     assert len(cases) == 15
     assert all(case["official_case_id"] is None for case in cases)
+    # The old [-1, 1) pack hid numerical errors at the published input magnitude.
+    value_range = manifest["input_source"]["official_value_range"]
+    assert value_range == {"low": -10.0, "high": 10.0, "upper_exclusive": True}
+    assert all(
+        case["distribution"] == {"kind": "uniform", "low": -10.0, "high": 10.0} for case in cases
+    )
     assert "positions" not in (team / "CONSTRAINTS.md").read_text(encoding="utf-8")
     with pytest.raises(ValueError, match="unchanged"):
         lab.judger.stage("gpt-001")

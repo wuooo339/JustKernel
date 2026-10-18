@@ -39,6 +39,12 @@
   "notes": [
     "Official package is unchanged; only local evaluation metadata is added.",
     "Official 15 test point IDs are known, individual input shapes and values are not fully published.",
-    "The shipped UT targets Ascend910B1 and has a single 3x64 example; it does not prove 15 official cases pass."
-  ]
+    "The shipped UT targets Ascend910B1 and has a single 3x64 example; it does not prove 15 official cases pass.",
+    "Local random generators use the published [-10, 10) input bounds; exact hidden values and shape correspondence remain unknown."
+  ],
+  "official_value_range": {
+    "low": -10.0,
+    "high": 10.0,
+    "upper_exclusive": true
+  }
 }
