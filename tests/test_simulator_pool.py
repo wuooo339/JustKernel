@@ -24,7 +24,15 @@ def atomic_fixture(path, data):
 class PipelineTests(unittest.TestCase):
     # ---- bounded compile overlap and exclusive profiler ---------------------
     def test_two_builds_overlap_but_collectors_never_overlap(self):
-        stats = {"build": 0, "profile": 0, "max_build": 0, "max_profile": 0, "finished": 0}
+        stats = {
+            "build": 0,
+            "functional": 0,
+            "profile": 0,
+            "max_build": 0,
+            "max_functional": 0,
+            "max_profile": 0,
+            "finished": 0,
+        }
         stats_lock, first_builds = threading.Lock(), threading.Barrier(2)
 
         class BaseWorker:
@@ -43,11 +51,20 @@ class PipelineTests(unittest.TestCase):
                 atomic_fixture(self.spool / "result.json", self.record)
 
             def run(self, args, phase, custom=None, timeout=600):
-                key = "profile" if phase.startswith("simulate:") else "build"
+                key = (
+                    "profile"
+                    if phase.startswith("simulate:")
+                    else "functional"
+                    if phase.startswith("functional:")
+                    else "build"
+                )
                 with stats_lock:
                     stats[key] += 1
                     stats["max_" + key] = max(stats["max_" + key], stats[key])
-                if key == "build" and self.request["team"] in {"fixture-1", "fixture-2"}:
+                if key in {"build", "functional"} and self.request["team"] in {
+                    "fixture-1",
+                    "fixture-2",
+                }:
                     first_builds.wait(timeout=5)
                 time.sleep(0.04)
                 with stats_lock:
@@ -55,6 +72,7 @@ class PipelineTests(unittest.TestCase):
 
             def execute(self):
                 self.run([], "compile")
+                self.run([], "functional:fixture-case")
                 self.run([], "simulate:fixture-case")
                 self.record.update(state="completed", phase="completed")
                 with stats_lock:
@@ -62,8 +80,16 @@ class PipelineTests(unittest.TestCase):
                     if stats["finished"] == 3:
                         self.worker.stop.set()
 
+        failed_heartbeat = []
+
+        def transient_reader_lock(path, data):
+            if path.name == "heartbeat.json" and not failed_heartbeat:
+                failed_heartbeat.append(True)
+                raise PermissionError("synthetic transient Windows reader")
+            atomic_fixture(path, data)
+
         fake = types.SimpleNamespace(
-            SimulationJob=BaseJob, SimulatorWorker=BaseWorker, atomic_json=atomic_fixture
+            SimulationJob=BaseJob, SimulatorWorker=BaseWorker, atomic_json=transient_reader_lock
         )
         path = Path(__file__).resolve().parents[1] / "src/aworker/lab/resources/simulator/pool.py"
         spec = importlib.util.spec_from_file_location("fixture_pool", path)
@@ -92,7 +118,9 @@ class PipelineTests(unittest.TestCase):
             self.assertEqual(len(records), 3)
             self.assertTrue(all(r["state"] == "completed" for r in records))
             self.assertEqual(stats["max_build"], 2)
+            self.assertEqual(stats["max_functional"], 2)
             self.assertEqual(stats["max_profile"], 1)
+            self.assertTrue(failed_heartbeat)
             heartbeat = json.loads((spool / "heartbeat.json").read_text())
             self.assertEqual(heartbeat["concurrency"], 2)
             self.assertEqual(heartbeat["profiling_concurrency"], 1)

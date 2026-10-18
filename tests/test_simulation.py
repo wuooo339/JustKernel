@@ -283,3 +283,38 @@ def test_actual_worker_reports_pipeline_and_profiler_slots_separately(lab):
     assert status["concurrency"] == 2
     assert status["profiling_concurrency"] == 1
     assert status["active_jobs"][0]["phase"] == "compile"
+
+
+# ---- all functional cases and fixed representative profiles share one SHA -----
+@pytest.mark.parametrize(
+    "missing", [None, "functional", "profile", "mode", "selection", "reference"]
+)
+def test_two_phase_gate_requires_all_functional_checks_and_representative_profiles(lab, missing):
+    record = fixture_receipt(lab)
+    folder = lab.simulator.spool / "jobs" / record["id"]
+    path = folder / "request.json"
+    request = json.loads(path.read_text(encoding="utf-8"))
+    profiles = lab.simulator.profile_cases()
+    assert len(profiles) == 3
+    request.update(evaluation_mode="functional-then-profile", profile_case_ids=profiles)
+    record["evaluation_mode"] = request["evaluation_mode"]
+    record["reference"] = {"engine": "pytorch-cpu-fp32-v1", "version": "2.14.1+cpu", "threads": 1}
+    for case in record["cases"]:
+        case.update(validation_kind="functional-pvmodel", profiling_files=[])
+        if case["id"] in profiles:
+            case.update(profile_pass=True, profiling_files=[{"path": "fixture.csv"}])
+    if missing == "functional":
+        record["cases"][-1]["pass"] = False
+    elif missing == "profile":
+        next(c for c in record["cases"] if c["id"] == profiles[0])["profile_pass"] = False
+    elif missing == "mode":
+        record["evaluation_mode"] = "full-profile"
+    elif missing == "selection":
+        request["profile_case_ids"] = profiles[1:]
+    elif missing == "reference":
+        record["reference"]["version"] = "different-reference-version"
+    path.write_text(json.dumps(request), encoding="utf-8")
+    record["request_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    (folder / "result.json").write_text(json.dumps(record), encoding="utf-8")
+    proof = lab.simulator.evidence(record["team"], record["source_sha256"], require_coverage=True)
+    assert bool(proof) == (missing is None)

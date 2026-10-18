@@ -213,6 +213,40 @@ class LabStore:
             )
         self.event(team, "team.joined", runtime=runtime, model=model)
 
+    # ---- explicit provider migration preserves code and historical runs -------
+    def rebind_model(self, team: str, model: str) -> None:
+        identifier(team)
+        with self.connection() as db:
+            db.execute("BEGIN IMMEDIATE")
+            previous = db.execute("SELECT * FROM teams WHERE id=?", (team,)).fetchone()
+            if not previous or not previous["active"]:
+                raise ValueError("select an active team")
+            if db.execute(
+                "SELECT 1 FROM operations WHERE team=? AND state='running'", (team,)
+            ).fetchone():
+                raise ValueError("finish or cancel the active task before switching models")
+            if previous["model"] == model:
+                return
+            session = "deepagents-" + team + "-" + uuid4().hex[:12]
+            db.execute("UPDATE teams SET model=?,session=? WHERE id=?", (model, session, team))
+            db.execute("UPDATE members SET model=NULL WHERE team=?", (team,))
+            db.execute(
+                "INSERT INTO events(at,team,kind,data) VALUES(?,?,?,?)",
+                (
+                    time.time(),
+                    team,
+                    "team.model.changed",
+                    json.dumps(
+                        {
+                            "old_model": previous["model"],
+                            "model": model,
+                            "previous_session": previous["session"],
+                            "session": session,
+                        }
+                    ),
+                ),
+            )
+
     def allocate_teams(
         self, profiles: list[tuple[str, str]], count: int, max_active: int
     ) -> list[tuple[str, str]]:

@@ -223,6 +223,13 @@ def create_lab_app(service: LabService) -> FastAPI:
         service.set_members(team, request.members)
         return {"team": team, "members": request.members}
 
+    @api.post("/control/teams/{team}/model")
+    async def rebind_model(team: str, request: JoinTeamRequest):
+        if request.team != team:
+            raise ValueError("team identity mismatch")
+        service.rebind_model(team, request.model)
+        return {"team": team, "model": request.model}
+
     @api.post("/control/teams/auto")
     async def auto_teams(request: AutoTeamsRequest):
         return {"teams": service.auto_teams(request.count, request.model)}

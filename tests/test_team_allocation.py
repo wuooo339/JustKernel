@@ -95,3 +95,35 @@ def test_startup_creates_no_unconfigured_teams_and_does_not_duplicate(service):
     initialize(service)
     initialize(service)
     assert len(service.store.snapshot()["teams"]) == 2
+
+
+# ---- explicit migration keeps work and isolates provider conversation state ---
+def test_model_migration_preserves_sources_and_history_with_fresh_session(service):
+    service.auto_teams(model="gpt")
+    service.store.session("gpt-001", "original-gpt-session")
+    folder = service.team_folder("gpt-001")
+    code = (folder / "kernel.asc").read_bytes()
+    service.store.event("gpt-001", "fixture.previous-work")
+    service.rebind_model("gpt-001", "deepseek")
+    team = service.store.snapshot()["teams"][0]
+    assert team["model"] == "deepseek" and team["session"] != "original-gpt-session"
+    assert (folder / "kernel.asc").read_bytes() == code
+    assert any(e["kind"] == "fixture.previous-work" for e in service.store.events())
+    assert all(m["model"] is None for m in service.store.snapshot()["members"])
+    service.rebind_model("gpt-001", "deepseek")
+    assert service.store.snapshot()["teams"][0]["session"] == team["session"]
+
+
+# ---- migration cannot interrupt active work or bind an unconfigured model ----
+def test_model_migration_rejects_active_tasks_and_unconfigured_models(service):
+    service.auto_teams(model="gpt")
+    with pytest.raises(ValueError):
+        service.rebind_model("gpt-001", "unused")
+    with service.store.connection() as db:
+        db.execute(
+            "INSERT INTO operations VALUES(?,?,?,?,?,?)",
+            ("fixture-op", "gpt-001", "optimize", "running", 0, None),
+        )
+    with pytest.raises(ValueError, match="active task"):
+        service.rebind_model("gpt-001", "deepseek")
+    assert service.store.snapshot()["teams"][0]["model"] == "gpt"

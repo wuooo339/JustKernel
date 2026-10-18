@@ -3,9 +3,11 @@
 import asyncio
 import hashlib
 import json
+import math
 import os
 import time
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -31,6 +33,8 @@ class SimulationRequest(BaseModel):
     learned_from: list[str] = Field(default_factory=list, max_length=30)
     timeout_seconds: int = Field(default=1800, ge=30, le=3600)
     created_at: float
+    evaluation_mode: Literal["full-profile", "functional-then-profile"] = "full-profile"
+    profile_case_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 # ---- Simulator --------------------------------------------------------------
@@ -172,7 +176,11 @@ class Simulator:
 
     def status(self):
         path = self.spool / "heartbeat.json"
-        worker = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        try:
+            worker = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            # A Windows/WSL reader can race atomic replacement; retry next heartbeat.
+            worker = {}
         ready = (
             worker.get("schema") == "justkernel.simulator.worker.v1"
             and worker.get("state") in {"ready", "busy"}
@@ -239,11 +247,39 @@ class Simulator:
                 and row.get("case_pack_sha256") == case_hash
                 and row.get("worker_sha256") == self.identity()
                 and row.get("cases")
-                and all(c.get("pass") is True and c.get("profiling_files") for c in row["cases"])
+                and all(c.get("pass") is True for c in row["cases"])
             ):
                 request = self.spool / "jobs" / row["id"] / "request.json"
                 if row.get("request_sha256") == hashlib.sha256(request.read_bytes()).hexdigest():
                     payload = json.loads(request.read_text(encoding="utf-8"))
+                    mode = payload.get("evaluation_mode", "full-profile")
+                    if mode == "functional-then-profile":
+                        profiles = set(payload.get("profile_case_ids", []))
+                        observed_profiles = {
+                            c["id"]
+                            for c in row["cases"]
+                            if c.get("profile_pass") is True and c.get("profiling_files")
+                        }
+                        if (
+                            row.get("evaluation_mode") != mode
+                            or row.get("reference")
+                            != {
+                                "engine": "pytorch-cpu-fp32-v1",
+                                "version": "2.14.1+cpu",
+                                "threads": 1,
+                            }
+                            or any(
+                                c.get("validation_kind") != "functional-pvmodel"
+                                for c in row["cases"]
+                            )
+                            or not profiles <= observed_profiles
+                            or (require_coverage and not set(self.profile_cases()) <= profiles)
+                        ):
+                            continue
+                    elif mode != "full-profile" or any(
+                        not c.get("profiling_files") for c in row["cases"]
+                    ):
+                        continue
                     if (
                         payload["team"] == team
                         and payload["source_sha256"] == digest
@@ -263,6 +299,15 @@ class Simulator:
     def default_cases(self):
         cases = json.loads((self.service.root / "challenge/cases.json").read_text(encoding="utf-8"))
         return [c["id"] for c in cases]
+
+    # ---- fixed representative set, independent of team code or output ---------
+    def profile_cases(self):
+        cases = json.loads((self.service.root / "challenge/cases.json").read_text(encoding="utf-8"))
+        selected = {}
+        for case in sorted(cases, key=lambda c: math.prod(c["shape"])):
+            axes = tuple(sorted({int(a) % len(case["shape"]) for a in case["axis"]}))
+            selected.setdefault(axes, case["id"])
+        return list(selected.values())
 
     def can_learn(self, team):
         return not self.required or any(
@@ -409,6 +454,8 @@ class Simulator:
                 hypothesis=hypothesis,
                 learned_from=learned_from or [],
                 created_at=time.time(),
+                evaluation_mode="functional-then-profile",
+                profile_case_ids=[c for c in self.profile_cases() if c in selected],
             )
             folder = self.spool / "jobs" / key
             folder.mkdir(parents=True)

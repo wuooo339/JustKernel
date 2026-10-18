@@ -212,6 +212,12 @@ class LabService:
             raise ValueError("specialist model profile does not exist")
         self.store.set_members(team, [m.model_dump() for m in members])
 
+    # ---- switch providers without overwriting source or old conversations -----
+    def rebind_model(self, team: str, model: str) -> None:
+        if model not in {p["id"] for p in self.registry.catalog() if p["configured"]}:
+            raise ValueError("select a configured model profile")
+        self.store.rebind_model(team, model)
+
     def team_folder(self, team: str) -> Path:
         identifier(team)
         entry = next((t for t in self.store.snapshot()["teams"] if t["id"] == team), None)

@@ -34,7 +34,8 @@ class PipelineJob(SimulationJob):
     def run(self, args, phase, custom=None, timeout=600):
         if not phase.startswith("simulate:"):
             return super().run(args, phase, custom, timeout)
-        self.record.update(phase="waiting-profiler:" + phase.split(":", 1)[1])
+        label = "waiting-profiler:"
+        self.record.update(phase=label + phase.split(":", 1)[1])
         self.save()
         wait_started = time.monotonic()
         with (self.worker.root / "profile-device-0.lock").open("a") as device_lock:
@@ -109,6 +110,8 @@ class SimulatorPool(SimulatorWorker):
                         if future.done():
                             try:
                                 future.result()
+                            except Exception as error:
+                                print(f"Job {key} receipt error: {error}", flush=True)
                             finally:
                                 del futures[key]
                                 with self.jobs_lock:
@@ -135,7 +138,10 @@ class SimulatorPool(SimulatorWorker):
                             with self.jobs_lock:
                                 self.jobs[job.key] = job
                             futures[job.key] = executor.submit(self.execute_job, job)
-                    self.heartbeat("busy" if futures else "ready")
+                    try:
+                        self.heartbeat("busy" if futures else "ready")
+                    except PermissionError as error:
+                        print(f"Heartbeat temporarily unavailable: {error}", flush=True)
                     time.sleep(1)
             self.heartbeat("stopped")
 

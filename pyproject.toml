@@ -33,6 +33,7 @@ aworker-lab = "aworker.lab.cli:main"
 [project.optional-dependencies]
 simulator = [
     "numpy>=2,<3",
+    "torch==2.14.1+cpu ; platform_machine == 'x86_64' and sys_platform == 'linux'",
 ]
 
 [dependency-groups]
@@ -41,6 +42,11 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.9",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
@@ -80,3 +86,6 @@ known-first-party = ["aworker"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--basetemp=.justkernel-test-tmp"
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }

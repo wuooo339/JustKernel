@@ -159,6 +159,8 @@ class EngineeringTools:
             """Freeze this team's exact source and independently compile/run CANN 910B4 simulation.
 
             Defaults to ALL trusted local INPUT cases (15 for this operator), not hidden cases.
+            Runs functional PVModel checks first, then detailed CAModel profiling on fixed
+            representative cases. Functional wall time is never NPU time or an official score.
             An explicit case_ids subset is a probe and cannot satisfy the full submission gate.
             Returns compiler diagnostics, numerical checks and real profiling file previews.
             Correct and retry failed/slower changes. Never inherit another team's measured pass.
