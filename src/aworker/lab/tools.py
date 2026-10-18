@@ -161,6 +161,8 @@ class EngineeringTools:
             Defaults to ALL trusted local INPUT cases (15 for this operator), not hidden cases.
             Runs functional PVModel checks first, then detailed CAModel profiling on fixed
             representative cases. Functional wall time is never NPU time or an official score.
+            If pending=true, end this model turn immediately with a brief queued status.
+            Do not poll or edit frozen work while awaiting the job; the scheduler resumes you.
             An explicit case_ids subset is a probe and cannot satisfy the full submission gate.
             Returns compiler diagnostics, numerical checks and real profiling file previews.
             Correct and retry failed/slower changes. Never inherit another team's measured pass.

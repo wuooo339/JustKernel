@@ -197,6 +197,34 @@ def test_retry_waits_for_same_pending_own_source_instead_of_enqueuing_again(lab,
     assert len(list(lab.simulator.spool.glob("jobs/*/request.json"))) == 1
 
 
+# ---- waiting experiments yield model capacity and retry one background task ---
+def test_pending_simulation_returns_without_waiting_for_worker_or_duplicating(lab, monkeypatch):
+    lab.settings = lab.settings.model_copy(update={"lab_simulation_wait_seconds": 0.01})
+    worker_heartbeat(lab)
+    record = fixture_receipt(lab, state="queued")
+
+    async def exercise():
+        release = asyncio.Event()
+        started = []
+
+        async def experiment(*args):
+            started.append(args[0])
+            await release.wait()
+            return {"state": "completed", "fixture_only": True}
+
+        monkeypatch.setattr(lab.simulator, "_experiment", experiment)
+        first = await lab.simulator.evaluate("gpt-001", "first")
+        retry = await lab.simulator.evaluate("gpt-001", "retry")
+        assert first["pending"] and first["job_id"] == record["id"]
+        assert retry["job_id"] == first["job_id"]
+        assert started == ["gpt-001"] and len(lab.simulator.pending) == 1
+        task = next(iter(lab.simulator.pending))
+        release.set()
+        assert (await task)["fixture_only"]
+
+    asyncio.run(exercise())
+
+
 # ---- cancellation never overwrites execution or becomes passing evidence -----
 @pytest.mark.parametrize("state", ["running", "completed", "failed"])
 def test_queue_cancellation_preserves_claimed_and_finished_results(lab, state):

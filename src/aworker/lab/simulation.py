@@ -44,6 +44,7 @@ class Simulator:
         self.spool = service.base_root / "simulator"
         self.pending = set()
         self.team_locks = {}
+        self.team_tasks = {}
         self.observer = None
 
     # ---- replayable progress survives model cancellation/service restart -----
@@ -394,12 +395,39 @@ class Simulator:
             return result
         lock = self.team_locks.setdefault(team, asyncio.Lock())
         async with lock:
-            task = asyncio.create_task(
-                self._experiment(team, run_id, hypothesis, case_ids, learned_from)
+            task = self.team_tasks.get(team)
+            if task is None or task.done():
+                task = asyncio.create_task(
+                    self._experiment(team, run_id, hypothesis, case_ids, learned_from)
+                )
+                self.team_tasks[team] = task
+                self.pending.add(task)
+                task.add_done_callback(self.background_finished)
+            done, _ = await asyncio.wait(
+                {task}, timeout=self.service.settings.lab_simulation_wait_seconds
             )
-            self.pending.add(task)
-            task.add_done_callback(self.pending.discard)
-            return await asyncio.shield(task)
+            if done:
+                return task.result()
+            row = self.current_experiments(self.jobs(team)).get(team, {})
+            return {
+                "state": row.get("state", "pending"),
+                "pending": True,
+                "job_id": row.get("id"),
+                "phase": row.get("phase"),
+                "source_sha256": row.get("source_sha256"),
+                "message": "本队独立实验在后台继续。请报告已排队并结束本轮，不要轮询或改码；"
+                "调度器会在实验结束后安排本队读取诊断并继续修正。此回执不是通过结果。",
+            }
+
+    # ---- detached execution must retain errors without occupying model slots --
+    def background_finished(self, task):
+        self.pending.discard(task)
+        if not task.cancelled() and (error := task.exception()):
+            self.service.store.event(
+                "simulator",
+                "simulation.background.error",
+                message=self.service.redact(str(error))[:1000],
+            )
 
     async def _experiment(self, team, run_id, hypothesis, case_ids, learned_from):
         candidate = self.service.candidate(team)
