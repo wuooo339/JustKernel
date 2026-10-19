@@ -88,7 +88,7 @@ uv run python tools/import_official_template.py --zip /path/to/official-template
 
 在面板「配置 → 模型」添加连接：填写 **提供商、实际可用的模型 ID、Base URL 和 API Key**，保存并测试。默认只创建、派发一支主队，先建立正确性基线；已有其他团队的源码与历史保留，不会自动参与运行。「任务设置」可选择主队及模型，明确切换到多队模式后才并行派发。
 
-**Qwen 首次实现流程**：在配置中打开 **Qwen 3.8 Flash**，填写本机 API Key，保存并测试；进入「任务设置」，选择「单主队」及 Qwen，点击启动。预置模型为 `qwen3.8-flash`，接口为 `https://maas.qianwenaiapi.com/compatible-mode/v1`，推理强度 `medium`，输出上限留空。模型、接口与账号权限以[千问官方文档](https://platform.qianwenai.com/docs/developer-guides/getting-started/latest-model)为准。
+**Qwen 首次实现流程**：在配置中打开 **Qwen 3.8 Flash**，填写本机 API Key，保存并测试；进入「任务设置」，选择「单主队」及 Qwen，点击启动。预置模型为 `qwen3.8-flash`，接口为 `https://maas.qianwenaiapi.com/compatible-mode/v1`，推理强度默认 `low`，输出上限留空；需要深入分析时可在配置中提高推理强度，工具调度不必每次进行长推理。模型、接口与账号权限以[千问官方文档](https://platform.qianwenai.com/docs/developer-guides/getting-started/latest-model)为准。
 
 主队先读取最近失败回执，每轮修一个问题并做针对性探针；探针通过后运行完整本地点与固定代表点仿真，再经独立审查、精选官测，根据真实反馈继续修正。认证错误或余额不足会暂停派发，修复并测试连接后可手动恢复，不会无限空转。单队与多队均使用同一验证门槛；本地通过不代表官方通过。
 

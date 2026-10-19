@@ -97,7 +97,7 @@ def test_qwen_flash_streaming_tool_history_and_unlimited_default_output():
         assert second.content == "OK"
     for request in requests:
         assert request["model"] == "qwen3.8-flash"
-        assert request["reasoning_effort"] == "medium"
+        assert request["reasoning_effort"] == "low"
         assert request["enable_thinking"] and request["preserve_thinking"]
         assert "max_tokens" not in request and "max_completion_tokens" not in request
         assert request["stream"] and request["stream_options"]["include_usage"]
