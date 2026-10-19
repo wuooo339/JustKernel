@@ -555,7 +555,7 @@
     const verified=new Set((live.runs || []).filter((r)=>r.state==='completed').map((r)=>r.team)).size;
     const continuous=Boolean(live.continuous?.enabled);
     const budget=live.judge_budget,simulation=live.simulation,waiting=live.continuous?.waiting_for==='simulator';
-    $('liveStatusLine').textContent=`${count} 支团队 · ${waiting?'等待仿真环境':continuous?'持续搜索':'已暂停'} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?`实验 ${simulation.worker?.concurrency||simulation.concurrency||1} 槽 / 采集 ${simulation.worker?.profiling_concurrency||simulation.profiling_concurrency||1} 槽`:'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
+    $('liveStatusLine').textContent=`${count} 支登记团队 · ${live.continuous?.strategy==='parallel'?'多队并行':'单主队基线'}${live.continuous?.main_team?' · '+live.continuous.main_team:''} · ${live.continuous?.blocked_reason|| (waiting?'等待仿真环境':continuous?'持续搜索':'已暂停')} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?`实验 ${simulation.worker?.concurrency||simulation.concurrency||1} 槽 / 采集 ${simulation.worker?.profiling_concurrency||simulation.profiling_concurrency||1} 槽`:'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
     $('playButton').textContent=continuous?'暂停持续优化':'启动持续优化';
     $('playButton').title=continuous?'暂停派发新一轮，当前任务继续完成；官测独立控制':'持续搜索、相互学习和提出候选，直到暂停';
     $('liveStatusLine').title=live.latestError || `${verified} 支团队完成过模型会话`;
@@ -709,30 +709,43 @@
     live.timer = setInterval(refreshLive, 2500);
     renderAll(); renderLiveStatus(); requestAnimationFrame(refreshPositions);
   }
+  function mainModel() {
+    const models=live.status.models||[],saved=live.continuous?.model;
+    return models.some(m=>m.id===saved&&m.configured)?saved:models.find(m=>m.provider==='qwen'&&m.configured)?.id||saved||'qwen-api';
+  }
   function openRun() {
     if(live.recording){toast('当前为离线记录；切换运行模式后连接真实执行器');return;}
-    $('runTeam').innerHTML='<option value="__swarm__">全部活动团队 · PK</option>';
+    $('runStrategy').value=live.continuous?.strategy||'baseline';
+    $('runTeam').innerHTML='<option value="__swarm__">全部活动团队 · PK（仅多队模式）</option>';
     for (const team of visibleTeams()) {
       const option = document.createElement('option'); option.value = team.id;
       option.textContent = `${team.id} / ${profile(team)?.name || team.model}`; $('runTeam').append(option);
     }
-    $('runTeam').value='__swarm__';
+    $('runTeam').value=live.continuous?.main_team||activeTeam()?.id||visibleTeams()[0]?.id||'';
+    const preferred=mainModel();
+    $('runModel').innerHTML=(live.status.models||[]).filter(m=>m.configured||m.provider==='qwen').map(m=>`<option value="${esc(m.id)}">${esc(m.name)} · ${esc(m.model)}${m.configured?'':' · 先在配置中填写 API Key'}</option>`).join('');
+    $('runModel').value=preferred;
+    $('runModel').disabled=$('runStrategy').value==='parallel';
     renderLiveStatus(); $('runDialog').showModal();
   }
   async function submitLive(action) {
     if(live.recording){toast('离线记录不会启动模型或设备');return;}
     if (live.busy) return;
-    const team = $('runDialog').open ? $('runTeam').value : activeTeam()?.id;
+    const team = $('runDialog').open ? $('runTeam').value : live.continuous?.main_team||activeTeam()?.id;
     if (!team) { toast('先选择或组建一个团队'); return; }
     live.busy = true;
     try {
-      const batch=action==='run'&&(!$('runDialog').open||team==='__swarm__');
-      const result = batch ? await lab('/control/swarm/continuous',{enabled:true,teams:null,prompt:$('runPrompt').value}) : await lab('/control/' + action, { team, prompt: $('runPrompt').value });
-      toast(batch?`持续优化已开启，各队独立循环；Judger 只送测精选挑战候选`:`已提交 ${team} · ${action === 'run' ? '真实优化' : '真实设备评测'} · ${result.operation_id.slice(0, 8)}`);
+      const strategy=$('runDialog').open?$('runStrategy').value:live.continuous?.strategy||'baseline';
+      const model=$('runDialog').open?$('runModel').value:mainModel();
+      if(action==='run'&&strategy==='baseline'&&!(live.status.models||[]).some(m=>m.id===model&&m.configured))throw new Error('先在「配置 → 添加连接 → Qwen」保存 API Key 并测试连接，再启动主队。');
+      if(action==='run'&&strategy==='baseline'&&team==='__swarm__')throw new Error('单主队模式请选择一支具体团队。');
+      const result = action==='run' ? await lab('/control/swarm/continuous',{enabled:true,strategy,main_team:strategy==='baseline'?team:null,teams:strategy==='baseline'?[team]:team==='__swarm__'?null:[team],model:strategy==='baseline'?model:null,prompt:$('runPrompt').value}) : await lab('/control/' + action, { team, prompt: $('runPrompt').value });
+      toast(action==='run'?(strategy==='baseline'?`单主队 ${team} 已启动，先修失败点，再完整验证与官测`:'多队持续优化已开启'):`已提交 ${team} · 真实设备评测 · ${result.operation_id.slice(0, 8)}`);
       $('runDialog').close(); await refreshLive();
     } catch (error) { toast(error.message); $('runStatus').textContent = error.message; }
     finally { live.busy = false; }
   }
+  $('runStrategy').onchange=()=>{$('runModel').disabled=$('runStrategy').value==='parallel';if($('runStrategy').value==='parallel')$('runTeam').value='__swarm__';else $('runTeam').value=live.continuous?.main_team||activeTeam()?.id||visibleTeams()[0]?.id||'';};
   const resultsBox = document.createElement('div'); resultsBox.id = 'realResults'; resultsBox.className = 'real-cases'; resultsBox.hidden = true;
   $('sotaChart').after(resultsBox);
   buildAgents();

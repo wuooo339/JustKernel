@@ -183,7 +183,7 @@ class LabService:
             return
         capacity = self.settings.lab_max_teams - sum(bool(t["active"]) for t in teams)
         if capacity > 0:
-            self.auto_teams(min(len(configured), capacity))
+            self.auto_teams(1)
 
     def join(self, team: str, runtime: str = "deepagents", model: str | None = None) -> Path:
         identifier(team)

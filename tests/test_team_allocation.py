@@ -94,7 +94,7 @@ def test_startup_creates_no_unconfigured_teams_and_does_not_duplicate(service):
     service.registry.profiles = original
     initialize(service)
     initialize(service)
-    assert len(service.store.snapshot()["teams"]) == 2
+    assert len(service.store.snapshot()["teams"]) == 1
 
 
 # ---- explicit migration keeps work and isolates provider conversation state ---

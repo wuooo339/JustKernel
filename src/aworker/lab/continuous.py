@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import time
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,9 @@ from pydantic import BaseModel, Field
 # ---- SwarmPlan --------------------------------------------------------------
 class SwarmPlan(BaseModel):
     enabled: bool = False
+    strategy: Literal["baseline", "parallel"] = "baseline"
+    main_team: str | None = None
+    model: str | None = None
     teams: list[str] | None = None
     prompt: str = Field(default="持续优化当前算子，学习公开候选和真实反馈。", max_length=100000)
     max_turns: int | None = Field(default=None, ge=1, le=100000)
@@ -45,9 +49,22 @@ class ContinuousSwarm:
             **SwarmPlan.model_validate(data).model_dump(),
             "progress": data.get("progress", {}),
             "waiting_for": "simulator" if data.get("enabled") and waiting else None,
+            "blocked_reason": data.get("blocked_reason"),
         }
 
     async def configure(self, plan: SwarmPlan):
+        if plan.strategy == "baseline":
+            teams = self.service.store.snapshot()["teams"]
+            selected = [t for t in teams if t["active"] and t["runtime"] == "deepagents"]
+            main = plan.main_team or (plan.teams[0] if plan.teams else None)
+            if main is None and selected:
+                main = selected[0]["id"]
+            if main is not None:
+                if main not in {t["id"] for t in selected}:
+                    raise ValueError("选择一个活动团队作为主队。")
+                plan = plan.model_copy(update={"main_team": main, "teams": [main]})
+                if plan.enabled and plan.model:
+                    self.service.rebind_model(main, plan.model)
         if plan.enabled:
             configured = {m["id"] for m in self.service.registry.catalog() if m["configured"]}
             teams = self.service.store.snapshot()["teams"]
@@ -62,6 +79,14 @@ class ContinuousSwarm:
                 raise ValueError("所选团队尚未配置模型。")
         data = self.read()
         data.update(plan.model_dump())
+        if plan.enabled:
+            data.pop("blocked_reason", None)
+            for name, state in data.get("progress", {}).items():
+                if plan.teams is None or name in plan.teams:
+                    state["next_at"] = 0
+                    state["credential_failure"] = state.get("operation_id")
+                    state["observed"] = state.get("operation_id")
+                    state["failures"] = 0
         self.write(data)
         self.service.store.event("controller", "swarm.continuous.configured", **plan.model_dump())
         self.wake.set()
@@ -108,6 +133,52 @@ class ContinuousSwarm:
         operations = {o["id"]: o for o in snapshot["operations"]}
         active = {o["team"] for o in operations.values() if o["state"] == "running"}
         configured = {m["id"] for m in self.service.registry.catalog() if m["configured"]}
+        selected = [
+            t
+            for t in snapshot["teams"]
+            if t["active"]
+            and t["runtime"] == "deepagents"
+            and (plan.teams is None or t["id"] in plan.teams)
+        ]
+        if plan.strategy == "baseline":
+            selected = (
+                [t for t in selected if t["id"] == plan.main_team]
+                if plan.main_team
+                else selected[:1]
+            )
+        selected_ids = {t["id"] for t in selected}
+        # Authentication/billing failures require a user action, not repeated paid turns.
+        for state in progress.values():
+            prior = operations.get(state.get("operation_id"))
+            error = str((prior or {}).get("error") or "").lower()
+            if (
+                prior
+                and prior["team"] in selected_ids
+                and prior["state"] == "failed"
+                and state.get("credential_failure") != prior["id"]
+                and any(
+                    marker in error
+                    for marker in (
+                        "insufficient balance",
+                        "invalid api key",
+                        "incorrect api key",
+                        "error code: 402",
+                        "error code: 401",
+                    )
+                )
+            ):
+                data.update(
+                    enabled=False, blocked_reason="模型额度或认证失败，请修复连接并测试后重新启动。"
+                )
+                state["credential_failure"] = prior["id"]
+                self.write(data)
+                self.service.store.event(
+                    "controller",
+                    "swarm.blocked.model",
+                    affected_team=prior["team"],
+                    message=data["blocked_reason"],
+                )
+                return
         for team in snapshot["teams"]:
             name = team["id"]
             if (
@@ -116,7 +187,7 @@ class ContinuousSwarm:
                 or team["model"] not in configured
             ):
                 continue
-            if plan.teams is not None and name not in plan.teams:
+            if name not in selected_ids:
                 continue
             state = progress.setdefault(name, {"turns": 0, "failures": 0})
             prior = operations.get(state.get("operation_id"))
@@ -157,6 +228,13 @@ class ContinuousSwarm:
                 "写清改动依据与未知项。候选池交给独立筛选器，仅精选挑战版本送官测。"
                 "本轮结束后调度器会继续派下一轮；不要在本轮内无限自循环或请求模型凭据。"
             )
+            if plan.strategy == "baseline":
+                prompt += (
+                    "\n当前是单主队正确性基线阶段：读取最近失败的本队回执，只修一个具体问题。"
+                    "先用失败 case_ids 做快速探针；探针通过才重跑完整15点和固定代表点。"
+                    "避免重复通读未改动文件或反复委派同一分析；必要的独立源码审查仍保留。"
+                    "本队完整验证和真实官测Pass之前，不扩增团队，不宣称SOTA。"
+                )
             try:
                 key = self.service.start_operation(name, "run", prompt)
             except ValueError:

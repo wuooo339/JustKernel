@@ -106,7 +106,7 @@ def test_saved_api_connection_is_used_by_the_unified_model_registry(workbench):
     client = workbench.registry.build("fixture-qwen")
     assert client.model_name == "fixture-model"
     assert client.openai_api_key.get_secret_value() == "fixture-api-key"
-    assert client.streaming is False
+    assert client.streaming is True
     assert workbench.redact("error fixture-api-key") == "error [redacted]"
     reloaded = LabService(workbench.settings.model_copy(update={"lab_root": workbench.base_root}))
     assert reloaded.registry.local_keys["fixture-qwen"].get_secret_value() == "fixture-api-key"

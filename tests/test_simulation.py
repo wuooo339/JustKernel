@@ -348,7 +348,7 @@ def test_pending_own_experiment_does_not_block_another_team(lab, monkeypatch):
     fixture_receipt(lab, state="queued")
     calls = []
     monkeypatch.setattr(lab, "start_operation", lambda *args: calls.append(args) or "fixture-op")
-    lab.swarm.write({"enabled": True})
+    lab.swarm.write({"enabled": True, "strategy": "parallel"})
     lab.swarm.tick()
     assert [call[0] for call in calls] == ["gpt-002"]
     assert lab.swarm.status()["progress"]["gpt-001"]["phase"] == "awaiting-own-experiment"

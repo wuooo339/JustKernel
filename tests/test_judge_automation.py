@@ -383,7 +383,7 @@ def test_each_team_advances_without_waiting_for_other_teams_or_login(lab, monkey
         return key
 
     monkeypatch.setattr(lab, "start_operation", launch)
-    lab.swarm.write({"enabled": True, "turn_interval": 5})
+    lab.swarm.write({"enabled": True, "strategy": "parallel", "turn_interval": 5})
     lab.swarm.tick()
     assert {c[0] for c in calls} == {"gpt-001", "gpt-002"}
     assert not lab.judger.browser.status()["connected"]

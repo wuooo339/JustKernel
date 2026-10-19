@@ -128,8 +128,10 @@
   <form id="runForm" class="control-form">
     <h2>ConfusionMulGrad · 真实优化任务</h2>
     <p class="control-note">选择团队和优化目标，任务过程与实测结果会自动保留。</p>
+    <label>运行方式<select id="runStrategy"><option value="baseline">单主队 · 先跑通正确性基线</option><option value="parallel">多队并行 · 不同优化方向</option></select></label>
+    <label>主队模型<select id="runModel" aria-label="主队模型"></select></label>
     <label>执行团队<select id="runTeam" required aria-label="执行团队"></select></label>
-    <label>本轮优化目标<textarea id="runPrompt" rows="4">读取 TEAM.md、算子规格、cases.json 和约束。只优化当前 ConfusionMulGrad。先验证当前代码，再提出一个可解释的一般性优化假设，修改 kernel.asc 并再次验证；本轮最多两次设备评测。保留真实源码、日志、失败与性能结果，不把本地结果冒充官方成绩。只能通过 evaluate_kernel 工具使用设备，不读取原 CANN 工程历史。</textarea></label>
+    <label>本轮优化目标<textarea id="runPrompt" rows="4">只优化当前算子，保留已有源码。先读本队最新仿真回执，针对最近失败点提出一个可解释的修正；用明确 case_ids 快速验证。失败点通过后，再跑完整本地用例和固定代表点性能仿真；完整通过并独立审查后，由 Judger 精选官测。根据真实回执继续修正，不把本地通过冒充官方成绩。仿真 pending 时结束本轮，等待调度器续跑。</textarea></label>
     <details open><summary id="liveCaseTitle">测试 INPUT · 15 点规格</summary><p id="liveCaseSource" class="control-note"></p><div id="liveCaseTable" class="input-table"></div><details><summary>可复现的数据生成定义</summary><pre id="liveCases"></pre></details></details>
     <details><summary>完整算子规格</summary><pre id="liveStatement"></pre></details>
     <details><summary>硬约束</summary><pre id="liveConstraints"></pre></details>

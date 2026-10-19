@@ -74,7 +74,7 @@ def save_api_model(service, request: APIModelSave) -> dict:
         effort=request.effort or None,
         max_tokens=request.max_tokens,
         extra_body=request.extra_body,
-        streaming=request.provider != "qwen",
+        streaming=True,
     )
     row["profile"] = profile.model_dump(mode="json")
     if request.api_key and request.api_key.get_secret_value():

@@ -87,6 +87,44 @@ class CompatibleChatOpenAI(ChatOpenAI):
         return payload
 
 
+# ---- QwenThinking ----------------------------------------------------------
+class QwenThinking(CompatibleChatOpenAI):
+    """Preserve Qwen reasoning in tool history without exposing it as public text."""
+
+    # ---- request history and ordinary/streaming response decoding -----------
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+        for original, encoded in zip(
+            self._convert_input(input_).to_messages(), payload["messages"], strict=True
+        ):
+            if (
+                isinstance(original, AIMessage)
+                and "reasoning_content" in original.additional_kwargs
+            ):
+                encoded["reasoning_content"] = original.additional_kwargs["reasoning_content"]
+        return payload
+
+    def _create_chat_result(self, response, generation_info=None):
+        result = super()._create_chat_result(response, generation_info)
+        raw = response if isinstance(response, dict) else response.model_dump()
+        for generation, choice in zip(result.generations, raw.get("choices", []), strict=True):
+            reasoning = choice.get("message", {}).get("reasoning_content")
+            if reasoning is not None:
+                generation.message.additional_kwargs["reasoning_content"] = reasoning
+        return result
+
+    def _convert_chunk_to_generation_chunk(self, chunk, default_chunk_class, base_generation_info):
+        result = super()._convert_chunk_to_generation_chunk(
+            chunk, default_chunk_class, base_generation_info
+        )
+        choices = chunk.get("choices", [])
+        if result and choices:
+            reasoning = choices[0].get("delta", {}).get("reasoning_content")
+            if reasoning is not None:
+                result.message.additional_kwargs["reasoning_content"] = reasoning
+        return result
+
+
 # ---- DeepSeekThinking -------------------------------------------------------
 class DeepSeekThinking(ChatDeepSeek):
     """Retain provider reasoning for every assistant turn, including non-tool turns."""
@@ -216,5 +254,7 @@ class ModelRegistry:
         if profile.provider == "deepseek":
             # Preserve reasoning_content in tool-call history as required by DeepSeek.
             return DeepSeekThinking(**common)
+        if profile.provider == "qwen":
+            return QwenThinking(**common, stream_usage=True)
         model_class = ChatOpenAI if profile.provider == "openai" else CompatibleChatOpenAI
         return model_class(**common)

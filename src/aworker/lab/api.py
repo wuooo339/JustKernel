@@ -253,7 +253,9 @@ def create_lab_app(service: LabService) -> FastAPI:
             await service.judger.automation.configure(
                 True,
                 config["max_submissions"],
-                config.get("selector_model"),
+                plan.model
+                if plan.strategy == "baseline" and plan.model
+                else config.get("selector_model"),
             )
         return result
 
