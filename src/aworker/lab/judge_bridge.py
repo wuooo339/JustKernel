@@ -59,6 +59,10 @@ class BrowserBridge:
 
     # ---- fixed official-site operations, one post at a time -----------------
     async def process(self, path):
+        # Thousands of completed receipts must not be decoded again before each new command.
+        output = path.with_name(path.name.removesuffix(".request.json") + ".reply.json")
+        if output.is_file():
+            return
         request = BridgeRequest.model_validate_json(path.read_bytes())
         output = path.parent / (request.id + ".reply.json")
         marker = path.parent / (request.id + ".started.json")
@@ -101,6 +105,7 @@ class BrowserBridge:
                 print("官测浏览器服务已在运行，请使用现有窗口或从面板连接。", flush=True)
                 return
             pulse = asyncio.create_task(self.pulse())
+            handled = set()
             try:
                 if initial_url:
                     self.busy = True
@@ -110,7 +115,10 @@ class BrowserBridge:
                         self.busy = False
                 while True:
                     for path in sorted((self.spool / "requests").glob("*.request.json")):
+                        if path.name in handled:
+                            continue
                         await self.process(path)
+                        handled.add(path.name)
                     await asyncio.sleep(0.25)
             finally:
                 pulse.cancel()

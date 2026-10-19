@@ -6,11 +6,25 @@ import json
 import time
 
 from deepagents import create_deep_agent
-from langchain.agents.middleware import ToolErrorMiddleware
+from langchain.agents.middleware import ToolErrorMiddleware, wrap_model_call
 from langchain_core.tools import tool
 
 from aworker.lab.project import project_manifest
 from aworker.messages import last_message_text
+
+
+# ---- selector reads immutable artifacts, never an empty scratch filesystem ----
+@wrap_model_call
+async def selector_artifact_tools(request, handler):
+    allowed = {
+        "read_spec",
+        "list_candidates",
+        "read_candidate",
+        "review_candidate",
+        "nominate_candidate",
+    }
+    tools = [t for t in request.tools if getattr(t, "name", None) in allowed]
+    return await handler(request.override(tools=tools))
 
 
 # ---- CandidateSelector ------------------------------------------------------
@@ -261,7 +275,7 @@ Only the backend can submit. Finish with a short public decision summary.
                     nominate_candidate,
                 ],
                 system_prompt=prompt,
-                middleware=[ToolErrorMiddleware(recover)],
+                middleware=[ToolErrorMiddleware(recover), selector_artifact_tools],
                 name="justkernel-selector",
             )
             async with asyncio.timeout(self.service.settings.lab_selector_timeout):
@@ -270,7 +284,10 @@ Only the backend can submit. Finish with a short public decision summary.
                         "messages": [
                             {
                                 "role": "user",
-                                "content": "Compare the pool; choose at most one challenger.",
+                                "content": "Use read_spec and list_candidates, then read_candidate "
+                                "with a listed candidate_id to read the complete frozen source. "
+                                "Source files exist only behind read_candidate, not in a scratch "
+                                "filesystem. Review and nominate at most one challenger.",
                             }
                         ]
                     },

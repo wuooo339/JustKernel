@@ -110,6 +110,25 @@
     return count<=12?['GPT','GLM','DS','QW'][modelGroup(node.groupKey||node.model)]+'\n'+id:id;
   }
 
+  // ---- local simulation coverage, never an official score or NPU latency ----
+  function simulationAttempts(jobs, expectedCases=15, team=null, context={}, at=Infinity){
+    return jobs.filter(r=>(!team||r.team===team)&&r.state!=='cancelled'&&r.created_at<=at&&(r.finished_at||r.created_at)<=at&&
+      r.schema==='justkernel.simulation.v1'&&r.source==='cann-simulator'&&
+      (!context.case_pack_sha256||r.case_pack_sha256===context.case_pack_sha256)&&
+      (!context.worker_sha256||r.worker_sha256===context.worker_sha256))
+      .sort((a,b)=>a.created_at-b.created_at).map((r,i)=>{
+        const cases=[...new Map((r.cases||[]).map(c=>[c.id,c])).values()];
+        const passed=cases.filter(c=>c.pass===true).length;
+        const pending=['queued','running'].includes(r.state);
+        const valid=r.state==='completed'&&r.functional_pass===true&&passed===expectedCases&&cases.length===expectedCases;
+        return {seq:i+1,team:r.team,job:r.id,sha:r.source_sha256,at:r.finished_at||r.created_at,
+          passed,total:expectedCases,coverage:cases.length,correctness:100*passed/expectedCases,
+          profiles:cases.filter(c=>c.profile_pass===true).length,profileTotal:r.profile_case_ids?.length||0,
+          valid,pending,failed:r.state==='failed',error:r.error||'',latency:null,score:null,local:true,
+          event:{kind:'simulation.receipt',team:r.team,data:{...r,job_id:r.id,expected_cases:expectedCases}}};
+      });
+  }
+
   // ---- attemptsFromEvents --------------------------------------------------
   // A failed compile is a missing measurement, never a zero-latency success.
   function attemptsFromEvents(events, expectedCases = 15, team = null) {
@@ -255,10 +274,12 @@
       if (mode !== this.mode) {
         this.mode = mode;
         if(!this.$('trajectoryMetric').querySelector('[value="score"]'))this.$('trajectoryMetric').add(new Option('官测分数','score'));
-        this.$('trajectoryMetric').value = data.demo ? 'latency' : data.judgeOnly ? 'score' : 'correctness';
+        this.$('trajectoryMetric').value = data.demo ? 'latency' : data.judgeOnly && !data.simulation?.required ? 'score' : 'correctness';
         this.chartKey = '';
       }
       this.data = data;
+      const correctnessOption=this.$('trajectoryMetric').querySelector('[value="correctness"]');
+      if(correctnessOption)correctnessOption.textContent=data.simulation?.required?'本地仿真通过率':'正确率';
       const ranks=rankOfficialTeams(officialAttemptsFromEvents(data.events),data.nodes);
       this.networkRanks=new Map(ranks.map(r=>[r.name,r]));
       this.networkMaxScore=Math.max(0,...ranks.map(r=>r.score||0));
@@ -286,7 +307,9 @@
       const d = this.data;
       const metric = this.$('trajectoryMetric').value;
       const selectedOnly = this.$('trajectoryScope').value === 'selected';
-      let attempts = d.demo ? this.demoPoints() : metric==='score' ? officialAttemptsFromEvents(d.events,selectedOnly ? d.selectedTeam : null) : attemptsFromEvents(d.events,d.expectedCases,selectedOnly ? d.selectedTeam : null);
+      const local=!d.demo&&metric==='correctness'&&d.simulation?.required;
+      const replayAt=d.recording?(d.replayClock?.start||0)+(d.replayClock?.position||0):Infinity;
+      let attempts = d.demo ? this.demoPoints() : metric==='score' ? officialAttemptsFromEvents(d.events,selectedOnly ? d.selectedTeam : null) : local ? simulationAttempts(d.simulationJobs||[],d.expectedCases,selectedOnly?d.selectedTeam:null,d.simulation,replayAt) : attemptsFromEvents(d.events,d.expectedCases,selectedOnly ? d.selectedTeam : null);
       if (d.demo && selectedOnly) attempts = attempts.filter((p) => p.team === 'A'+String(d.selected).padStart(3,'0'));
       if (metric === 'latency') attempts = performanceGroup(attempts);
       this.points = attempts;
@@ -296,7 +319,7 @@
       const rect=this.$('trajectoryPlot').getBoundingClientRect(),plotW=Math.max(180,Math.round(rect.width)),plotH=Math.max(65,Math.round(rect.height));
       const key = JSON.stringify([this.mode,metric,selectedOnly,d.selected,plotW,plotH,attempts.map((p) => [p.seq,p[metric]]),d.running]);
       const pending = d.pendingJobs || 0;
-      this.$('plotProvenance').textContent = d.demo ? '演示数据' : metric==='score' ? 'CANN JUDGE / 官测回执' : d.recording ? '导入记录' : '实测记录';
+      this.$('plotProvenance').textContent = d.demo ? '演示数据' : metric==='score' ? 'CANN JUDGE / 官测回执' : local ? '910B4 / 本地仿真 · 当前测试集' : d.recording ? '导入记录' : '实测记录';
       this.$('attemptLabel').textContent = latest ? '最近一次尝试 · '+String(attempts.length).padStart(2,'0') : '最新尝试';
       const failureReason = latest?.error ? /\(75\)|NPU busy|outside JustKernel/i.test(latest.error) ? '当时设备被占用' : /connect|ssh|scp/i.test(latest.error) ? '连接未完成' : '评测未完成' : '未通过';
       this.$('attemptValue').textContent = latest ? metric === 'correctness' ? latest.correctness === null ? failureReason : latest.passed+'/'+latest.total : number(latest.latency) ? latest.latency.toFixed(2) : failureReason : '—';
@@ -304,9 +327,10 @@
       this.$('attemptValue').classList.toggle('status-value',Boolean(latest?.error));
       const time = latest?.at ? new Date(latest.at*1000).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'})+' · ' : '';
       this.$('attemptDetail').textContent = latest ? time+latest.team+(metric==='score'?' · 提交 '+latest.job:latest.error ? ' · 未取得测量' : ' · '+latest.coverage+' 点回执') : d.running ? '团队正在工作，结果返回后自动更新' : d.judgeOnly?'等待首次官方回执':'等待第一次设备评测';
+      if(local&&latest)this.$('attemptDetail').textContent=time+latest.team+' · 源码 '+latest.sha?.slice(0,8)+' · 流水 '+latest.profiles+'/'+latest.profileTotal+(latest.pending?' · 进行中':'');
       this.$('attemptFailureButton').hidden=!latest?.failed;
       this.$('attemptBest').textContent = best === null ? '—' : metric === 'score' ? best.toFixed(2)+' 分' : metric === 'latency' ? best.toFixed(2)+' μs' : best.toFixed(1)+'%';
-      this.$('bestLabel').textContent = metric === 'score' ? '最好官测分数' : metric === 'latency' ? '当前最低耗时' : '当前最好正确率';
+      this.$('bestLabel').textContent = metric === 'score' ? '最好官测分数' : metric === 'latency' ? '当前最低耗时' : local ? '本地最好覆盖率' : '当前最好正确率';
       this.$('attemptCount').textContent = attempts.length+' 次尝试'+(pending ? ' · '+pending+' 次排队 / 实测' : '');
       this.$('plotDirection').textContent = metric === 'latency' ? '↓ 越低越好 · 仅完整通过结果' : '↑ 越高越好';
       if (key === this.chartKey) return;
@@ -352,6 +376,7 @@
 
     tooltip(point) {
       const metric = this.$('trajectoryMetric').value;
+      if(point.local){this.$('plotTooltip').textContent=point.team+' · 源码 '+point.sha?.slice(0,12)+'\n'+point.passed+'/'+point.total+' 本地数值校验 · '+point.profiles+'/'+point.profileTotal+' 流水采集\n暂拟测试集，非官方成绩 · 点击查看仿真回执';this.$('plotTooltip').hidden=false;return;}
       if(point.official){this.$('plotTooltip').textContent=point.team+' · 提交 '+point.job+'\n'+(point.valid?point.score.toFixed(2)+' 分':point.error)+'\n源码 '+(point.sha||'').slice(0,12)+' · 用户关联提交';this.$('plotTooltip').hidden=false;return;}
       this.$('plotTooltip').textContent = point.team+' · '+(point.sha?.slice(0,12) || point.job)+'\n'+
         (point.error ? point.error.slice(0,120) : point.passed+'/'+point.total+' 本地点通过'+(number(point.latency)?' · '+point.latency.toFixed(3)+' μs 几何均值':''))+
@@ -450,6 +475,18 @@
       if(this.data.judgeOnly){
         const points=officialAttemptsFromEvents(this.data.events),rows=rankOfficialTeams(points,this.data.nodes),top=rows.find(r=>number(r.score));
         const coverage=rows.find(r=>r.total>0);
+        if(this.data.simulation?.required){
+          const d=this.data,at=d.recording?(d.replayClock?.start||0)+(d.replayClock?.position||0):Infinity;
+          const local=simulationAttempts(d.simulationJobs||[],d.expectedCases,null,d.simulation,at);
+          const best=local.filter(p=>p.valid).at(-1),bestPartial=[...local].sort((a,b)=>b.passed-a.passed)[0];
+          const shown=best||bestPartial;
+          board.closest('.panel').querySelector('.mini-label').textContent='本地仿真 / 官方反馈';
+          board.innerHTML=`<div class="board-best"><strong>${shown?shown.passed+'/'+shown.total+' <small>本地校验</small>':'等待本地校验'}</strong><span>${shown?'流水 '+shown.profiles+'/'+shown.profileTotal+' · '+escape(shown.sha.slice(0,8)):'独立实验返回后自动更新'}</span></div><div class="board-best official-summary"><strong>${top?top.score.toFixed(2)+' <small>官测分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>官测通过</small>':'等待官测'}</strong><span>与本地结果分别记录</span></div><div class="board-columns local-board"><span>排名</span><span>团队</span><span>本地</span><span>官测</span></div><div class="board-rows">${rows.map((r,i)=>{
+            const own=local.filter(p=>p.team===r.name),p=own.filter(p=>p.valid).at(-1)||own.at(-1);
+            return `<button class="board-row local-board" data-rank-team="${r.id}" title="${escape(p?'本地源码 '+p.sha+' · 流水 '+p.profiles+'/'+p.profileTotal+'；官测列可能属于另一源码版本':'尚无当前测试集仿真结果')}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(r.name)}</b><strong>${p?p.passed+'/'+p.total:'未测'}</strong><strong>${number(r.score)?r.score.toFixed(2):r.total?r.passed+'/'+r.total:r.attempts?'判题中':'未提交'}</strong></button>`;
+          }).join('')}</div>`;
+          board.onclick=e=>{const id=Number(e.target.closest('[data-rank-team]')?.dataset.rankTeam);if(id)this.selectAgent(id);};return;
+        }
         board.closest('.panel').querySelector('.mini-label').textContent='CANN Judge / 官方反馈';
         board.innerHTML=`<div class="board-best"><strong>${top?top.score.toFixed(2)+' <small>分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>官测通过</small>':'等待官测'}</strong><span>${top?escape(top.name):coverage?escape(coverage.name)+' · 尚未全点通过': '候选代码尚未取得官方回执'}</span></div><div class="board-columns"><span>排名</span><span>团队</span><span>官测最好</span></div><div class="board-rows">${rows.map((r,i)=>`<button class="board-row" data-rank-team="${r.id}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(r.name)}</b><strong>${number(r.score)?r.score.toFixed(2)+' 分':r.total?r.passed+'/'+r.total+' · 未全过':r.attempts?'判题中':'未提交'}</strong></button>`).join('')}</div>`;
         board.onclick=e=>{const id=Number(e.target.closest('[data-rank-team]')?.dataset.rankTeam);if(id)this.selectAgent(id);};return;
@@ -567,6 +604,6 @@
       }
     }
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports={View,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,networkLayout,networkNodeLabel,officialAttemptsFromEvents,rankOfficialTeams};
+  if (typeof module !== 'undefined' && module.exports) module.exports={View,simulationAttempts,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,networkLayout,networkNodeLabel,officialAttemptsFromEvents,rankOfficialTeams};
   else root.JustKernelVisuals={View,connectedTeams};
 })(typeof window === 'undefined' ? {} : window);

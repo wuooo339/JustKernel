@@ -518,6 +518,13 @@ def test_real_deep_agent_selector_graph_reviews_and_nominates_one_snapshot(lab, 
     from langchain_core.messages import AIMessage
     from test_unified_lab import ScriptedModel
 
+    offered = []
+
+    def bind_tools(model, tools, **kwargs):
+        offered.append({t.name for t in tools})
+        return model
+
+    monkeypatch.setattr(ScriptedModel, "bind_tools", bind_tools)
     _, row = connected_lab(lab)
     calls = [
         ("read_spec", {}),
@@ -555,6 +562,17 @@ def test_real_deep_agent_selector_graph_reviews_and_nominates_one_snapshot(lab, 
     assert selector.nomination()["candidate_id"] == row["id"]
     assert not lab.judger.read("queue.json", [])[0].get("official_submission_id")
     assert lab.judger.read("queue.json", [])[0]["review"]["reviewer"] == "independent-selector"
+    assert offered and all(
+        names
+        == {
+            "read_spec",
+            "list_candidates",
+            "read_candidate",
+            "review_candidate",
+            "nominate_candidate",
+        }
+        for names in offered
+    )
 
 
 def test_feedback_arriving_mid_turn_is_visible_at_next_model_step(lab, monkeypatch):
@@ -689,3 +707,24 @@ def test_no_qualified_candidate_is_explicitly_waiting_not_selecting(lab):
     assert "完整仿真" in auto.message
     assert auto.budget()["used"] == 0
     assert not auto.selector.status()["running"]
+
+
+# ---- a new challenger must not wait behind repeated reads of old terminal failures ----
+def test_official_lane_skips_old_terminal_receipts_but_accepts_rank_updates(lab):
+    browser, row = connected_lab(lab)
+    auto = lab.judger.automation
+    auto.update(
+        row["id"],
+        official_submission_id="a" * 24,
+        binding="browser-session",
+        official={"status": "Wrong Answer", "score": None, "rank": None, "result": []},
+    )
+    asyncio.run(lab.judger.refresh_tracked([], include_terminal=False))
+    assert not browser.calls
+    asyncio.run(
+        lab.judger.refresh_tracked(
+            [{"submission_id": "a" * 24, "rank": 12}], include_terminal=False
+        )
+    )
+    assert not browser.calls
+    assert lab.judger.read("queue.json", [])[0]["official"]["rank"] == 12

@@ -192,3 +192,37 @@ test('network has no empty provider labels or unused slot groups', () => {
   assert.notDeepEqual(groups[0].center,groups[1].center);
   assert.deepEqual(networkGroups([]),[]);
 });
+
+test('local simulation tracks full-pack coverage, filters old packs and never invents scores',()=>{
+  const {simulationAttempts}=require('../src/aworker/lab/resources/web/visualization.js');
+  const context={case_pack_sha256:'current',worker_sha256:'worker'};
+  const job=(id,count,overrides={})=>({schema:'justkernel.simulation.v1',source:'cann-simulator',id,team:'main',created_at:id,
+    source_sha256:'source'+id,...context,state:'completed',functional_pass:true,profile_case_ids:['p0','p1','p2'],
+    cases:Array.from({length:count},(_,i)=>({id:'p'+i,pass:true,profile_pass:i<3})),...overrides});
+  const rows=simulationAttempts([job(1,3),job(2,15,{case_pack_sha256:'old'}),job(3,15),job(4,15,{worker_sha256:'old'})],15,null,context);
+  assert.equal(rows.length,2);
+  assert.equal(rows[0].correctness,20);assert.equal(rows[0].valid,false);
+  assert.equal(rows[0].total,15);
+  assert.equal(rows[1].valid,true);assert.equal(rows[1].profiles,3);assert.equal(rows[1].profileTotal,3);
+  assert.equal(rows[1].latency,null);assert.equal(rows[1].score,null);
+  assert.equal(rows[1].event.kind,'simulation.receipt');
+  assert.equal(simulationAttempts([job(1,15),job(3,15)],15,null,context,2).length,1);
+  assert.equal(simulationAttempts([job(1,15,{finished_at:10})],15,null,context,2).length,0);
+  assert.equal(simulationAttempts([job(1,15)],15,'another-team',context).length,0);
+  assert.equal(simulationAttempts([job(1,15,{cases:Array(15).fill({id:'duplicate',pass:true})})],15,null,context)[0].valid,false);
+});
+
+test('judge-only dashboard keeps local and official results visibly separate',()=>{
+  const {View}=require('../src/aworker/lab/resources/web/visualization.js');
+  const label={},board={closest:()=>({querySelector:()=>label})};
+  const data={judgeOnly:true,expectedCases:15,simulation:{required:true,case_pack_sha256:'pack',worker_sha256:'worker'},
+    events:[],nodes:[{id:1,name:'main',state:'waiting'}],simulationJobs:[{
+      schema:'justkernel.simulation.v1',source:'cann-simulator',id:'full',team:'main',created_at:1,state:'completed',functional_pass:true,
+      source_sha256:'source',case_pack_sha256:'pack',worker_sha256:'worker',profile_case_ids:['p0','p1','p2'],
+      cases:Array.from({length:15},(_,i)=>({id:'p'+i,pass:true,profile_pass:i<3}))
+    }]};
+  View.prototype.renderLeaderboard.call({data,$:()=>board});
+  assert.match(board.innerHTML,/15\/15/);assert.match(board.innerHTML,/流水 3\/3/);
+  assert.match(board.innerHTML,/等待官测/);assert.match(board.innerHTML,/本地校验/);
+  assert.doesNotMatch(board.innerHTML,/100.*官测分/);
+});

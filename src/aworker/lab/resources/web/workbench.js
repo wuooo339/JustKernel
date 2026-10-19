@@ -34,7 +34,7 @@
   $('modelSettingsButton').textContent='配置 ↗';$('serverSettingsButton').textContent='连接 / 终端 ↗';$('operatorAddButton').textContent='＋ 新增';
   const knowledge=document.createElement('button');knowledge.className='text-button';knowledge.textContent='优化经验 ↗';knowledge.onclick=()=>$('knowledgeButton').click();document.querySelector('.terminal-footer>span:last-child').prepend(knowledge);
   $('processEvidence').onclick=async()=>{const key=$('processEvidence').dataset.simulationJob;if(key){try{$('eventDetail').textContent=JSON.stringify(await api('/workspace/simulator/jobs/'+encodeURIComponent(key)),null,2);$('eventDialog').showModal();}catch(e){alert(e.message);}return;}document.querySelector('#attemptChart [data-point]:last-of-type')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));};
-  document.addEventListener('justkernel:live-updated',e=>{const sim=e.detail?.simulation;if(sim?.required){$('configuredServer').textContent=sim.available?'910B4 CPU 仿真 · 1 个执行槽':'等待仿真环境';connections.children[1].querySelector('span').textContent='执行环境';}});
+  document.addEventListener('justkernel:live-updated',e=>{const sim=e.detail?.simulation;if(sim?.required){$('configuredServer').textContent=sim.available?`910B4 CPU 仿真 · ${sim.concurrency} 个实验槽 / ${sim.profiling_concurrency} 个采集槽`:'等待仿真环境';connections.children[1].querySelector('span').textContent='执行环境';}});
   document.querySelector('.knowledge-panel h2').textContent='优化经验';
   document.querySelector('.receipts-panel h2').innerHTML='<span>//</span> 实时日志';
   document.querySelector('.inspector-panel h2').innerHTML='<span>//</span> 团队优化过程';
@@ -161,12 +161,13 @@
     $('friendlyEvidence').innerHTML=entries.slice(-6).map(row=>{
       const d=row?.data||row||{},cases=d.cases||[],demo=row?.source==='simulation';
       let text=d.message||d.answer||d.text||d.tool||row?.kind||'';
+      if(row?.kind==='simulation.receipt')return `<article><h3>${esc(row.team)} · 本地仿真</h3><p>${cases.filter(c=>c.pass===true).length}/${esc(d.expected_cases)} 暂拟点通过 · 源码 ${esc(d.source_sha256?.slice(0,12))}</p><p>流水采集 ${cases.filter(c=>c.profile_pass===true).length}/${d.profile_case_ids?.length||0} · ${esc(d.state)}。此结果不代表官测分数或 NPU 耗时。</p><button class="quiet-button" type="button" data-simulation-logs="${esc(d.id)}">查看完整仿真回执</button></article>`;
       if(demo)text=row.stage?'预演流程 · '+(stages[row.stage]||row.stage):'模拟尝试 · '+(row.passed??0)+' / '+(row.total??15)+' 点通过'+(Number.isFinite(row.latency)?' · '+row.latency.toFixed(2)+' μs':'');
       if(/\(75\)|NPU busy/i.test(text))text='当时设备被占用，未取得测量结果。可以查看这次设备日志。';
       return `<article><h3>${esc(row?.team||'执行记录')}</h3>${demo?'<p>演示数据 · 未调用模型或 NPU</p>':''}<p>${esc(text)}</p>${cases.length?`<strong>${cases.filter(c=>c.pass).length} / ${cases.length} 点通过</strong>`:''}${d.job_id?`<button class="quiet-button" type="button" data-job-logs="${esc(d.job_id)}">查看设备日志</button>`:''}</article>`;
     }).join('')||'<p>这个阶段还没有执行记录。</p>';
   });
-  $('friendlyEvidence').onclick=async e=>{const key=e.target.closest('[data-job-logs]')?.dataset.jobLogs;if(!key)return;try{const data=await api('/workspace/jobs/'+encodeURIComponent(key)+'/logs');$('eventDetail').textContent=JSON.stringify(data,null,2);$('eventDetail').closest('details').open=true;}catch(err){$('eventDetail').textContent=err.message;$('eventDetail').closest('details').open=true;}};
+  $('friendlyEvidence').onclick=async e=>{const sim=e.target.closest('[data-simulation-logs]')?.dataset.simulationLogs,key=e.target.closest('[data-job-logs]')?.dataset.jobLogs;if(!key&&!sim)return;try{const data=await api(sim?'/workspace/simulator/jobs/'+encodeURIComponent(sim):'/workspace/jobs/'+encodeURIComponent(key)+'/logs');$('eventDetail').textContent=JSON.stringify(data,null,2);$('eventDetail').closest('details').open=true;}catch(err){$('eventDetail').textContent=err.message;$('eventDetail').closest('details').open=true;}};
 
   function renderConnections(){
     const configured=models.filter(m=>m.configured);

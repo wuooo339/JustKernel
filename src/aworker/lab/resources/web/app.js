@@ -29,6 +29,7 @@
   const demoAgents = agents.map((a) => ({ ...a }));
   const live = { teams: [], devices: [], jobs: [], operations: [], events: [], latest: null, latestError: '', seq: 0, stream: null, timer: null, status: {}, code: new Map(), codePending: new Set(), challenge: null, busy: false };
   let liveGeneration = 0;
+  let refreshGeneration = null;
   let liveRenderTimer = null;
   const pendingLiveReceipts = [];
   STATE_LABELS.unregistered = '未注册'; STATE_LABELS.model_queued='等待团队执行槽位';
@@ -570,6 +571,8 @@
   }
   async function refreshLive() {
     const generation = liveGeneration;
+    if(refreshGeneration===generation)return;
+    refreshGeneration=generation;
     try {
       const [snapshot,status]=await Promise.all([lab('/snapshot'),lab('/control/status')]);
       if(state.source!=='live'||generation!==liveGeneration)return;
@@ -579,6 +582,7 @@
       state.selected=Math.max(0,visibleTeams().findIndex(t=>t.id===selected))+1;
       renderAll(); renderLiveStatus();
     } catch(error) { if(state.source==='live'&&generation===liveGeneration) { $('connectionText').textContent='后端未连接'; $('liveStatusLine').textContent=error.message; } }
+    finally {if(refreshGeneration===generation)refreshGeneration=null;}
   }
   function receiveLive(entry) {
     if(state.source!=='live'||live.recording||entry.seq<=live.seq)return;

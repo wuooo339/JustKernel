@@ -141,8 +141,8 @@ def create_lab_app(service: LabService) -> FastAPI:
         }
 
     @api.get("/snapshot")
-    async def snapshot():
-        data = service.store.snapshot()
+    def snapshot():
+        data = service.store.snapshot(history_limit=100)
         for job in data["jobs"]:
             job.pop("token", None)
         data["teams"] = [t for t in data["teams"] if t["runtime"] == "deepagents"]
@@ -155,7 +155,7 @@ def create_lab_app(service: LabService) -> FastAPI:
         data["judge_selector_running"] = service.judger.automation.selector.status()["running"]
         data["judge_budget"] = service.judger.automation.budget()
         data["simulation"] = service.simulator.status()
-        data["simulation_jobs"] = service.simulator.jobs()
+        data["simulation_jobs"] = service.simulator.jobs(summary=True)
         data["a2a_notices"] = [
             n.model_dump(exclude={"message"}) for n in service.judger.notices.read()
         ]
@@ -166,7 +166,7 @@ def create_lab_app(service: LabService) -> FastAPI:
         return service.store.events(after)
 
     @api.get("/events/bootstrap")
-    async def dashboard_events():
+    def dashboard_events():
         return JSONResponse(service.store.dashboard_events(), headers={"Cache-Control": "no-store"})
 
     @api.get("/challenge")

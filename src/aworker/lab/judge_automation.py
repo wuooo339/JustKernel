@@ -277,7 +277,9 @@ class JudgeAutomation:
             config["owner_hash"] = principal
             self.monitor.write("automation.json", config)
         async with self.monitor.lock:
-            await self.monitor.refresh_tracked(self.monitor.read("latest.json", {}).get("rows", []))
+            await self.monitor.refresh_tracked(
+                self.monitor.read("latest.json", {}).get("rows", []), include_terminal=False
+            )
         if root != self.service.root or not self.configuration().get("enabled") or self.stopping:
             return
         queue = self.monitor.read("queue.json", [])

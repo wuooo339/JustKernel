@@ -65,3 +65,22 @@ def test_bootstrap_retains_old_official_results_and_team_stages_without_replayin
     assert [e["seq"] for e in store.events(bootstrap["cursor"])] == [newer]
     with store.connection() as db:
         assert db.execute("SELECT COUNT(*) FROM events").fetchone()[0] == 3005
+
+
+# ---- dashboard windows never hide live work or a team's last result ----
+def test_dashboard_snapshot_bounds_history_but_keeps_active_and_latest_per_team(tmp_path):
+    store = LabStore(tmp_path / "journal.sqlite3")
+    with store.connection() as db:
+        db.executemany(
+            "INSERT INTO operations VALUES(?,?,?,?,?,?)",
+            [
+                ("active", "old-team", "turn", "running", 1, None),
+                ("last-old", "quiet-team", "turn", "completed", 2, None),
+                *[(str(i), "recent-team", "turn", "completed", i, None) for i in range(3, 103)],
+            ],
+        )
+        assert db.execute("PRAGMA temp_store").fetchone()[0] == 2
+    bounded = store.snapshot(history_limit=5)["operations"]
+    assert len(bounded) == 7
+    assert {r["id"] for r in bounded} >= {"active", "last-old", "102"}
+    assert len(store.snapshot()["operations"]) == 102

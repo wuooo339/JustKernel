@@ -138,7 +138,7 @@ class JudgeMonitor:
                     source="official-public",
                 )
             self.write("latest.json", snapshot)
-            await self.refresh_tracked(rows)
+            await self.refresh_tracked(rows, include_terminal=False)
             return snapshot
 
     # ---- cancellable background monitoring ----------------------------------
@@ -415,7 +415,7 @@ class JudgeMonitor:
         self.write("queue.json", queue)
         return row
 
-    async def refresh_tracked(self, ranks: list[dict]):
+    async def refresh_tracked(self, ranks: list[dict], include_terminal: bool = True):
         root = self.service.root
         queue = self.read("queue.json", [])
         updates = {}
@@ -433,7 +433,15 @@ class JudgeMonitor:
                 ),
                 None,
             )
-            if match is None or (
+            cached_terminal = not include_terminal and self.terminal(
+                row.get("official", {}).get("status")
+            )
+            if cached_terminal:
+                if match is None:
+                    continue
+                # Public rank can change; immutable, already received failure details need no poll.
+                match = {**row["official"], "rank": match.get("rank")}
+            elif match is None or (
                 row.get("binding") == "browser-session" and self.browser.status()["connected"]
             ):
                 try:

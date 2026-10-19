@@ -63,6 +63,8 @@ class LabStore:
     def connection(self):
         db = sqlite3.connect(self.path, timeout=30)
         db.row_factory = sqlite3.Row
+        # Dashboard context grouping must also work when the OS temp folder is unavailable.
+        db.execute("PRAGMA temp_store=MEMORY")
         try:
             with db:
                 yield db
@@ -290,12 +292,21 @@ class LabStore:
             db.execute("UPDATE teams SET active=0 WHERE id=?", (team,))
         self.event(team, "team.left")
 
-    def snapshot(self) -> dict:
+    def snapshot(self, history_limit: int | None = None) -> dict:
         with self.connection() as db:
-            return {
-                name: [dict(r) for r in db.execute(f"SELECT * FROM {name}")]
-                for name in ("devices", "jobs", "teams", "operations", "members", "runs")
-            }
+            data = {}
+            for name in ("devices", "jobs", "teams", "operations", "members", "runs"):
+                query, args = f"SELECT * FROM {name}", ()
+                if history_limit is not None and name in {"jobs", "operations", "runs"}:
+                    # Keep live operations and each team's latest record beyond the window.
+                    query += (
+                        f" WHERE state IN ('running','queued') OR rowid IN "
+                        f"(SELECT MAX(rowid) FROM {name} GROUP BY team) OR rowid IN "
+                        f"(SELECT rowid FROM {name} ORDER BY rowid DESC LIMIT ?)"
+                    )
+                    args = (max(1, history_limit),)
+                data[name] = [dict(r) for r in db.execute(query, args)]
+            return data
 
     # ---- specialists, conversations and verified experience -----------------
     def set_members(self, team: str, members: list[dict]) -> None:

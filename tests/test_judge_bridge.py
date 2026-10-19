@@ -50,6 +50,8 @@ def test_browser_bridge_handles_each_request_once(tmp_path):
     bridge.browser = BrowserFixture()
     path, key = fixture_request(bridge)
     asyncio.run(bridge.process(path))
+    # Completed requests are never re-read, even if old request bytes become unavailable.
+    path.write_bytes(b"unreadable historical request")
     asyncio.run(bridge.process(path))
     assert bridge.browser.calls == 1
     reply = json.loads((path.parent / (key + ".reply.json")).read_text())

@@ -50,6 +50,7 @@ class Simulator:
         self.observer = None
         self._request_cache = {}
         self._receipt_cache = {}
+        self._summary_cache = {}
 
     # ---- replayable progress survives model cancellation/service restart -----
     async def start(self):
@@ -90,10 +91,31 @@ class Simulator:
                         target_soc=capability["target_soc"],
                         message=capability["message"],
                     )
-                rows = self.jobs()
+                rows = self.jobs(summary=True)
                 current = self.current_experiments(rows)
                 for row in reversed(rows):
                     selected = current[row["team"]]["id"] == row["id"]
+                    handoff = "__candidate__" + row["id"]
+                    if selected and not seen.get(handoff) and self.ready_for_handoff(row):
+                        # Freeze only a complete proof of the current source; independent review
+                        # and nomination still happen in the separate official lane.
+                        try:
+                            staged = self.service.judger.stage(
+                                row["team"],
+                                "Auto-frozen after complete own simulation; awaiting "
+                                "independent source review and nomination. Not an official pass.",
+                            )
+                            self.service.judger.automation.wake.set()
+                            seen[handoff] = staged["id"]
+                        except (ValueError, OSError) as error:
+                            seen[handoff] = "blocked"
+                            self.service.store.event(
+                                row["team"],
+                                "simulation.handoff.blocked",
+                                job_id=row["id"],
+                                message=self.service.redact(str(error))[:500],
+                            )
+                        changed = True
                     key = json.dumps(
                         [row["state"], row.get("phase"), len(row.get("cases", [])), selected]
                     )
@@ -145,6 +167,24 @@ class Simulator:
                     message=self.service.redact(str(error))[:500],
                 )
             await asyncio.sleep(2)
+
+    # ---- successful simulation is handed off without another paid coding turn ----
+    def ready_for_handoff(self, row):
+        expected = set(self.default_cases())
+        cases = {c["id"]: c for c in row.get("cases", [])}
+        if not (
+            row.get("state") == "completed"
+            and row.get("functional_pass") is True
+            and set(cases) == expected
+            and all(c.get("pass") is True for c in cases.values())
+            and row.get("case_pack_sha256")
+            == hashlib.sha256((self.service.root / "challenge/cases.json").read_bytes()).hexdigest()
+        ):
+            return False
+        try:
+            return self.service.candidate(row["team"])["sha256"] == row.get("source_sha256")
+        except (ValueError, OSError):
+            return False
 
     # ---- active work takes precedence over newer obsolete queue entries ------
     @staticmethod
@@ -199,6 +239,10 @@ class Simulator:
             "required": self.required,
             "state": worker.get("state", "not-configured") if ready else "unavailable",
             "target_soc": "Ascend910B4",
+            "case_pack_sha256": hashlib.sha256(
+                (self.service.root / "challenge/cases.json").read_bytes()
+            ).hexdigest(),
+            "worker_sha256": self.identity(),
             "concurrency": worker.get("concurrency", 1) if ready else 0,
             "profiling_concurrency": worker.get("profiling_concurrency", 1) if ready else 0,
             "active_jobs": worker.get("active_jobs", []) if ready else [],
@@ -212,18 +256,57 @@ class Simulator:
         }
 
     # ---- cache file decoding only; evidence still verifies original request bytes ----
-    def cached_json(self, path, cache, metadata=False):
+    def cached_json(self, path, cache, metadata=False, summary=False):
         stat = path.stat()
         signature = (stat.st_mtime_ns, stat.st_size, stat.st_ino)
         cached = cache.get(path)
         if cached is None or cached[0] != signature:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            raw = self._receipt_cache.get(path) if summary else None
+            data = (
+                raw[1]
+                if raw and raw[0] == signature
+                else json.loads(path.read_text(encoding="utf-8"))
+            )
             if metadata:
                 data = {k: v for k, v in data.items() if k not in {"files", "cases_json"}}
+            if summary:
+                data = self.dashboard_receipt(data)
             cache[path] = signature, data
         return copy.deepcopy(cache[path][1])
 
-    def jobs(self, team=None):
+    # ---- compact dashboard projection; raw receipts remain available on demand ----
+    @staticmethod
+    def dashboard_receipt(data):
+        fields = {
+            "schema",
+            "id",
+            "team",
+            "source",
+            "source_sha256",
+            "case_pack_sha256",
+            "worker_sha256",
+            "request_sha256",
+            "state",
+            "phase",
+            "started_at",
+            "finished_at",
+            "functional_pass",
+            "functional_finished_at",
+            "evaluation_mode",
+            "error",
+            "case_ids",
+            "profile_case_ids",
+            "target_soc",
+        }
+        case_fields = {"id", "pass", "profile_pass", "validation_kind", "error"}
+        return {
+            **{k: v for k, v in data.items() if k in fields},
+            "cases": [
+                {k: v for k, v in c.items() if k in case_fields} for c in data.get("cases", [])
+            ],
+        }
+
+    def jobs(self, team=None, summary=False):
         rows = []
         for path in self.spool.glob("jobs/*/request.json"):
             request = self.cached_json(path, self._request_cache, metadata=True)
@@ -231,7 +314,9 @@ class Simulator:
                 continue
             result = path.with_name("result.json")
             row = (
-                self.cached_json(result, self._receipt_cache)
+                self.cached_json(
+                    result, self._summary_cache if summary else self._receipt_cache, summary=summary
+                )
                 if result.is_file()
                 else {
                     "id": request["id"],
@@ -243,8 +328,10 @@ class Simulator:
             )
             row.setdefault("case_ids", request["case_ids"])
             row.setdefault("worker_sha256", request["worker_sha256"])
-            row["hypothesis"] = request["hypothesis"]
-            row["learned_from"] = request.get("learned_from", [])
+            row.setdefault("profile_case_ids", request.get("profile_case_ids", []))
+            if not summary:
+                row["hypothesis"] = request["hypothesis"]
+                row["learned_from"] = request.get("learned_from", [])
             row["created_at"] = request["created_at"]
             rows.append(row)
         return sorted(rows, key=lambda row: row["created_at"], reverse=True)

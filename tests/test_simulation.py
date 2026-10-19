@@ -452,3 +452,60 @@ def test_two_phase_gate_requires_all_functional_checks_and_representative_profil
     (folder / "result.json").write_text(json.dumps(record), encoding="utf-8")
     proof = lab.simulator.evidence(record["team"], record["source_sha256"], require_coverage=True)
     assert bool(proof) == (missing is None)
+
+
+# ---- dashboard summaries preserve proof identity without embedding profiler files ----
+def test_dashboard_receipts_are_small_and_raw_details_remain_intact(lab):
+    record = fixture_receipt(lab)
+    folder = lab.simulator.spool / "jobs" / record["id"]
+    record["cases"][0]["profiling_files"] = [{"preview": "large-private-profile" * 50000}]
+    record["cases"][0]["profile_pass"] = True
+    (folder / "result.json").write_text(json.dumps(record), encoding="utf-8")
+    summary = lab.simulator.jobs(record["team"], summary=True)[0]
+    assert len(json.dumps(summary)) < 10000
+    assert summary["source_sha256"] == record["source_sha256"]
+    assert summary["case_pack_sha256"] == record["case_pack_sha256"]
+    assert summary["cases"][0]["profile_pass"] is True
+    assert "profiling_files" not in summary["cases"][0]
+    assert "files" not in summary and "cases_json" not in summary
+    summary["cases"][0]["pass"] = False
+    assert lab.simulator.jobs(record["team"], summary=True)[0]["cases"][0]["pass"] is True
+    assert lab.simulator.jobs(record["team"])[0]["cases"][0]["profiling_files"][0]["preview"]
+    record["state"] = "failed"
+    (folder / "result.json").write_text(json.dumps(record), encoding="utf-8")
+    assert lab.simulator.jobs(record["team"], summary=True)[0]["state"] == "failed"
+
+
+# ---- full local success reaches the independent official lane without a new coding turn ----
+def test_observer_freezes_completed_current_source_once_without_self_approving(lab):
+    async def exercise():
+        record = fixture_receipt(lab)
+        assert lab.simulator.ready_for_handoff(record)
+        short = {**record, "cases": record["cases"][:2]}
+        assert not lab.simulator.ready_for_handoff(short)
+        assert not lab.simulator.ready_for_handoff({**record, "source_sha256": "stale-source"})
+        assert not lab.simulator.ready_for_handoff({**record, "case_pack_sha256": "stale-pack"})
+        await lab.simulator.start()
+        try:
+            for _ in range(80):
+                queue = lab.judger.read("queue.json", [])
+                if queue:
+                    break
+                await asyncio.sleep(0.05)
+            assert len(queue) == 1
+            assert queue[0]["source_sha256"] == record["source_sha256"]
+            assert queue[0]["simulation_job_id"] == record["id"]
+            assert not queue[0].get("review")
+            assert not queue[0].get("official_submission_id")
+            assert lab.judger.automation.readiness(queue[0], require_review=False)[0]
+            assert not lab.judger.automation.readiness(queue[0])[0]
+        finally:
+            await lab.simulator.close()
+        await lab.simulator.start()
+        try:
+            await asyncio.sleep(0.1)
+            assert len(lab.judger.read("queue.json", [])) == 1
+        finally:
+            await lab.simulator.close()
+
+    asyncio.run(exercise())
