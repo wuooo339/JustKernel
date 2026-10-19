@@ -16,6 +16,7 @@ def execution_record(service) -> dict:
     snapshot["experiences"] = service.store.experiences()
     snapshot["public"] = service.public(include_source=True)
     snapshot["continuous"] = service.swarm.status()
+    snapshot["iterations"] = service.iterations.snapshot()
     snapshot["simulation"] = {
         "required": service.simulator.required,
         "target_soc": "Ascend910B4",

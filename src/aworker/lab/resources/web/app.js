@@ -477,6 +477,8 @@
     const usage=monitor.usage.reported?`本轮已返回 Token · 输入 ${monitor.usage.input.toLocaleString()} / 输出 ${monitor.usage.output.toLocaleString()}`:'Token 用量等待提供商返回';
     $('teamProgress').innerHTML=`<strong>${esc(monitor.title)}</strong><div class="progress-facts">${esc(usage)}</div><div class="progress-facts">${progress.changes} 个源码版本${monitor.elapsed!==null?` · 最近模型调用 ${monitor.elapsed} 秒`:''}${progress.lastAt?' · 更新 '+new Date(progress.lastAt*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):''}</div>${progress.plan.length?`<details${planOpen?' open':''}><summary>开发计划 ${progress.done}/${progress.plan.length}</summary>${progress.plan.map(p=>`<div>${p.status==='completed'?'✓':p.status==='in_progress'?'→':'○'} ${esc(p.content)}</div>`).join('')}</details>`:''}`;
     $('agentTeam').dataset.team=team?.id||'';
+    const work=window.JustKernelActivity.iterationSummary((live.iterations||[]).find(t=>t.team===team?.id));
+    if(work)$('teamProgress').insertAdjacentHTML('afterbegin',`<section class="iteration-card"><strong>${esc(work.title)}</strong><p>${esc(work.evidence)}</p>${work.hypothesis?`<p><b>假设</b> ${esc(work.hypothesis)}</p><p><b>改动</b> ${esc(work.change)}</p>`:''}<p>${esc(work.source)} · ${work.experiments} 次实验</p><p>${esc(work.result)}</p><p class="iteration-next">${esc(work.next)}</p></section>`);
     $('agentTeam').textContent = team?teamLabel(team):'—'; $('agentBranch').textContent = team ? `${team.id}/${live.challenge?.manifest?.project_files?'project/':'kernel.asc'}` : '—';
     $('agentParent').textContent = live.code.get(team?.id)?.sha256?.slice(0,16) || '冻结基准 / 见任务';
     $('agentFooter').textContent = '统一工具轨迹 · 检查点 · 条件经验'; $('followButton').textContent = '查看团队任务 ↗';
@@ -499,8 +501,9 @@
       return;
     }
     let related = teamEvents(team).filter(meaningfulEvent);
-    const members = (live.members || []).filter((m) => m.team === team.id);
-    const roster = `<div class="member-list">${members.map((m) => {
+    const singleCoder=live.continuous?.strategy==='baseline'&&(live.iterations||[]).some(t=>t.team===team.id);
+    const members = singleCoder?[]:(live.members || []).filter((m) => m.team === team.id);
+    const roster = `<div class="member-list">${singleCoder?'<span class="member-chip">主力编码 <small>直接编辑 · 独立 Judger 审查</small></span>':''}${members.map((m) => {
       const activity = related.findLast((e) => ['member.started','member.completed'].includes(e.kind) && e.data.agent === m.name);
       return `<span class="member-chip ${activity?.kind === 'member.started' ? 'working' : ''}">${esc(m.name)} <small>${esc(m.role)} · ${esc(m.model || team.model)}</small></span>`;
     }).join('')}</div>`;

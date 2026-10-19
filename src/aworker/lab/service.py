@@ -11,6 +11,7 @@ from aworker.config import Settings
 from aworker.lab.continuous import ContinuousSwarm
 from aworker.lab.deepagent import DeepAgentRuntime
 from aworker.lab.domain import Experience, Specialist, Stage, StageUpdate
+from aworker.lab.iteration import IterationController
 from aworker.lab.judger import JudgeMonitor
 from aworker.lab.operators import OperatorCatalog
 from aworker.lab.policy import PolicyReport, inspect_source
@@ -43,6 +44,7 @@ class LabService:
         self._team_slots = asyncio.Semaphore(settings.lab_team_concurrency)
         self._bind_workspace(self.catalog.entry(self.catalog.selected())["root"])
         self.simulator = Simulator(self)
+        self.iterations = IterationController(self)
         self.judger = JudgeMonitor(self)
         self.swarm = ContinuousSwarm(self)
 
@@ -336,6 +338,8 @@ class LabService:
             self.store.operation_finished(key, "failed", message)
             self.store.event(team, "control.failed", operation_id=key, message=message)
         finally:
+            if kind == "run":
+                self.iterations.finished(team, key)
             self._operations.pop(key, None)
             self.swarm.wake.set()
 

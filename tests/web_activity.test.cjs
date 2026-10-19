@@ -3,6 +3,22 @@ const assert=require('node:assert/strict');
 const {teamProgress,teamMonitor,projectRecord}=require('../src/aworker/lab/resources/web/activity.js');
 const e=(seq,kind,data={},team='gpt-001')=>({seq,at:100+seq,kind,team,data});
 
+test('repair task shows evidence, actual source and experiment outcome without inventing an official pass',()=>{
+ const {iterationSummary}=require('../src/aworker/lab/resources/web/activity.js');
+ const task={team:'gpt-001',phase:'full-validation',evidence:{official_submission_id:'official',status:'Wrong Answer',failed_cases:[{},{}]},
+  starting_source:'oldsource',current_source:'newsource',experiment_count:1,
+  plan:{hypothesis:'Fixture hypothesis',change:'Fixture source modification'},
+  last_result:{id:'fixture-job',state:'completed',case_ids:['draft-01'],cases:[{pass:true}]},next_action:'Fixture full validation next'};
+ const view=iterationSummary(task);
+ assert.match(view.evidence,/Wrong Answer/);assert.match(view.result,/1\/1/);
+ assert.match(view.source,/oldsourc.*newsourc/);assert.match(view.title,/完整验证/);
+ assert.doesNotMatch(JSON.stringify(view),/官测通过|SOTA/);
+ const record={snapshot:{iterations:[task]},events:[e(1,'iteration.created',{task:{...task,phase:'needs-plan',plan:null}}),e(2,'iteration.updated',{task})]};
+ assert.equal(projectRecord(record,0).iterations.length,0);
+ assert.equal(projectRecord(record,1).iterations[0].plan,null);
+ assert.equal(projectRecord(record,2).iterations[0].plan.hypothesis,'Fixture hypothesis');
+});
+
 test('progress uses public output and actual plans, never private model reasoning',()=>{
  const events=[e(1,'control.started',{operation_id:'op',action:'run'}),e(2,'model.slot.acquired'),
  e(3,'tool.started',{tool:'write_todos',input:JSON.stringify({todos:[{content:'实现',status:'completed'},{content:'复核',status:'in_progress'}]})}),

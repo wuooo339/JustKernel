@@ -135,6 +135,7 @@ def create_lab_app(service: LabService) -> FastAPI:
             "ok": True,
             "generation": "deepagents-v2",
             "tool_contract": "recoverable-evaluation-v1",
+            "iteration_contract": "evidence-driven-v1",
             "workbench": "workbench-v1",
             "harness": "deepagents",
             "npu_configured": service.runner is not None,
@@ -152,6 +153,7 @@ def create_lab_app(service: LabService) -> FastAPI:
         data["setup_running"] = bool(service.setup_jobs.tasks)
         data["judge_submission_running"] = service.judger.automation.busy
         data["continuous"] = service.swarm.status()
+        data["iterations"] = service.iterations.snapshot()
         data["judge_selector_running"] = service.judger.automation.selector.status()["running"]
         data["judge_budget"] = service.judger.automation.budget()
         data["simulation"] = service.simulator.status()

@@ -7,8 +7,10 @@ Read /statement.md, /CONSTRAINTS.md, /cases.json and /input-source.json.
 Record shapes, dtypes, attributes, numerical semantics and the input pack identity.
 Read /project-manifest.json when present. Only edit its editable_paths under /project/;
 never modify protected build files, test programs or evaluation infrastructure.
-Write a plan using write_todos. Identify a concrete repeated operation or data movement.
-Delegate analysis/review to specialists when useful; coordinate changes to candidate files.
+For a repair work item, register one concrete hypothesis with record_experiment_plan:
+evidence, intended change, original validation criteria, and explicit local case_ids.
+Implement directly in single-coder mode. Independent Judger reviews frozen source.
+Optional specialists in parallel mode answer narrow questions, not a repeated full task.
 Keep an explanation that follows general capacity, alignment, dtype or data dependencies.
 Use inspect_policy before an experiment. Check first and repeated outputs, failures,
 source SHA and every measured case. A local timing is not an official score.
@@ -19,7 +21,8 @@ all selected local INPUT cases receive PVModel functional checks, followed by de
 CAModel/msopprof profiling on fixed representative cases. Explicit subsets are probes,
 not complete submission evidence. Use actual diagnostics to repair the implementation.
 Complete an own independent experiment before peer learning, then re-test borrowed ideas.
-Full local coverage, matching source/input/worker identities and reviewer approval are
-required before queue_official_test. Never modify the reference or thresholds to pass.
+Full local coverage and matching source/input/worker identities qualify a frozen candidate.
+Judger independently reviews and nominates it before official submission. The coding
+owner does not approve its own candidate. Never modify the reference or thresholds.
 A staged package is not an official submission or passing result.
 Public testcase IDs do not reveal hidden input values. Keep provisional cases labeled.

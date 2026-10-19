@@ -42,6 +42,7 @@ class ContinuousSwarm:
 
     def status(self):
         data = self.read()
+        work = self.service.iterations.read(data["main_team"]) if data.get("main_team") else None
         waiting = (
             self.service.simulator.required and not self.service.simulator.status()["available"]
         )
@@ -49,7 +50,7 @@ class ContinuousSwarm:
             **SwarmPlan.model_validate(data).model_dump(),
             "progress": data.get("progress", {}),
             "waiting_for": "simulator" if data.get("enabled") and waiting else None,
-            "blocked_reason": data.get("blocked_reason"),
+            "blocked_reason": data.get("blocked_reason") or (work or {}).get("blocked_reason"),
         }
 
     async def configure(self, plan: SwarmPlan):
@@ -151,6 +152,12 @@ class ContinuousSwarm:
         for state in progress.values():
             prior = operations.get(state.get("operation_id"))
             error = str((prior or {}).get("error") or "").lower()
+            if prior and "baseline_no_progress" in error:
+                work = self.service.iterations.read(prior["team"])
+                if work and any(d["operation_id"] == prior["id"] for d in work["dispatches"]):
+                    self.service.iterations.finished(prior["team"], prior["id"])
+                    state["credential_failure"] = prior["id"]
+                    continue
             if (
                 prior
                 and prior["team"] in selected_ids
@@ -194,6 +201,11 @@ class ContinuousSwarm:
             if name not in selected_ids:
                 continue
             state = progress.setdefault(name, {"turns": 0, "failures": 0})
+            work = (
+                self.service.iterations.sync(name, plan.prompt)
+                if plan.strategy == "baseline"
+                else None
+            )
             prior = operations.get(state.get("operation_id"))
             if prior and prior["state"] != "running" and state.get("observed") != prior["id"]:
                 state["observed"] = prior["id"]
@@ -206,7 +218,12 @@ class ContinuousSwarm:
                 if not failed:
                     with contextlib.suppress(ValueError, OSError):
                         self.service.judger.stage(name)
+                if work:
+                    work = self.service.iterations.finished(name, prior["id"])
             if name in active or time.time() < state.get("next_at", 0):
+                continue
+            if work and work["phase"] in {"blocked", "awaiting-official"}:
+                state["phase"] = work["phase"]
                 continue
             if plan.max_turns is not None and state["turns"] >= plan.max_turns:
                 continue
@@ -233,17 +250,14 @@ class ContinuousSwarm:
                 "本轮结束后调度器会继续派下一轮；不要在本轮内无限自循环或请求模型凭据。"
             )
             if plan.strategy == "baseline":
-                prompt += (
-                    "\n当前是单主队正确性基线阶段：读取最近失败的本队回执，只修一个具体问题。"
-                    "先用失败 case_ids 做快速探针；探针通过才重跑完整15点和固定代表点。"
-                    "避免重复通读未改动文件或反复委派同一分析；必要的独立源码审查仍保留。"
-                    "本队完整验证和真实官测Pass之前，不扩增团队，不宣称SOTA。"
-                )
+                prompt = self.service.iterations.prompt(work)
             try:
                 key = self.service.start_operation(name, "run", prompt)
             except ValueError:
                 continue
             state.update(operation_id=key, turns=state["turns"] + 1, phase="optimizing")
+            if work:
+                self.service.iterations.dispatched(name, key)
             self.service.store.event(
                 name, "swarm.turn.dispatched", operation_id=key, turn=state["turns"]
             )

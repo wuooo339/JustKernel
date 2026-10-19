@@ -388,6 +388,9 @@ class JudgeMonitor:
             )
         if changed:
             self.write("queue.json", queue)
+        # Delivering a message is separate from creating an actionable repair task.
+        for team in teams:
+            self.service.iterations.sync(team)
         champion = self.champion()
         previous = self.read("champion.json", {})
         if champion:
@@ -436,23 +439,21 @@ class JudgeMonitor:
             raise ValueError(
                 "team source changed after submission; inspect before applying feedback"
             )
+        task = self.service.iterations.sync(row["team"])
+        if task["phase"] == "blocked":
+            raise ValueError(task["blocked_reason"])
+        capability = self.service.simulator.status()
         prompt = (
-            "Continue the ConfusionMulGrad PK using this real CANN Judge result.\n"
-            + json.dumps(
-                {
-                    k: row.get(k)
-                    for k in ("id", "source_sha256", "official_submission_id", "official")
-                },
-                ensure_ascii=False,
+            self.service.iterations.prompt(task)
+            + (
+                "\n当前 CPU CANN 仿真器可用，使用 simulate_kernel 和结构化结果。"
+                if capability["available"]
+                else "\n当前仿真器不可用；如实报告等待环境，不声称已验证。"
             )
-            + "\nRead read_judge_status and other staged candidates. "
-            "Repair actual reported failures or improve general tiling. "
-            "Do not infer hidden input values from IDs or specialize to testcase numbers. "
-            "Use your registered reviewer, inspect_policy and queue_official_test "
-            "for the next candidate. "
-            "No local server, simulator or Profiler is available. Never claim unmeasured speedups."
+            + "\n实际 NPU 计时需单独设备环境；仿真结果不代表官测性能。"
         )
         key_op = self.service.start_operation(row["team"], "run", prompt)
+        self.service.iterations.dispatched(row["team"], key_op)
         row["feedback_operation"] = key_op
         self.write("queue.json", queue)
         self.service.store.event(

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Literal
 from langchain_core.tools import tool
 
 from aworker.lab.domain import Experience, Stage, StageUpdate
+from aworker.lab.iteration import ExperimentPlan
 from aworker.lab.project import project_manifest
 
 if TYPE_CHECKING:
@@ -49,6 +50,32 @@ class EngineeringTools:
 
     # ---- tool construction --------------------------------------------------
     def build(self, read_only: bool = False, role: str | None = None):
+        @tool
+        def record_experiment_plan(
+            evidence: str,
+            hypothesis: str,
+            change: str,
+            validation: str,
+            case_ids: list[str],
+            kind: Literal["repair", "diagnostic"] = "repair",
+        ) -> str:
+            """Bind one concrete public hypothesis to actual failure evidence and local probe IDs.
+
+            Use repair for a source modification, diagnostic for a new reproduction experiment.
+            Official hidden case IDs are not local case_ids. No success can be self-reported.
+            The controller records actual source hashes, simulator jobs and results separately.
+            """
+            plan = ExperimentPlan(
+                evidence=evidence,
+                hypothesis=hypothesis,
+                change=change,
+                validation=validation,
+                case_ids=case_ids,
+                kind=kind,
+            )
+            task = self.service.iterations.plan(self.team, plan)
+            return json.dumps(self.service.iterations.public_task(task), ensure_ascii=False)
+
         @tool
         def record_review(source_sha256: str, ready: bool, notes: str) -> str:
             """Reviewer-only source-bound decision to send code to official compilation.
@@ -156,6 +183,13 @@ class EngineeringTools:
             Use candidate_id to select another frozen receipt. No log-parsing script is needed.
             """
             if not self.service.simulator.can_learn(self.team):
+                own = [
+                    r for r in self.service.judger.read("queue.json", []) if r["team"] == self.team
+                ]
+                if candidate_id:
+                    if not any(r["id"] == candidate_id for r in own):
+                        self.service.simulator.require_learning(self.team)
+                    own = [r for r in own if r["id"] == candidate_id]
                 return json.dumps(
                     {
                         "mode": "independent-first",
@@ -163,6 +197,20 @@ class EngineeringTools:
                         "own_experiments": [
                             self.service.simulator.dashboard_receipt(r)
                             for r in self.service.simulator.jobs(self.team)[:8]
+                        ],
+                        "own_official": [
+                            {
+                                k: r.get(k)
+                                for k in (
+                                    "id",
+                                    "source_sha256",
+                                    "official_submission_id",
+                                    "official",
+                                )
+                            }
+                            for r in sorted(own, key=lambda r: r.get("created", 0), reverse=True)[
+                                :3
+                            ]
                         ],
                     },
                     ensure_ascii=False,
@@ -226,9 +274,14 @@ class EngineeringTools:
             section=log/profile for paged compiler diagnostics or profiling previews.
             Correct and retry failed/slower changes. Never inherit another team's measured pass.
             """
+            self.service.iterations.before_experiment(self.team, case_ids)
+            task = self.service.iterations.read(self.team)
+            if task and task.get("plan"):
+                hypothesis = "Work item " + task["id"] + ": " + task["plan"]["hypothesis"]
             result = await self.service.simulator.evaluate(
                 self.team, self.run_id, hypothesis, case_ids, learned_from
             )
+            self.service.iterations.attach(self.team, result)
             if isinstance(result.get("job"), dict):
                 result = {
                     "job": self.service.simulator.model_summary(result["job"]),
@@ -416,6 +469,7 @@ class EngineeringTools:
             if read_only
             else common
             + [
+                record_experiment_plan,
                 run_python,
                 simulate_kernel,
                 queue_official_test,

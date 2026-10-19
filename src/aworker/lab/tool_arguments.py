@@ -15,6 +15,7 @@ def normalize_arguments(name: str, arguments: dict) -> dict:
     fields = {
         "run_python": {"arguments": str},
         "simulate_kernel": {"case_ids": str, "learned_from": str},
+        "record_experiment_plan": {"case_ids": str},
         "write_todos": {"todos": dict},
     }
     for field, item_type in fields.get(name, {}).items():

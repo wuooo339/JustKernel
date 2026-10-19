@@ -28,4 +28,5 @@ dialog,.workbench-dialog{width:min(1000px,calc(100vw - 40px));max-height:90dvh;b
 .board-columns.local-board,.board-row.local-board{grid-template-columns:25px minmax(0,1fr) 56px 62px}
 .local-board>:nth-last-child(-n+2){text-align:right}
 .official-summary>strong{font-size:15px;color:#a7bed1}
+.iteration-card{border-bottom:1px solid #53708055;margin-bottom:9px;padding-bottom:8px}.iteration-card>strong{display:block;font-size:15px;color:var(--orange)}.team-progress .iteration-card p{display:block;font-size:13px;line-height:1.5;overflow-wrap:anywhere;margin:5px 0}.iteration-card b{color:#c7d7e6;font-weight:500}.iteration-next{color:#e5c1a4}
 @media(max-width:1100px){.board-columns.local-board,.board-row.local-board{grid-template-columns:18px minmax(0,1fr) 42px 48px}}

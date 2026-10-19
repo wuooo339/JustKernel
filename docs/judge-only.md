@@ -75,6 +75,8 @@ bash tools/start_judge_bridge.sh LINUX_ROOT PYTHON SHARED_BRIDGE OFFICIAL_URL
 
 额度用完只停止新提交，团队继续搜索，已有回执继续跟踪。可以分别暂停搜索或官测。官方终态反馈通过 A2A 持久投递，确认和去重；收到更新的队伍在后续模型步骤读取。只有官方 Pass 且分数更优才更新已验证冠军。
 
+单主队的官测反馈同时进入持久化修正任务，主队自己的回执不受“先仿真再学习其他队”的门槛限制。主力登记一个实验计划，直接改码并运行本地探针，再推进到同源码完整验证；独立 Judger 接收合格的冻结版本，无需等待主队整轮结束。已测源码不重复自动提交；独立源码审查退回的缺陷也会进入修正任务。任务只有阅读/分析而没有源码变化或新实验时停止重复派发，原因显示在面板；不会把消息送达等同于修复成功。
+
 [官方题目](https://cannjudge.cn/public/ladder_october/confusionmulgrad) · [官方榜单](https://cannjudge.cn/public/ladder_october/confusionmulgrad/ranking)
 
 ## 监督与回放
