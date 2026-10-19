@@ -46,9 +46,19 @@
       {content:'所有官方测试点通过',status:final==='Pass'?'completed':final?'failed':'pending',detail:final&&final!=='Pass'?'未全过 · 反馈已记录':''}
     ]};
   }
-  function markup(p,label){
+  // ---- layered task path; animation never changes a task status ------------
+  function markup(p,label,{running=false}={}){
     const done=p.items.filter(i=>i.status==='completed').length;
-    return `<div class="task-plan-head"><span>${esc(label)}</span><b>${p.items.length?done+'/'+p.items.length:'—'}</b></div><p class="task-plan-kind">${esc(p.label)}</p><ol class="task-checklist">${p.items.map((item,i)=>`<li class="task-item ${esc(item.status)}"><span class="task-check">${item.status==='completed'?'✓':item.status==='in_progress'?'◉':item.status==='failed'?'!':String(i+1).padStart(2,'0')}</span><div><b>${esc(item.content.length>70?item.content.slice(0,70)+'…':item.content)}</b>${item.description||item.content.length>70?`<details class="task-description"><summary>展开详情</summary><p>${esc(item.description||item.content)}</p></details>`:''}${item.detail?`<small>${esc(item.detail)}</small>`:''}</div><em>${{completed:'完成',in_progress:'进行中',failed:'未通过',pending:'待执行'}[item.status]}</em></li>`).join('')}</ol>${p.items.length?'':'<p class="session-muted">等待团队发布本轮任务清单。</p>'}<p class="task-plan-hint">${esc(p.hint)}</p>`;
+    const stateNames={completed:'完成',in_progress:'进行中',failed:'需修正',pending:'待执行'};
+    const rows=p.items.map((item,i)=>{
+      const x=i%2?178:146,next=(i+1)%2?178:146;
+      const target=p.items[i+1]?.status;
+      const path=`M${x} 0 C${x} 16 ${next} 12 ${next} 28`;
+      const wire=i<p.items.length-1?`<svg class="task-wire ${esc(target)}" viewBox="0 0 320 28" preserveAspectRatio="none" aria-hidden="true"><path class="wire-base" d="${path}"/><path class="wire-stream" pathLength="100" d="${path}"/><circle class="wire-packet" r="2.3"><animateMotion dur="1.8s" repeatCount="indefinite" path="${path}"/></circle></svg>`:'';
+      const extra=item.description||(item.content.length>70?item.content:'');
+      return `<li class="task-item ${esc(item.status)}" style="--step:${i}">${wire}<div class="task-node"><span class="task-check">${item.status==='completed'?'✓':item.status==='failed'?'!':String(i+1).padStart(2,'0')}</span><div class="task-node-copy"><b>${esc(item.content.length>70?item.content.slice(0,70)+'…':item.content)}</b><span class="task-node-state"><i></i>${stateNames[item.status]}</span>${extra?`<details class="task-description"><summary>展开详情</summary><p>${esc(extra)}</p></details>`:''}${item.detail?`<small>${esc(item.detail)}</small>`:''}</div><span class="task-node-corner" aria-hidden="true">⌁</span></div></li>`;
+    }).join('');
+    return `<div class="task-plan-head"><span>${esc(label)}</span><b>${p.items.length?done+'/'+p.items.length:'—'}</b></div><div class="workflow-caption"><span>${esc(p.label)}</span><span class="workflow-live ${running?'working':''}"><i></i>${running?'执行中':'等待事件'}</span></div><div class="workflow-progress" role="progressbar" aria-label="任务完成数量" aria-valuenow="${done}" aria-valuemin="0" aria-valuemax="${p.items.length||1}"><i style="width:${p.items.length?done/p.items.length*100:0}%"></i></div><ol class="task-checklist workflow-path ${running?'is-working':''}">${rows}</ol>${p.items.length?'':'<p class="session-muted">等待团队发布本轮任务清单。</p>'}<p class="task-plan-hint">${esc(p.hint)}</p>`;
   }
   const api={plan,judgePlan,markup};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.JustKernelTaskPlan=api;

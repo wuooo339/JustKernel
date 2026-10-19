@@ -37,6 +37,13 @@
   const pad = (v, size = 3) => String(v).padStart(size, '0');
   const currentAgent = () => agents[state.selected - 1];
   let toastTimeout;
+  const receiptFollow=document.createElement('button');receiptFollow.type='button';
+  receiptFollow.className='receipt-follow text-button';receiptFollow.hidden=true;
+  $('receiptList').before(receiptFollow);
+  const receiptFeed=new window.JustKernelEventFeed.Feed($('receiptList'),receiptFollow);
+  const receiptPulse=document.createElement('span');receiptPulse.className='receipt-stream-state';
+  receiptPulse.innerHTML='<i></i><span>等待事件</span>';
+  document.querySelector('.receipts-panel .panel-heading').append(receiptPulse);
   const toast = (message) => {
     $('toast').textContent = message;
     $('toast').classList.add('visible');
@@ -66,13 +73,16 @@
     const label=actualTeam?teamLabel(actualTeam):state.source==='live'?detail.evidence?.team||'系统':agentId?`A${pad(agentId)}`:'SYS';
     const names = { 'agent.state': 'search', 'candidate.created': 'patch', 'candidate.rejected': 'revise', 'evaluation.completed': 'verify', 'sota.updated': 'sota ↑', 'skill.created': 'distill', 'agent.message': state.source==='live'?'reply':'a2a', 'run.started': 'start', 'policy.checked': 'policy' };
     item.innerHTML = `<time>${esc(event.at)}</time><span class="receipt-agent" title="${esc(actualModel?actualModel.model+' · '+(actualModel.effort||'默认强度'):label)}">${esc(label)}${actualModel?`<small>${esc(actualModel.model)}</small>`:''}</span><span class="receipt-text"><b>${esc(names[type] || type)}</b> ${esc(text)}</span>`;
-    $('receiptList').prepend(item);
-    while ($('receiptList').children.length > 7) $('receiptList').lastChild.remove();
+    item.dataset.kind=type;
+    if(detail.evidence?.seq)item.dataset.seq=detail.evidence.seq;
+    receiptFeed.insert(item,detail.animate!==false);
+    if(detail.animate!==false){receiptPulse.classList.add('receiving');receiptPulse.querySelector('span').textContent=state.source==='demo'?'预演事件流':'事件流入';}
     $('receiptCount').textContent = String(state.events.length);
     return event;
   }
   function setMode(source) {
     state.source = source;
+    $('terminal').classList.toggle('demo-workflow',source==='demo');
     if (source === 'live') {
       $('modeBadge').innerHTML = '<i></i> 真实运行';
       $('disclaimer').textContent = '真实执行记录 · 本地评测';
@@ -194,6 +204,12 @@
   function renderAll() {
     renderAgents(); renderInspector(); renderChart(); renderKnowledge();
     renderVisuals();
+    if(state.source==='demo'){
+      const current=Math.floor(state.tick%16/4);
+      const items=['规划优化策略','生成候选实现','执行验证与精度检查','共享候选并接收反馈'].map((content,i)=>({content,status:i<current?'completed':i===current?'in_progress':'pending'}));
+      paintTaskPath(window.JustKernelTaskPlan.markup({label:'界面预演 · 示例任务',hint:'示例步骤与事件，不调用模型 API 或 NPU。',items},'演示优化路径',{running:!state.paused}));
+      $('taskPlan').hidden=false;document.querySelector('.loop-panel .panel-heading h2').textContent='任务规划';
+    }
   }
   function renderVisuals() {
     const real = state.source === 'live';
@@ -297,7 +313,7 @@
     state.candidateCount = 0; state.events = []; state.skills = [];
     state.history = [{ round: 0, value: 1 }]; state.replayIndex = 0;
     for (const a of agents) { a.state = 'waiting'; a.candidate = 0; }
-    $('receiptList').replaceChildren();
+    receiptFeed.reset();
     $('receiptCount').textContent = '0';
     $('broadcast').classList.remove('visible');
     $('flowTask').textContent = TASKS[state.operator]?.flow || state.operator;
@@ -410,17 +426,28 @@
     if (event?.kind === 'evaluation.completed') return 'passed';
     return profile(team)?.configured ? 'waiting' : 'unconfigured';
   }
+  function paintTaskPath(content){
+    if($('taskPlan').dataset.planMarkup!==content){
+      const opens=[...$('taskPlan').querySelectorAll('.task-description')].map(d=>d.open);
+      $('taskPlan').innerHTML=content;$('taskPlan').dataset.planMarkup=content;
+      [...$('taskPlan').querySelectorAll('.task-description')].forEach((d,i)=>{d.open=Boolean(opens[i]);});
+      requestAnimationFrame(()=>{
+        const box=$('taskPlan'),current=box.querySelector('.is-working .in_progress');
+        if(!current||box.querySelector('details[open]'))return;
+        const outer=box.getBoundingClientRect(),node=current.getBoundingClientRect();
+        if(node.bottom>outer.bottom||node.top<outer.top)box.scrollTo({top:Math.max(0,box.scrollTop+node.top-outer.top-box.clientHeight/2+node.height/2),behavior:document.documentElement.dataset.motion==='off'?'instant':'smooth'});
+      });
+    }
+  }
   function renderLiveFlow() {
     const team=activeTeam(),judging=state.workScope==='judge';
     const events=sessionEvents(judging?'controller':team?.id);
     const task=(live.iterations||[]).find(t=>t.team===team?.id);
     const p=judging?window.JustKernelTaskPlan.judgePlan(events):window.JustKernelTaskPlan.plan(events,team?.id,task);
-    const content=window.JustKernelTaskPlan.markup(p,judging?'独立 Judger':team?teamLabel(team):'选择团队');
-    if($('taskPlan').dataset.planMarkup!==content){
-      const opens=[...$('taskPlan').querySelectorAll('.task-description')].map(d=>d.open);
-      $('taskPlan').innerHTML=content;$('taskPlan').dataset.planMarkup=content;
-      [...$('taskPlan').querySelectorAll('.task-description')].forEach((d,i)=>{d.open=Boolean(opens[i]);});
-    }
+    const playing=!live.recording||live.replayClock?.playing;
+    const running=playing&&(judging?live.judge_selector_running||live.judge_submission_running:live.operations.some(o=>o.team===team?.id&&o.state==='running')||(live.simulation_jobs||[]).some(j=>j.team===team?.id&&j.state==='running'));
+    const content=window.JustKernelTaskPlan.markup(p,judging?'独立 Judger':team?teamLabel(team):'选择团队',{running:Boolean(running)});
+    paintTaskPath(content);
     $('taskPlan').hidden=false;
     document.querySelector('.loop-panel .panel-heading h2').textContent='任务规划';
   }
@@ -646,7 +673,10 @@
     $('loopState').textContent=waiting?'等待仿真':continuous?'持续优化':running.length?'优化中':'待开始';
     $('searchPhase').textContent=running.length?'working':'ready';
     const deviceBusy=live.jobs.some(j=>j.state==='running')||live.simulation?.available&&(live.simulation_jobs||[]).some(j=>j.state==='running');
-    $('terminal').classList.toggle('paused',!running.length&&!deviceBusy);
+    $('terminal').classList.toggle('paused',Boolean(live.recording&&!live.replayClock?.playing)||!running.length&&!deviceBusy&&!live.judge_selector_running&&!live.judge_submission_running);
+    const lastEvent=live.events.at(-1),receiving=lastEvent&&Date.now()/1000-lastEvent.at<6;
+    receiptPulse.classList.toggle('receiving',Boolean(receiving));
+    receiptPulse.querySelector('span').textContent=receiving?'事件流入':running.length||deviceBusy||live.judge_selector_running?'执行中 · 等待事件':'等待事件';
     $('footerStatus').textContent=`真实模式 · ${count} 支团队`;
     $('runStatus').textContent=running.length ? running.map((o)=>`${teamLabel(o.team)} / ${o.kind} / ${o.id.slice(0,8)} 正在执行`).join('\n') : '优化过程和设备实测会自动记录，可随时回看。';
   }
@@ -688,7 +718,6 @@
       for(const item of receipts){
         const index=visibleTeams().findIndex(t=>t.id===item.team);
         addReceipt(item.kind,index<0?null:index+1,String(eventSummary(item)).slice(0,500),{at:new Date(item.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:item});
-        $('receiptList').firstElementChild.dataset.seq=item.seq;
       }
       $('receiptCount').textContent=live.totalEvents||live.events.length;
       renderAll();renderLiveStatus();
@@ -781,11 +810,10 @@
       const bootstrap=await lab('/events/bootstrap');
       if(state.source!=='live'||generation!==liveGeneration)return;
       live.events=bootstrap.events;live.seq=bootstrap.cursor;live.totalEvents=bootstrap.total;
-      $('receiptList').innerHTML='';
-      for(const e of live.events.filter(e=>meaningfulEvent(e)&&(visibleTeams().some(t=>t.id===e.team)||['controller','judger'].includes(e.team))).slice(-7)){
+      receiptFeed.reset();
+      for(const e of live.events.filter(e=>meaningfulEvent(e)&&(visibleTeams().some(t=>t.id===e.team)||['controller','judger'].includes(e.team))).slice(-60)){
         const index=visibleTeams().findIndex(t=>t.id===e.team);
-        addReceipt(e.kind,index<0?null:index+1,String(eventSummary(e)).slice(0,500),{at:new Date(e.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:e});
-        $('receiptList').firstElementChild.dataset.seq=e.seq;
+        addReceipt(e.kind,index<0?null:index+1,String(eventSummary(e)).slice(0,500),{at:new Date(e.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:e,animate:false});
       }
       $('receiptCount').textContent=live.totalEvents;
       $('receiptCount').title='累计事件数；此处先加载最新进展，完整历史可导出或回放。';
@@ -1053,13 +1081,13 @@
     if(end===clock.count)return;clock.count=end;
     Object.assign(live,window.JustKernelActivity.projectRecord(data,end));live.seq=live.events.at(-1)?.seq||0;
     if(!visibleTeams().some(t=>t.id===activeTeam()?.id))state.selected=1;
-    $('receiptList').innerHTML='';for(const e of live.events.slice(-60)){const index=visibleTeams().findIndex(t=>t.id===e.team);addReceipt(e.kind,index<0?null:index+1,String(eventSummary(e)).slice(0,500),{at:new Date(e.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:e});$('receiptList').firstElementChild.dataset.seq=e.seq;}
+    receiptFeed.reset();for(const e of live.events.slice(-60)){const index=visibleTeams().findIndex(t=>t.id===e.team);addReceipt(e.kind,index<0?null:index+1,String(eventSummary(e)).slice(0,500),{at:new Date(e.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:e,animate:false});}
     $('receiptCount').textContent=end;renderAll();renderLiveStatus();
     $('connectionText').textContent='真实记录回放 · 当前未执行模型';
     $('liveStatusLine').textContent='回放至 '+new Date(target*1000).toLocaleString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'})+' · '+end+' / '+data.events.length+' 条真实事件';
     $('modeBadge').innerHTML='<i></i> 真实记录回放 / REPLAY';
   }
-  function toggleRecord(){if(!live.replayClock)return;live.replayClock.playing=!live.replayClock.playing;live.replayClock.stamp=performance.now();$('replayPause').textContent=live.replayClock.playing?'暂停':'播放';renderVisuals();}
+  function toggleRecord(){if(!live.replayClock)return;live.replayClock.playing=!live.replayClock.playing;live.replayClock.stamp=performance.now();$('replayPause').textContent=live.replayClock.playing?'暂停':'播放';renderVisuals();renderLiveFlow();renderLiveStatus();}
   $('replayPause').onclick=toggleRecord;
   $('replaySeek').oninput=()=>renderRecord(Number($('replaySeek').value)/1000*live.replayClock.duration);
   $('replayExit').onclick=()=>{ $('replayCurrent').disabled=false;startLive(); };

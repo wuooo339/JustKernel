@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="workbench.css">
   <link rel="stylesheet" href="conversation.css">
+  <link rel="stylesheet" href="motion.css">
 </head>
 <body>
 <main class="terminal" id="terminal">
@@ -116,7 +117,7 @@
     </section>
   </div>
   <div class="bottom-grid">
-    <section class="panel receipts-panel"><div class="panel-heading"><h2><span>//</span> execution receipts</h2><span><i class="live-dot"></i> <span id="receiptCount">0</span> 条</span></div><div class="receipt-labels"><span>时间</span><span>团队</span><span>活动 / 结果</span></div><div class="receipt-list" id="receiptList" role="log" aria-label="预演执行记录" aria-live="off"></div></section>
+    <section class="panel receipts-panel"><div class="panel-heading"><h2><span>//</span> execution receipts</h2><span><i class="live-dot"></i> <span id="receiptCount">0</span> 条</span></div><div class="receipt-labels"><span>时间</span><span>团队</span><span>活动 / 结果</span></div><div class="receipt-list" id="receiptList" tabindex="0" role="log" aria-label="预演执行记录" aria-live="off"></div></section>
     <section class="panel sota-panel"><div class="panel-heading"><h2><span>//</span> public sota</h2><span class="mini-label">示例性能曲线</span></div><div class="sota-value"><div><span id="sotaValue">1.00</span><small>×</small><span class="sota-caption">相对初始候选</span></div><span class="sota-version" id="sotaVersion">v001</span></div><svg id="sotaChart" viewBox="0 0 380 110" role="img" aria-label="演示候选性能随轮次变化"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6a078" stop-opacity=".18"/><stop offset="1" stop-color="#e6a078" stop-opacity="0"/></linearGradient></defs><path class="chart-grid" d="M32 15H365M32 47H365M32 79H365"/><text x="0" y="20" class="chart-label">3.0×</text><text x="0" y="52" class="chart-label">2.0×</text><text x="0" y="84" class="chart-label">1.0×</text><path id="chartArea" fill="url(#chartFill)"/><path id="chartLine" fill="none" stroke="#e6a078" stroke-width="2"/><circle id="chartDot" r="3" fill="#e6a078"/><text x="32" y="104" class="chart-label">round 0</text><text x="325" y="104" class="chart-label" id="chartRound">round 1</text></svg><div class="sota-foot"><span id="candidateCount">0 candidates</span><span id="sotaAuthor">public baseline</span></div></section>
     <section class="panel knowledge-panel" id="knowledgePanel"><div class="panel-heading"><h2><span>//</span> evolving knowledge</h2><span class="mini-label" id="skillCount">0 skills</span></div><div class="knowledge-view" id="knowledgeView"><div class="skill-row"><span class="skill-symbol">◇</span><div><b>等待经验蒸馏</b><p>从候选补丁与评测轨迹形成可复用方法</p></div><span class="skill-state">pending</span></div></div><div class="knowledge-foot"><span id="knowledgeFooter">同算子复用 / 跨算子迁移 / 反例修订</span><button class="text-button" id="knowledgeButton">查看条目 ↗</button></div></section>
   </div>
@@ -161,6 +162,7 @@
 <script src="activity.js"></script>
 <script src="conversation.js"></script>
 <script src="taskplan.js"></script>
+<script src="eventfeed.js"></script>
 <script src="app.js"></script>
 <script src="vendor/xterm.js"></script>
 <script src="workbench.js"></script>

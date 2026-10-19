@@ -2,6 +2,15 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {plan,judgePlan,markup}=require('../src/aworker/lab/resources/web/taskplan.js');
 const e=(seq,kind,data={},team='main')=>({seq,kind,data,team,at:seq});
+
+test('layered paths animate actual active tasks without advancing states',()=>{
+ const p={label:'live plan',hint:'evidence',items:[{content:'read',status:'completed'},{content:'edit <script>',status:'in_progress'},{content:'validate',status:'pending'}]};
+ const before=JSON.stringify(p),idle=markup(p,'main'),active=markup(p,'main',{running:true});
+ assert.doesNotMatch(idle,/workflow-path is-working/);assert.match(active,/workflow-path is-working/);
+ assert.match(active,/<svg class="task-wire in_progress"/);assert.match(active,/animateMotion/);
+ assert.match(active,/aria-valuenow="1"/);assert.match(active,/&lt;script&gt;/);assert.doesNotMatch(active,/<script>/);
+ assert.equal(JSON.stringify(p),before);
+});
 test('only successful actual todo updates change the checklist; new turns reset stale plans',()=>{
  const events=[e(1,'control.started'),e(2,'tool.started',{tool:'write_todos',tool_call:'a',input:JSON.stringify({todos:[{content:'repair',status:'in_progress'}]})})];
  assert.equal(plan(events,'main').items.length,0);
