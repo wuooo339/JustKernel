@@ -729,3 +729,58 @@ def test_official_lane_skips_old_terminal_receipts_but_accepts_rank_updates(lab)
     )
     assert not browser.calls
     assert lab.judger.read("queue.json", [])[0]["official"]["rank"] == 12
+
+
+# ---- agent views keep exact own failure cases without repeatedly loading all archived notes ----
+def test_model_judge_status_preserves_own_cases_with_bounded_history(lab):
+    cases = [
+        {
+            "testcase_id": "fixture-" + str(i),
+            "testcase_status": "Wrong Answer",
+            "precision_ratio": 0.99,
+        }
+        for i in range(15)
+    ]
+    rows = [
+        {
+            "id": "fixture-" + str(i),
+            "team": "gpt-001" if i % 2 else "other",
+            "created": i,
+            "source_sha256": "s" + str(i),
+            "state": "official-result",
+            "proposal": "large unneeded fixture proposal" * 2000,
+            "review": {"ready": True, "notes": "large unneeded fixture review" * 2000},
+            "official": {"status": "Wrong Answer", "score": None, "rank": None, "result": cases},
+        }
+        for i in range(40)
+    ]
+    lab.judger.write("queue.json", rows)
+    result = lab.judger.model_status("gpt-001")
+    assert len(json.dumps(result)) < 22000
+    detailed = [r for r in result["queue"] if "result" in r["official"]]
+    assert len(detailed) == 3 and all(r["team"] == "gpt-001" for r in detailed)
+    assert detailed[0]["official"]["result"] == cases
+    chosen = lab.judger.model_status("gpt-001", "fixture-0")
+    assert next(r for r in chosen["queue"] if r["id"] == "fixture-0")["official"]["result"] == cases
+    with pytest.raises(ValueError, match="unknown"):
+        lab.judger.model_status("gpt-001", "missing")
+
+
+# ---- frozen source defaults to complete implementations, not every template fixture ----
+def test_agent_candidate_reader_keeps_all_editable_source_and_fetches_support_files_explicitly(lab):
+    from aworker.lab.tools import EngineeringTools
+
+    row = lab.judger.stage("gpt-001")
+    reader = next(
+        t
+        for t in EngineeringTools(lab, "gpt-001", "fixture", lab.team_folder("gpt-001")).build()
+        if t.name == "read_judge_candidate"
+    )
+    data = json.loads(reader.invoke({"candidate_id": row["id"]}))
+    manifest = project_manifest(lab.root)
+    assert set(data["files"]) == set(manifest["editable_paths"])
+    assert "build.sh" in data["supporting_paths"]
+    supporting = json.loads(reader.invoke({"candidate_id": row["id"], "file_path": "build.sh"}))
+    assert set(supporting["files"]) == {"build.sh"}
+    with pytest.raises(ValueError, match="exact path"):
+        reader.invoke({"candidate_id": row["id"], "file_path": "../../outside"})

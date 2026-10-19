@@ -509,3 +509,96 @@ def test_observer_freezes_completed_current_source_once_without_self_approving(l
             await lab.simulator.close()
 
     asyncio.run(exercise())
+
+
+# ---- explicit job IDs also stay structured; detail text is paged, never auto-offloaded ----
+def test_model_reads_explicit_job_summary_without_parser_and_pages_only_requested_detail(lab):
+    record = fixture_receipt(lab)
+    folder = lab.simulator.spool / "jobs" / record["id"]
+    record["cases"][0]["correctness"] = [{"output": 0, "pass": True, "max_abs": 0.0}]
+    record["cases"][0]["profiling_files"] = [{"preview": "large fixture profile" * 5000}]
+    (folder / "result.json").write_text(json.dumps(record), encoding="utf-8")
+    (folder / "execution.log").write_text("fixture compiler diagnostic\n" * 1000, encoding="utf-8")
+    reader = next(
+        t
+        for t in EngineeringTools(lab, "gpt-001", "fixture", lab.team_folder("gpt-001")).build()
+        if t.name == "read_simulation_results"
+    )
+    output = reader.invoke({"job_id": record["id"]})
+    assert len(output) < 14000
+    summary = json.loads(output)
+    assert summary["job"]["cases"][0]["correctness"][0]["max_abs"] == 0.0
+    assert "large fixture profile" not in output
+    detail = json.loads(
+        reader.invoke(
+            {
+                "job_id": record["id"],
+                "section": "profile",
+                "case_id": record["case_ids"][0],
+                "limit": 500,
+            }
+        )
+    )
+    assert len(detail["text"]) == 500 and detail["next_offset"] == 500
+    second = json.loads(
+        reader.invoke(
+            {
+                "job_id": record["id"],
+                "section": "profile",
+                "case_id": record["case_ids"][0],
+                "offset": 500,
+                "limit": 500,
+            }
+        )
+    )
+    original = json.dumps(record["cases"][0]["profiling_files"], ensure_ascii=False)
+    assert detail["text"] + second["text"] == original[:1000]
+    assert (
+        "compiler diagnostic"
+        in json.loads(reader.invoke({"job_id": record["id"], "section": "log"}))["text"]
+    )
+    assert lab.simulator.logs(record["id"], "gpt-001")["job"]["cases"][0]["profiling_files"]
+    with pytest.raises(ValueError, match="does not belong"):
+        lab.simulator.model_result(record["id"], "other-team")
+    with pytest.raises(ValueError, match="case_id"):
+        lab.simulator.model_result(record["id"], "gpt-001", "profile", "unknown")
+    with pytest.raises(ValueError, match="limit"):
+        lab.simulator.model_result(record["id"], "gpt-001", "log", limit=12001)
+
+
+# ---- actual subprocess can consume a harness virtual path on Windows/Linux/macOS ----
+def test_python_analysis_resolves_existing_virtual_result_argument(lab):
+    from aworker.lab.tools import workspace_arguments
+
+    folder = lab.team_folder("gpt-001")
+    (folder / "analysis").mkdir(exist_ok=True)
+    (folder / "large_tool_results").mkdir(exist_ok=True)
+    (folder / "large_tool_results" / "fixture.json").write_text(
+        '{"fixture":"readable"}', encoding="utf-8"
+    )
+    (folder / "analysis" / "read_fixture.py").write_text(
+        'import json,sys\nprint(json.load(open(sys.argv[1],encoding="utf-8"))["fixture"])\n',
+        encoding="utf-8",
+    )
+    runner = next(
+        t
+        for t in EngineeringTools(lab, "gpt-001", "fixture", folder).build()
+        if t.name == "run_python"
+    )
+    result = json.loads(
+        asyncio.run(
+            runner.ainvoke(
+                {
+                    "script_path": "/analysis/read_fixture.py",
+                    "arguments": ["/large_tool_results/fixture.json"],
+                }
+            )
+        )
+    )
+    assert result["returncode"] == 0 and result["stdout"].strip() == "readable"
+    assert workspace_arguments(folder, ["/unrelated/value", "literal"]) == [
+        "/unrelated/value",
+        "literal",
+    ]
+    with pytest.raises(ValueError, match="inside"):
+        workspace_arguments(folder, ["/large_tool_results/../../escape"])

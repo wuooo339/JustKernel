@@ -438,6 +438,70 @@ class Simulator:
             ),
         }
 
+    # ---- bounded model-facing results; raw receipts remain in the journal/UI ----
+    @staticmethod
+    def model_summary(row):
+        summary = Simulator.dashboard_receipt(row)
+        for key in ("reference", "evaluation_mode", "profile_case_ids", "created_at"):
+            if key in row:
+                summary[key] = row[key]
+        summary["cases"] = [
+            {
+                k: c[k]
+                for k in (
+                    "id",
+                    "shape",
+                    "dtype",
+                    "pass",
+                    "correctness",
+                    "profile_pass",
+                    "profile_correctness",
+                    "validation_kind",
+                    "error",
+                )
+                if k in c
+            }
+            for c in row.get("cases", [])
+        ]
+        return summary
+
+    def model_result(self, key, team, section="summary", case_id="", offset=0, limit=8000):
+        if section not in {"summary", "log", "profile"}:
+            raise ValueError("section must be summary, log or profile")
+        if offset < 0 or not 1 <= limit <= 12000:
+            raise ValueError("offset must be nonnegative; limit must be 1–12000 characters")
+        receipt = self.logs(key, team)
+        row = receipt["job"]
+        if section == "summary":
+            return {
+                "job": self.model_summary(row),
+                "details": {
+                    "tool": "read_simulation_results",
+                    "job_id": key,
+                    "sections": ["log", "profile"],
+                    "usage": "Request section=log for diagnostics or section=profile with case_id. "
+                    "Results are JSON, not file paths; no parser script is needed.",
+                },
+            }
+        if section == "profile":
+            case = next((c for c in row.get("cases", []) if c["id"] == case_id), None)
+            if case is None:
+                raise ValueError("choose a case_id listed in this job's summary")
+            text = json.dumps(case.get("profiling_files", []), ensure_ascii=False)
+        else:
+            text = receipt["log_tail"]
+        end = min(offset + limit, len(text))
+        return {
+            "job_id": key,
+            "source_sha256": row["source_sha256"],
+            "section": section,
+            "case_id": case_id,
+            "text": text[offset:end],
+            "offset": offset,
+            "next_offset": end if end < len(text) else None,
+            "total_chars": len(text),
+        }
+
     # ---- cancel only unclaimed queue entries; never stop a running child ------
     def cancel_queued(self, key, team, reason):
         row = next((r for r in self.jobs(team) if r["id"] == key), None)

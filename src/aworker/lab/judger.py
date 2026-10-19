@@ -77,6 +77,64 @@ class JudgeMonitor:
             "simulation": self.service.simulator.status(),
         }
 
+    # ---- bounded agent observations; full UI/history is still available separately ----
+    def model_status(self, team, candidate_id=""):
+        status = self.status()
+        queue = sorted(status["queue"], key=lambda r: r.get("created", 0), reverse=True)
+        own = [r for r in queue if r["team"] == team][:3]
+        selected = [r for r in queue if r["id"] == candidate_id] if candidate_id else own
+        if candidate_id and not selected:
+            raise ValueError("unknown frozen candidate")
+        detailed = {r["id"] for r in selected}
+        visible = {r["id"]: r for r in [*queue[:12], *selected]}
+        fields = (
+            "id",
+            "team",
+            "source_sha256",
+            "case_pack_sha256",
+            "state",
+            "official_submission_id",
+            "simulation_job_id",
+            "submit_error",
+        )
+        rows = []
+        for row in visible.values():
+            item = {k: row.get(k) for k in fields}
+            official = row.get("official") or {}
+            item["official"] = {k: official.get(k) for k in ("status", "score", "rank")}
+            if row["id"] in detailed:
+                item["official"]["result"] = official.get("result", [])
+                review = row.get("review") or {}
+                item["review"] = {
+                    "ready": review.get("ready"),
+                    "notes": str(review.get("notes", ""))[:1500],
+                }
+            rows.append(item)
+        snapshot = status["snapshot"]
+        public = {
+            k: snapshot.get(k)
+            for k in (
+                "problem_id",
+                "problem_url",
+                "official_testcase_ids",
+                "input_status",
+                "updated_at",
+            )
+        }
+        public["rows"] = [
+            {k: r.get(k) for k in ("rank", "score", "status", "submission_id")}
+            for r in snapshot.get("rows", [])[:10]
+        ]
+        return {
+            "snapshot": public,
+            "queue": rows,
+            "champion": status["champion"],
+            "session": {k: status["session"].get(k) for k in ("opened", "connected", "state")},
+            "automation": {k: status["automation"].get(k) for k in ("enabled", "phase", "budget")},
+            "details": "Own latest 3 results include official cases. Use candidate_id "
+            "to inspect another frozen result; read_judge_candidate reads source separately.",
+        }
+
     async def sync(self) -> dict:
         async with self.lock:
             source = project_manifest(self.service.root).get("input_source", {})

@@ -57,6 +57,19 @@ def test_baseline_graph_stops_after_analysis_only_without_spending_more_calls(se
                 "",
                 tool_calls=[{"id": "read", "name": "read_file", "args": {"file_path": "/TEAM.md"}}],
             ),
+            *[
+                AIMessage(
+                    "",
+                    tool_calls=[
+                        {
+                            "id": "repeat-" + str(i),
+                            "name": "read_file",
+                            "args": {"file_path": "/TEAM.md"},
+                        }
+                    ],
+                )
+                for i in range(2)
+            ],
             AIMessage("should never be called"),
         ]
     )
@@ -68,6 +81,7 @@ def test_baseline_graph_stops_after_analysis_only_without_spending_more_calls(se
     assert service.candidate("team-a")["sha256"] == original
     assert (service.team_folder("team-a") / "analysis.txt").exists()
     assert service.store.snapshot()["runs"][0]["state"] == "failed"
+    assert any(e["kind"] == "baseline.progress.warning" for e in service.store.events())
 
 
 # ---- allow the final response's real source edit before checking another call --
@@ -160,3 +174,165 @@ def test_stringified_arguments_are_narrowly_normalized_without_mutation():
     assert isinstance(args["arguments"], str)
     for value in ("__import__('os')", '{"a":1}', "[1]"):
         assert normalize_arguments("run_python", {"arguments": value})["arguments"] == value
+
+
+# ---- one finite correction opportunity, never an endless reset on log reads ----
+def test_idle_guard_warns_once_then_stops_and_code_progress_resets_it():
+    now = [0]
+    guard = BaselineProgressGuard(
+        "source", calls=2, grace_calls=2, seconds=300, clock=lambda: now[0]
+    )
+    guard.observe(call="1")
+    assert "BASELINE_PROGRESS_CHECK" in guard.observe(call="2")
+    assert guard.observe(call="3") is None
+    with pytest.raises(RuntimeError, match="BASELINE_NO_PROGRESS"):
+        guard.observe(call="4")
+    assert guard.observe(source="changed") is None
+    assert not guard.warned and not guard.completed_calls
+    now[0] = 300
+    with pytest.raises(RuntimeError, match="BASELINE_NO_PROGRESS"):
+        guard.observe()
+
+
+# ---- real graph receives correction and can edit without losing its workspace ----
+def test_baseline_graph_can_correct_after_read_budget_warning(service, monkeypatch):
+    service.settings.lab_baseline_idle_calls = 2
+    service.swarm.write({"enabled": True, "strategy": "baseline", "main_team": "team-a"})
+    path = service.team_folder("team-a") / "kernel.asc"
+    original = path.read_text(encoding="utf-8")
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "read-" + str(i),
+                        "name": "read_file",
+                        "args": {"file_path": "/kernel.asc"},
+                    }
+                ],
+            )
+            for i in range(2)
+        ]
+        + [
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "edit",
+                        "name": "edit_file",
+                        "args": {
+                            "file_path": "/kernel.asc",
+                            "old_string": original,
+                            "new_string": original + "\n// corrected fixture implementation\n",
+                        },
+                    }
+                ],
+            ),
+            AIMessage("Fixture correction complete."),
+        ]
+    )
+    seen = []
+    generate = ScriptedModel._generate
+
+    def capture(self, messages, *args, **kwargs):
+        seen.extend(str(m.content) for m in messages if "BASELINE_PROGRESS_CHECK" in str(m.content))
+        return generate(self, messages, *args, **kwargs)
+
+    monkeypatch.setattr(ScriptedModel, "_generate", capture)
+    monkeypatch.setattr(service.registry, "build", lambda _: model)
+    assert (
+        asyncio.run(service.run_team("team-a", "Fixture correct after warning"))
+        == "Fixture correction complete."
+    )
+    assert seen
+    assert "corrected fixture implementation" in path.read_text(encoding="utf-8")
+
+
+# ---- streamed planning is allowed to finish its edit before the next idle checkpoint ----
+def test_inflight_generation_can_finish_a_real_edit_after_idle_time(service, monkeypatch):
+    import aworker.lab.deepagent as runtime
+
+    now = [0]
+    guard = BaselineProgressGuard
+
+    def controlled_guard(*args, **kwargs):
+        return guard(*args, **kwargs, clock=lambda: now[0])
+
+    monkeypatch.setattr(runtime, "BaselineProgressGuard", controlled_guard)
+    service.swarm.write({"enabled": True, "strategy": "baseline", "main_team": "team-a"})
+    path = service.team_folder("team-a") / "kernel.asc"
+    original = path.read_text(encoding="utf-8")
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "edit",
+                        "name": "edit_file",
+                        "args": {
+                            "file_path": "/kernel.asc",
+                            "old_string": original,
+                            "new_string": original + "\n// completed long response edit\n",
+                        },
+                    }
+                ],
+            ),
+            AIMessage("Long response fixture complete."),
+        ]
+    )
+    generate = ScriptedModel._generate
+
+    def long_generate(self, messages, *args, **kwargs):
+        now[0] = service.settings.lab_baseline_idle_seconds * 2 + 1
+        return generate(self, messages, *args, **kwargs)
+
+    monkeypatch.setattr(ScriptedModel, "_generate", long_generate)
+    monkeypatch.setattr(service.registry, "build", lambda _: model)
+    assert (
+        asyncio.run(service.run_team("team-a", "Fixture long generation"))
+        == "Long response fixture complete."
+    )
+    assert "completed long response edit" in path.read_text(encoding="utf-8")
+
+
+# ---- generator scripts count only when they actually change operator source ----
+def test_python_source_generation_resets_progress_but_not_analysis_notes(service, monkeypatch):
+    service.settings.lab_baseline_idle_calls = 2
+    service.swarm.write({"enabled": True, "strategy": "baseline", "main_team": "team-a"})
+    folder = service.team_folder("team-a")
+    (folder / "generate.py").write_text(
+        'from pathlib import Path\np=Path("kernel.asc")\n'
+        'p.write_text(p.read_text(encoding="utf-8")+'
+        '"\\n// generated fixture implementation\\n",encoding="utf-8")\n',
+        encoding="utf-8",
+    )
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {"id": "read", "name": "read_file", "args": {"file_path": "/kernel.asc"}}
+                ],
+            ),
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "generate",
+                        "name": "run_python",
+                        "args": {"script_path": "/generate.py"},
+                    }
+                ],
+            ),
+            AIMessage("Fixture generated source complete."),
+        ]
+    )
+    monkeypatch.setattr(service.registry, "build", lambda _: model)
+    assert (
+        asyncio.run(service.run_team("team-a", "Fixture generator"))
+        == "Fixture generated source complete."
+    )
+    assert "generated fixture implementation" in (folder / "kernel.asc").read_text(encoding="utf-8")
+    assert not any(e["kind"] == "baseline.progress.warning" for e in service.store.events())

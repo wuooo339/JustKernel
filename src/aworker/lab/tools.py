@@ -5,15 +5,36 @@ import json
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import TYPE_CHECKING
+from pathlib import Path, PurePosixPath
+from typing import TYPE_CHECKING, Literal
 
 from langchain_core.tools import tool
 
 from aworker.lab.domain import Experience, Stage, StageUpdate
+from aworker.lab.project import project_manifest
 
 if TYPE_CHECKING:
     from aworker.lab.service import LabService
+
+
+# ---- existing virtual workspace arguments become native relative paths ----
+def workspace_arguments(workspace: Path, arguments: list[str]) -> list[str]:
+    normalized = []
+    root = workspace.resolve()
+    for argument in arguments:
+        parts = PurePosixPath(argument).parts
+        if (
+            len(parts) > 2
+            and parts[0] == "/"
+            and parts[1] in {"analysis", "project", "large_tool_results"}
+        ):
+            candidate = (root / argument.lstrip("/")).resolve()
+            if not candidate.is_relative_to(root) or ".." in parts:
+                raise ValueError("virtual script argument must stay inside the team workspace")
+            if candidate.exists():
+                argument = candidate.relative_to(root).as_posix()
+        normalized.append(argument)
+    return normalized
 
 
 # ---- EngineeringTools -------------------------------------------------------
@@ -129,26 +150,63 @@ class EngineeringTools:
                 return json.dumps(result, ensure_ascii=False)
 
         @tool
-        def read_judge_status() -> str:
-            """Read public official ranking, input provenance and staged submission status."""
+        def read_judge_status(candidate_id: str = "") -> str:
+            """Read compact public status and the team's latest 3 official case results.
+
+            Use candidate_id to select another frozen receipt. No log-parsing script is needed.
+            """
             if not self.service.simulator.can_learn(self.team):
                 return json.dumps(
                     {
                         "mode": "independent-first",
                         "simulation": self.service.simulator.status(),
-                        "own_experiments": self.service.simulator.jobs(self.team),
+                        "own_experiments": [
+                            self.service.simulator.dashboard_receipt(r)
+                            for r in self.service.simulator.jobs(self.team)[:8]
+                        ],
                     },
                     ensure_ascii=False,
                 )
-            return json.dumps(self.service.judger.status(), ensure_ascii=False)
+            return json.dumps(
+                self.service.judger.model_status(self.team, candidate_id), ensure_ascii=False
+            )
 
         @tool
-        def read_judge_candidate(candidate_id: str) -> str:
-            """Read another team's frozen public candidate; pending code is not validated SOTA."""
+        def read_judge_candidate(candidate_id: str, file_path: str = "") -> str:
+            """Read complete frozen editable source; pending code is not validated SOTA.
+
+            Default includes all editable Host/Kernel files. Use an exact supporting_paths
+            entry as file_path to read unchanged template/build files separately.
+            """
             candidate = self.service.judger.code(candidate_id)
             if candidate["team"] != self.team:
                 self.service.simulator.require_learning(self.team)
-            return json.dumps(candidate, ensure_ascii=False)
+            files = candidate["files"]
+            if file_path and file_path not in files:
+                raise ValueError("choose an exact path listed in supporting_paths")
+            editable = set(project_manifest(self.service.root)["editable_paths"])
+            return json.dumps(
+                {
+                    **{
+                        k: candidate.get(k)
+                        for k in (
+                            "id",
+                            "team",
+                            "source_sha256",
+                            "case_pack_sha256",
+                            "state",
+                            "official",
+                        )
+                    },
+                    "files": {
+                        p: text
+                        for p, text in files.items()
+                        if p == file_path or not file_path and p in editable
+                    },
+                    "supporting_paths": sorted(set(files) - editable),
+                },
+                ensure_ascii=False,
+            )
 
         @tool
         async def simulate_kernel(
@@ -164,52 +222,53 @@ class EngineeringTools:
             If pending=true, end this model turn immediately with a brief queued status.
             Do not poll or edit frozen work while awaiting the job; the scheduler resumes you.
             An explicit case_ids subset is a probe and cannot satisfy the full submission gate.
-            Returns compiler diagnostics, numerical checks and real profiling file previews.
+            Returns a structured result or pending job. Use read_simulation_results with
+            section=log/profile for paged compiler diagnostics or profiling previews.
             Correct and retry failed/slower changes. Never inherit another team's measured pass.
             """
             result = await self.service.simulator.evaluate(
                 self.team, self.run_id, hypothesis, case_ids, learned_from
             )
+            if isinstance(result.get("job"), dict):
+                result = {
+                    "job": self.service.simulator.model_summary(result["job"]),
+                    "details": "Use read_simulation_results(job_id, section=log/profile) "
+                    "for paged diagnostics; no file parsing script is needed.",
+                }
             return json.dumps(result, ensure_ascii=False)
 
         @tool
-        def read_simulation_results(job_id: str = "", team: str = "") -> str:
-            """Read own experiment logs; peer learning requires an own completed simulation."""
+        def read_simulation_results(
+            job_id: str = "",
+            team: str = "",
+            section: Literal["summary", "log", "profile"] = "summary",
+            case_id: str = "",
+            offset: int = 0,
+            limit: int = 8000,
+        ) -> str:
+            """Read structured experiment results directly, without file parsing scripts.
+
+            Defaults to a compact correctness/profile summary, including when job_id is given.
+            For details request section=log, or section=profile with a listed case_id.
+            Detailed text is paged by offset/limit (max 12000 characters); follow next_offset.
+            Peer learning requires an own completed simulation. Never infer official scores.
+            """
             target = team or self.team
             if target != self.team:
                 self.service.simulator.require_learning(self.team)
+            if not job_id and (section != "summary" or case_id or offset):
+                raise ValueError("provide job_id before requesting detailed sections or offsets")
             result = (
-                self.service.simulator.logs(job_id, target)
+                self.service.simulator.model_result(job_id, target, section, case_id, offset, limit)
                 if job_id
                 else {
                     "capability": self.service.simulator.status(),
                     "jobs": [
-                        {
-                            **{
-                                key: row.get(key)
-                                for key in (
-                                    "id",
-                                    "team",
-                                    "source_sha256",
-                                    "case_pack_sha256",
-                                    "state",
-                                    "phase",
-                                    "error",
-                                    "functional_pass",
-                                    "case_ids",
-                                )
-                            },
-                            "cases": [
-                                {
-                                    key: case.get(key)
-                                    for key in ("id", "pass", "correctness", "profile_pass")
-                                }
-                                for case in row.get("cases", [])
-                            ],
-                        }
+                        self.service.simulator.dashboard_receipt(row)
                         for row in self.service.simulator.jobs(target)[:8]
                     ],
-                    "details": "Use read_simulation_results(job_id) for raw diagnostics.",
+                    "details": "Use job_id for a structured summary; section=log/profile "
+                    "returns paged diagnostics. No file parsing is needed.",
                 }
             )
             return json.dumps(result, ensure_ascii=False)
@@ -303,6 +362,9 @@ class EngineeringTools:
 
             Use evaluate_kernel for NPU compilation and measurement. This local developer tool is
             for trusted team code; it is not a hardened multi-tenant operating-system sandbox.
+            CWD is the team workspace. Existing /analysis/, /project/ and /large_tool_results/
+            arguments are mapped to workspace-relative paths on Windows, macOS and Linux.
+            Scripts should use relative paths for any literal filenames they open.
             """
             script = (self.workspace / script_path.lstrip("/")).resolve()
             if not script.is_relative_to(self.workspace.resolve()) or script.suffix != ".py":
@@ -312,6 +374,7 @@ class EngineeringTools:
             args = arguments or []
             if len(args) > 32 or any(len(a) > 4096 for a in args):
                 raise ValueError("too many or too long script arguments")
+            args = workspace_arguments(self.workspace, args)
             # Keep credentials, model endpoint configuration and inherited Python hooks out.
             environment = self.service.settings.analysis_environment()
             completed = await asyncio.to_thread(

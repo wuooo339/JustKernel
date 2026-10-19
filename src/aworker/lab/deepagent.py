@@ -31,6 +31,8 @@ from aworker.messages import last_message_text
 
 PROMPT = """You lead a JustKernel operator engineering team. All members use Deep Agents.
 Read /TEAM.md, /statement.md, /CONSTRAINTS.md and /cases.json before changing code.
+Batch independent reads. For a source file longer than 100 lines, choose a sufficient
+read_file limit (for example 1200) instead of spending many model turns paging it.
 Use the skills in /skills/ and create a write_todos plan. Divide analysis, implementation
 and review between your registered specialists when useful. You share one team workspace;
 coordinate changes to kernel.asc instead of allowing conflicting edits.
@@ -176,10 +178,16 @@ class DeepAgentRuntime:
 
         @before_model
         def shared_feedback(state, runtime):
+            warning = None
             if self.progress_guard:
-                self.progress_guard.observe()
+                warning = self.progress_guard.observe()
             existing = {m.id for m in state.get("messages", [])}
             observations = []
+            if warning:
+                observations.append(HumanMessage(content=warning))
+                self.store.event(
+                    self.team, "baseline.progress.warning", run_id=self.run_id, message=warning
+                )
             current_source = self.service.candidate(self.team)["sha256"]
             for row in self.service.simulator.jobs(self.team)[:8]:
                 identity = "own-simulation-" + row["id"]
@@ -202,7 +210,8 @@ class DeepAgentRuntime:
                             },
                             ensure_ascii=False,
                         )
-                        + "\n用 read_simulation_results(job_id) 查看原始诊断；修改后重新仿真。",
+                        + "\n用 read_simulation_results(job_id) 直接读取结构化结果，无需脚本解析。"
+                        "必要时 section=log/profile 获取分页诊断；修改后重新仿真。",
                     )
                 )
             fresh = (
@@ -273,6 +282,8 @@ class DeepAgentRuntime:
                 "No physical NPU is present. A CPU CANN simulator worker is an independent lane.\n"
                 "Each team must independently optimize its own code using simulate_kernel.\n"
                 "Start by read_simulation_results, form a hypothesis, implement, inspect_policy,\n"
+                "read_simulation_results(job_id) returns structured summaries directly. Do not\n"
+                "write scripts to parse receipts. Request section=log/profile only when needed.\n"
                 "simulate_kernel, read the actual diagnostics, repair and repeat. Never just\n"
                 "finish after static review. Missing simulator means WAIT.\n"
                 "Before your own first successful independent simulation, peer learning tools\n"
@@ -530,6 +541,8 @@ class DeepAgentRuntime:
                     (job["id"] for job in self.service.simulator.jobs(self.team)),
                     seconds=self.settings.lab_baseline_idle_seconds,
                     calls=self.settings.lab_baseline_idle_calls,
+                    grace_calls=self.settings.lab_baseline_idle_calls,
+                    grace_seconds=self.settings.lab_baseline_idle_seconds,
                 )
             self.progress_guard = guard
             if self.settings.lab_langsmith_enabled:
@@ -571,7 +584,7 @@ class DeepAgentRuntime:
                                 kind, name = event["event"], event.get("name")
                                 source = (
                                     self.service.candidate(self.team)["sha256"]
-                                    if kind == "on_tool_end" and name in {"write_file", "edit_file"}
+                                    if kind == "on_tool_end"
                                     else None
                                 )
                                 jobs = (
@@ -586,6 +599,7 @@ class DeepAgentRuntime:
                                     if kind == "on_chat_model_end"
                                     else None,
                                     check_calls=False,
+                                    check_time=False,
                                 )
                             if event["event"] == "on_chain_end" and not event.get("parent_ids"):
                                 output = event.get("data", {}).get("output")
