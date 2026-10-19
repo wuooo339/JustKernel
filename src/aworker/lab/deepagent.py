@@ -1,6 +1,7 @@
 """Unified Deep Agents execution with durable checkpoints and observable step events."""
 
 import asyncio
+import difflib
 import json
 import sqlite3
 import subprocess
@@ -51,6 +52,9 @@ Publish only measured passing code. Distill experience only when a real evidence
 Report source identity, input-pack identity, correctness, time and limitations separately.
 At meaningful milestones, emit a brief public progress note with the next action and
 observed evidence. Keep it concise; show status, code and results, not private reasoning.
+Use report_progress for 1–3 user-facing sentences at task start, after feedback and
+before a material edit or experiment. Batch it with read tools when useful. Explain
+what you observed and intend to verify, not a private reasoning transcript.
 Never claim an official score, universal speedup, or a proven cross-operator transfer.
 """
 
@@ -78,6 +82,51 @@ class DeepAgentRuntime:
         self.delegations = {}
         self.public_streams = {}
         self.progress_guard = None
+        self.call_started = {}
+        self.last_calls = {}
+        self.before_edits = {}
+
+    # ---- bounded, actual editable-file differences, independent of model claims --
+    def capture_patch(self, tool_call, failed=False):
+        before = self.before_edits.pop(tool_call, None)
+        if not before:
+            return
+        try:
+            after = self.service.candidate(self.team)
+        except (ValueError, OSError, UnicodeError) as exc:
+            self.store.event(
+                self.team,
+                "workspace.patch.unavailable",
+                run_id=self.run_id,
+                message=self.service.redact(str(exc))[:500],
+            )
+            return
+        editable = before["paths"]
+        for path in editable:
+            old, new = before["files"].get(path, ""), after["files"].get(path, "")
+            if old == new:
+                continue
+            patch = "".join(
+                difflib.unified_diff(
+                    old.splitlines(True),
+                    new.splitlines(True),
+                    fromfile="a/" + path,
+                    tofile="b/" + path,
+                    n=3,
+                )
+            )
+            self.store.event(
+                self.team,
+                "workspace.patch",
+                run_id=self.run_id,
+                tool_call=tool_call,
+                path=path,
+                source_before=before["sha256"],
+                source_sha256=after["sha256"],
+                patch=self.service.redact(patch[:16000]),
+                truncated=len(patch) > 16000,
+                tool_failed=failed,
+            )
 
     # ---- a baseline team has one coding owner; Judge is a separate service ---
     @property
@@ -471,6 +520,31 @@ class DeepAgentRuntime:
                 break
         if kind == "on_tool_start":
             data = event.get("data", {}).get("input", {})
+            if name in {"edit_file", "write_file", "run_python"}:
+                try:
+                    snapshot = self.service.candidate(self.team)
+                    editable = project_manifest(self.service.root).get("editable_paths") or [
+                        "kernel.asc"
+                    ]
+                    path = (
+                        str(data.get("file_path", data.get("path", "")))
+                        .lstrip("/")
+                        .removeprefix("project/")
+                        if isinstance(data, dict)
+                        else ""
+                    )
+                    snapshot["paths"] = (
+                        editable if name == "run_python" else [p for p in editable if p == path]
+                    )
+                    self.before_edits[str(event["run_id"])] = snapshot
+                except (ValueError, OSError, UnicodeError) as exc:
+                    # Observability must not prevent fixing a temporarily invalid source.
+                    self.store.event(
+                        self.team,
+                        "workspace.patch.unavailable",
+                        run_id=self.run_id,
+                        message=self.service.redact(str(exc))[:500],
+                    )
             if name == "task":
                 member = (
                     data.get("subagent_type", "general-purpose")
@@ -501,6 +575,7 @@ class DeepAgentRuntime:
                 agent=agent,
                 tool=name,
                 tool_call=event["run_id"],
+                model_call_id=self.last_calls.get(agent),
                 input=json.dumps(data, ensure_ascii=False, default=str)[:6000],
             )
             if name == "read_file" and isinstance(data, dict) and "/skills/" in str(data):
@@ -521,9 +596,11 @@ class DeepAgentRuntime:
                 agent=agent,
                 tool=name,
                 tool_call=event["run_id"],
+                model_call_id=self.last_calls.get(agent),
                 output=output[:6000],
                 truncated=len(output) > 6000,
             )
+            self.capture_patch(str(event["run_id"]), failed=kind == "on_tool_error")
             if name in {"read_file", "ls"}:
                 self.emit_stage(
                     Stage.INPUT,
@@ -551,18 +628,36 @@ class DeepAgentRuntime:
                     source_sha256=digest,
                 )
         elif kind == "on_chat_model_start":
+            call_id = str(event.get("run_id", "unknown"))
+            self.call_started[call_id] = time.monotonic()
+            team = next(t for t in self.store.snapshot()["teams"] if t["id"] == self.team)
+            member = next(
+                (
+                    m
+                    for m in self.store.snapshot()["members"]
+                    if m["team"] == self.team and m["name"] == agent
+                ),
+                {},
+            )
+            profile = member.get("model") or team["model"]
+            model = self.service.registry.profiles.get(profile)
             self.store.event(
                 self.team,
                 "model.started",
                 run_id=self.run_id,
-                model_call_id=str(event.get("run_id", "unknown")),
+                model_call_id=call_id,
                 agent=agent,
+                model_profile=profile,
+                model=model.model if model else profile,
+                effort=model.effort if model else None,
             )
             self.emit_stage(Stage.SEARCH, "started", "Model planning / tool selection", agent)
         elif kind == "on_chat_model_stream":
             self.public_output(event, agent)
         elif kind == "on_chat_model_end":
             call_id = str(event.get("run_id", "unknown"))
+            started = self.call_started.pop(call_id, None)
+            self.last_calls[agent] = call_id
             self.flush_public_output(call_id)
             self.public_streams.pop(call_id, None)
             output = event.get("data", {}).get("output")
@@ -576,6 +671,7 @@ class DeepAgentRuntime:
                         agent=agent,
                         model_call_id=call_id,
                         text=text[:16000],
+                        truncated=len(text) > 16000,
                     )
                 self.store.event(
                     self.team,
@@ -585,6 +681,12 @@ class DeepAgentRuntime:
                     model_call_id=call_id,
                     usage=output.usage_metadata or {},
                     finish_reason=output.response_metadata.get("finish_reason"),
+                    duration_ms=round((time.monotonic() - started) * 1000)
+                    if started is not None
+                    else None,
+                    tool_requests=[
+                        {"id": t.get("id"), "name": t.get("name")} for t in output.tool_calls
+                    ],
                 )
 
     # ---- durable execution --------------------------------------------------

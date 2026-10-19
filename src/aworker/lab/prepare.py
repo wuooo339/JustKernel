@@ -17,6 +17,8 @@ locally generated tensor values are not official hidden tensor values.
 Maintain candidate source files and your own analysis scripts and notes. In single-coder
 mode, implement directly; the independent Judger reviews immutable candidate snapshots.
 Register record_experiment_plan when a repair work item exists, then edit and test.
+Use report_progress to explain current observations and next actions in public, concise
+sentences at milestones. Keep explanations distinct from actual validation receipts.
 Optional specialists in parallel mode receive only a narrow question, not the whole task.
 Skills are in /skills/. Read their instructions when relevant.
 Use inspect_policy for source checks, simulate_kernel for the CPU CANN lane, and

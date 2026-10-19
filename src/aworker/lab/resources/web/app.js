@@ -464,7 +464,68 @@
   function evidenceButton(e) {
     return `<button class="evidence-row" data-evidence="${e.seq}"><b>${esc(e.data.agent || 'team')} / ${esc(e.data.tool || e.kind)}</b><span>${esc(String(eventSummary(e)).slice(0,280))}</span></button>`;
   }
+  // ---- durable chronological sessions, independent from the recent-event feed ----
+  const sessionCache=new Map();
+  let inspectorSession=null,expandedSession=null,expandedTeam=null;
+  const conversationDialog=$('conversationDialog');
+  function historyFor(team){
+    if(!sessionCache.has(team))sessionCache.set(team,{events:new Map(),ready:false,pending:false,before:null,more:false,checked:0,error:''});
+    return sessionCache.get(team);
+  }
+  async function loadSession(team,older=false){
+    if(live.recording||state.source!=='live')return;
+    const h=historyFor(team);if(h.pending)return;
+    if(older&&h.ready&&!h.more)return;
+    h.pending=true;h.error='';
+    try{
+      const page=await lab('/control/teams/'+encodeURIComponent(team)+'/conversation?limit=120'+(older&&h.before?'&before='+h.before:''));
+      for(const e of page.events)h.events.set(e.seq,e);
+      if(older||!h.ready){h.before=page.next_before;h.more=page.has_more;}
+      h.ready=true;h.checked=Date.now();
+    }catch(error){h.error=error.message;h.checked=Date.now();}
+    finally{h.pending=false;if(state.source==='live')renderLiveInspector();}
+  }
+  function sessionEvents(team){
+    if(live.recording)return live.events;
+    const h=historyFor(team),events=new Map(h.events);
+    for(const e of live.events)if(e.team===team&&(!h.ready||!h.before||e.seq>=h.before))events.set(e.seq,e);
+    return [...events.values()];
+  }
+  function sessionRows(team){return window.JustKernelConversation.timeline(sessionEvents(team),team,live.operations,live.recording?(live.events.at(-1)?.at||0):Date.now()/1000);}
+  function historyStatus(team){const h=historyFor(team);return live.recording?'离线回放 · 仅显示当前播放时刻的记录':h.error?'记录读取失败：'+h.error:h.pending?'正在读取工作会话…':h.more?'较早记录可继续加载':'已加载可用记录';}
+  function updateExpandedSession(){
+    if(!conversationDialog.open||!expandedTeam)return;
+    $('conversationTitle').textContent=teamLabel(expandedTeam)+' · 工作会话';
+    $('conversationHistoryStatus').textContent=historyStatus(expandedTeam);
+    expandedSession.update(sessionRows(expandedTeam));
+  }
+  function renderSession(team,container){
+    if(container.dataset.sessionTeam!==team||!container.querySelector('.session-scroll')){
+      container.dataset.sessionTeam=team;
+      container.innerHTML='<div class="session-toolbar"><button type="button" class="text-button" data-session-expand>展开会话 ↗</button><button type="button" class="text-button" data-session-older>更早记录</button><button type="button" class="text-button" data-session-follow>跟随最新 ↓</button></div><p class="session-history-status"></p><div class="session-scroll"></div>';
+      inspectorSession=new window.JustKernelConversation.View(container.querySelector('.session-scroll'));
+    }
+    const h=historyFor(team);
+    if(!live.recording&&!h.pending&&Date.now()-h.checked>20000){h.checked=Date.now();void loadSession(team);}
+    container.querySelector('.session-history-status').textContent=historyStatus(team);
+    container.querySelector('[data-session-older]').disabled=live.recording||h.pending||h.ready&&!h.more;
+    inspectorSession.update(sessionRows(team));
+  }
+  function sessionAction(event,expanded=false){
+    const team=expanded?expandedTeam:activeTeam()?.id;if(!team)return;
+    if(event.target.closest('[data-session-expand]')){
+      expandedTeam=team;
+      if(!expandedSession)expandedSession=new window.JustKernelConversation.View($('conversationExpanded'));
+      conversationDialog.showModal();updateExpandedSession();
+    }
+    if(event.target.closest('[data-session-older]'))void loadSession(team,true);
+    if(event.target.closest('[data-session-follow]'))(expanded?expandedSession:inspectorSession)?.latest();
+    const seq=Number(event.target.closest('[data-evidence]')?.dataset.evidence);
+    if(seq){const evidence=sessionEvents(team).find(e=>e.seq===seq);if(evidence)showEvidence(evidence);else toast('当前记录中没有该事件。');}
+  }
+  conversationDialog.addEventListener('click',e=>sessionAction(e,true));
   function renderLiveInspector() {
+    updateExpandedSession();
     const team = activeTeam(), slot = state.selected, model = profile(team);
     $('agentAvatar').textContent = team?pad(slot):'—'; $('agentName').textContent = team?teamLabel(team):'暂无团队';
     $('agentModel').textContent = model?model.model+(model.effort?' · '+model.effort:''):'';
@@ -517,23 +578,7 @@
         $('messageDialog').showModal();
       };
     } else {
-      const run = currentRun(team);
-      const oldOutput=$('inspectorContent').querySelector('.monitor-stream');
-      const keepTop=oldOutput?.scrollTop||0,atBottom=!oldOutput||oldOutput.scrollHeight-oldOutput.scrollTop-oldOutput.clientHeight<24;
-      const parentTop=$('inspectorContent').scrollTop;
-      const toolOpen=$('inspectorContent').querySelector('.monitor-tool')?.open??true,rawOpen=$('inspectorContent').querySelector('.monitor-raw')?.open||false;
-      const sim=monitor.simulation,simState={queued:'排队中',running:'执行中',completed:'本次通过',failed:'失败，需修正',cancelled:'未执行，已取消'};
-      const simTotal=sim?.requested_cases??sim?.case_ids?.length??0,fullTotal=live.challenge?.cases?.length||15;
-      const simPassed=sim?.passed_cases??(sim?.cases||[]).filter(c=>c.pass).length;
-      $('inspectorContent').innerHTML = roster +
-        `<section class="monitor-output"><div class="monitor-section-title"><b>${esc(monitor.agent)} · 公开输出</b><span>${monitor.modelBusy?'正在接收':'最近一次'}</span></div><pre class="monitor-stream">${esc(monitor.text|| (monitor.tools.length?'模型正在生成工具请求，展开下方查看参数。':monitor.modelBusy?'模型调用进行中，尚无公开输出；收到后实时显示。':'暂无公开文本，执行步骤见下方。'))}</pre>${monitor.tools.length?`<details class="monitor-tool"${toolOpen?' open':''}><summary>工具请求 · ${esc(monitor.tools.map(t=>t.name||'生成中').join(' / '))}</summary>${monitor.tools.map(t=>`<b>${esc(t.name||'工具名接收中')}</b><pre>${esc(t.args)}</pre>`).join('')}</details>`:''}${monitor.truncated?'<small>当前展示已截取；完整工程保留在源码中。</small>':''}</section>`+
-        (sim?`<div class="monitor-simulation"><b>本队独立仿真 · ${esc(monitor.simulatorOffline?'心跳中断，等待恢复':simState[sim.state]||sim.state)}</b><span>本次 ${simPassed}/${simTotal} · 全套 ${fullTotal} 个暂拟点${simTotal<fullTotal?' · 子集探针，未覆盖全套':''}</span><span>${esc(monitor.simulationPhase)} · ${esc(sim.source_sha256?.slice(0,8)||'')} · 官方对应待确认</span></div>`:'')+
-        `<div class="monitor-section-title"><b>实际执行步骤</b><span>点击查看证据</span></div><div class="monitor-steps">${monitor.steps.length?monitor.steps.map(s=>`<button class="monitor-step ${s.state==='执行失败'?'failed':''}" data-evidence="${s.evidence||s.seq}"><span class="monitor-step-time">${new Date(s.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'})}</span><span><b>${esc(s.title)}</b><small>${esc(s.agent)}${s.detail?' · '+esc(s.detail):''}</small></span><em>${esc(s.state)}</em></button>`).join(''):'<p class="dim">等待实际任务，不生成示意步骤。</p>'}</div>`+
-        (run?.trace_url&&/^https:\/\//.test(run.trace_url)?`<a class="trace-link" href="${esc(run.trace_url)}" target="_blank" rel="noreferrer">在 LangSmith 查看完整数据流 ↗</a>`:'')+
-        `<details class="monitor-raw"${rawOpen?' open':''}><summary>原始事件记录</summary>${related.slice(-30).reverse().map(evidenceButton).join('')}</details>`;
-      const output=$('inspectorContent').querySelector('.monitor-stream');
-      if(output)output.scrollTop=atBottom?output.scrollHeight:keepTop;
-      $('inspectorContent').scrollTop=parentTop;
+      renderSession(team.id, $('inspectorContent'));
     }
   }
   function renderLiveKnowledge() {
@@ -626,6 +671,7 @@
   function stopLive() {
     live.replayClock=null;$('replayBar').hidden=true;$('replayCurrent').disabled=false;
     liveGeneration++;
+    sessionCache.clear();conversationDialog.close();
     live.recording=null; for(const id of ['playButton','teamButton','evaluateButton','resetButton'])$(id).disabled=false;
     live.stream?.close(); live.stream = null;
     clearInterval(live.timer); live.timer = null;
@@ -848,8 +894,7 @@
   $('inspectorContent').addEventListener('click',(event)=>{
     const name=event.target.closest('[data-monitor-team]')?.dataset.monitorTeam;
     if(name){const index=visibleTeams().findIndex(t=>t.id===name);if(index>=0){state.selected=index+1;state.tab='path';renderAll();}return;}
-    const seq=Number(event.target.closest('[data-evidence]')?.dataset.evidence);
-    if(seq)showEvidence(live.events.find((e)=>e.seq===seq));
+    sessionAction(event);
   });
   $('realResults').addEventListener('click',async(event)=>{
     const key=event.target.closest('[data-public]')?.dataset.public;

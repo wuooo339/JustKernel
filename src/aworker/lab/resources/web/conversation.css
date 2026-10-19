@@ -1,0 +1,29 @@
+/* Public work sessions share the existing workbench palette. */
+.inspector-content:has(.session-scroll){display:flex;flex-direction:column;overflow:hidden;padding:0;gap:0}
+.session-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:8px 12px;border-bottom:1px solid var(--line,#283845)}
+.session-toolbar button{font-size:12px;white-space:nowrap}.session-toolbar>span{font-size:12px;color:#8ba2b6}
+.session-history-status{padding:0 12px;margin:4px 0;color:#8ba2b6;font-size:11px;flex:none}
+.session-scroll{overflow:auto;min-height:0;flex:1;padding:12px 14px;font-size:13px;line-height:1.65;scrollbar-gutter:stable;overflow-anchor:none;color:#c5d4df}
+.session-scroll details{margin:8px 0;border:0}.session-scroll summary{cursor:pointer;overflow-wrap:anywhere;list-style-position:inside}
+.session-call>summary{position:relative;display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:10px 0 10px 18px;border-top:1px solid #273541}
+.session-call>summary:before{content:'›';position:absolute;left:0;top:10px;color:#e5a67d}.session-call[open]>summary:before{transform:rotate(90deg)}
+.session-call-title{color:#e5a67d;font-size:14px;font-weight:600}.session-call-title span{font-size:12px;color:#8da5ba;font-weight:400}
+.session-call summary small{grid-column:1 / -1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#90a6b8;font-size:12px;font-weight:400}
+.session-call summary em,.session-tool summary em{font-style:normal;font-size:11px;color:#8da5ba;align-self:center}
+.session-call-body{border-left:1px solid #304553;margin-left:4px;padding:2px 0 6px 13px}
+.session-meta{font-size:11px;color:#819bb0;overflow-wrap:anywhere;margin:4px 0 8px}
+.session-prose{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8;margin:6px 0 12px;font-family:inherit;font-size:13px}
+.session-note{margin:8px 0}.session-note>b{font-size:12px;color:#afc7d9}.session-next{color:#91b99e;white-space:pre-wrap;overflow-wrap:anywhere}
+.session-muted{color:#8194a4;font-size:12px;line-height:1.7}
+.session-tool{padding:7px 10px;background:#111a23;border-radius:4px}.session-tool>summary{display:flex;justify-content:space-between;gap:12px;color:#abc7db;font-size:12px}
+.session-tool pre,.session-diff{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.65;padding:10px;background:#0b1117;max-height:380px;overflow:auto;font-family:ui-monospace,Consolas,monospace}
+.session-tool b{font-size:11px;color:#8098ad}.session-diff span.added{color:#a0ceb1}.session-diff span.removed{color:#db9696}
+.session-patch>summary{color:#a3c9af;font-size:12px}.session-notice{border-left:2px solid #6d9d91;padding:2px 12px;margin:14px 0}.session-notice.failed{border-color:#d49b79}
+.session-round{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px;border-top:1px solid #344957;padding:16px 0 4px;margin-top:12px;color:#8eacc1;font-size:11px}
+.conversation-dialog{width:min(1120px,95vw);max-width:95vw;height:90dvh;max-height:94dvh;padding:0;background:#0e151d;color:#c5d4df}
+.conversation-dialog[open]{display:flex;flex-direction:column}.conversation-dialog .dialog-heading{flex:none}.conversation-dialog .session-scroll{padding:12px 28px;font-size:14px}.conversation-dialog .session-prose{font-size:14px}
+.official-cases-scroll{overflow:auto;max-height:60dvh}.official-cases{width:100%;min-width:490px;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums}
+.official-cases th{text-align:left;color:#9db7cc;font-weight:500;white-space:nowrap;position:sticky;top:0;background:#111b25}
+.official-cases td,.official-cases th{padding:9px 10px;border-bottom:1px solid #263642}.official-cases td:not(:nth-child(2)){text-align:right}.official-cases th:not(:nth-child(2)){text-align:right}
+.official-cases .case-failed{color:#eab08b;background:#b97d4810}.official-case-details{margin:12px 0}.official-case-details summary{color:#a8c4d8;cursor:pointer}
+@media(max-width:650px){.session-toolbar>span{display:none}.conversation-dialog .session-scroll{padding:10px 14px}}

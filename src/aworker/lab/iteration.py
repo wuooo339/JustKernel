@@ -11,6 +11,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from aworker.lab.persistence import replace_file, serialized
+from aworker.lab.receipts import official_case_results
 from aworker.lab.store import identifier
 
 
@@ -122,6 +123,13 @@ class IterationController:
             if latest
             else [],
             "local_input_mapping": "unconfirmed; official IDs are not local case_ids",
+            "official_case_results": official_case_results(
+                latest["official"],
+                self.service.judger.read("latest.json", {}).get("official_testcase_ids"),
+            )
+            if latest
+            else [],
+            "official_time_unit": "us",
         }
         rejected = next(
             (
@@ -148,6 +156,19 @@ class IterationController:
             evidence["source_review"] = task["evidence"]["source_review"]
         capability = self.service.simulator.status()
         context = [capability.get("case_pack_sha256"), capability.get("worker_sha256")]
+        if task:
+            # Enrich an existing receipt without abandoning an in-flight experiment.
+            # Changed values on an already known receipt still create fresh evidence.
+            additions = {
+                k: evidence[k]
+                for k in ("official_case_results", "official_time_unit")
+                if k not in task["evidence"]
+            }
+            if additions and all(
+                task["evidence"].get(k) == v for k, v in evidence.items() if k not in additions
+            ):
+                task["evidence"].update(additions)
+                self.write(task)
         changed = (
             not task
             or task["evidence"] != evidence

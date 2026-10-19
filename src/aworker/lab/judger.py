@@ -17,6 +17,7 @@ from aworker.lab.judge_browser import JudgeBrowser
 from aworker.lab.notices import NoticeOutbox
 from aworker.lab.persistence import replace_file, serialized
 from aworker.lab.project import project_manifest, source_identity
+from aworker.lab.receipts import official_case_results
 from aworker.lab.store import identifier
 
 
@@ -104,6 +105,9 @@ class JudgeMonitor:
             item["official"] = {k: official.get(k) for k in ("status", "score", "rank")}
             if row["id"] in detailed:
                 item["official"]["result"] = official.get("result", [])
+                item["official_case_results"] = official_case_results(
+                    official, status["snapshot"].get("official_testcase_ids")
+                )
                 review = row.get("review") or {}
                 item["review"] = {
                     "ready": review.get("ready"),
@@ -365,11 +369,15 @@ class JudgeMonitor:
                 k: row.get(k)
                 for k in ("id", "team", "source_sha256", "official_submission_id", "binding")
             }
-            evidence["official"] = {k: result.get(k) for k in ("status", "score", "result")}
+            evidence["official"] = {k: result.get(k) for k in ("status", "score")}
+            evidence["official_case_results"] = official_case_results(
+                result, self.read("latest.json", {}).get("official_testcase_ids")
+            )
+            evidence["official_time_unit"] = "us"
             encoded = json.dumps(evidence, sort_keys=True, ensure_ascii=False)
             digest = hashlib.sha256(encoded.encode()).hexdigest()
             message = (
-                "Judger 实际回执：" + encoded[:6500] + "\n这是冻结版本的结果；学习后继续各自分支。"
+                "Judger 实际回执：" + encoded + "\n这是冻结版本的结果；学习后继续各自分支。"
                 "未测候选不是已验证 SOTA。"
             )
             self.notices.enqueue("judge-feedback", row["id"], message, teams)
@@ -549,6 +557,9 @@ class JudgeMonitor:
                     source_sha256=row["source_sha256"],
                     binding=row.get("binding", "user-reported"),
                     official=result,
+                    official_testcase_ids=self.read("latest.json", {}).get(
+                        "official_testcase_ids", []
+                    ),
                 )
             updates[row["id"]] = row
         if updates and root == self.service.root:

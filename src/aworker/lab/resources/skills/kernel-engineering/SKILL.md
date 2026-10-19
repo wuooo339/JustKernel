@@ -9,6 +9,8 @@ Read /project-manifest.json when present. Only edit its editable_paths under /pr
 never modify protected build files, test programs or evaluation infrastructure.
 For a repair work item, register one concrete hypothesis with record_experiment_plan:
 evidence, intended change, original validation criteria, and explicit local case_ids.
+Use report_progress for short user-facing updates after feedback and before material
+edits/tests; publish observations and intent, not a private reasoning transcript.
 Implement directly in single-coder mode. Independent Judger reviews frozen source.
 Optional specialists in parallel mode answer narrow questions, not a repeated full task.
 Keep an explanation that follows general capacity, alignment, dtype or data dependencies.

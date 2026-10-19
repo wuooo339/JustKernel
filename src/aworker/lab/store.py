@@ -29,6 +29,7 @@ class LabStore:
                 CREATE TABLE IF NOT EXISTS events (
                     seq INTEGER PRIMARY KEY AUTOINCREMENT, at REAL NOT NULL,
                     team TEXT NOT NULL, kind TEXT NOT NULL, data TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS events_team_seq ON events(team,seq);
                 CREATE TABLE IF NOT EXISTS devices (
                     id TEXT PRIMARY KEY, host TEXT NOT NULL, device INTEGER NOT NULL,
                     UNIQUE(host, device));
@@ -87,6 +88,68 @@ class LabStore:
                 (after, min(max(limit, 1), 2000)),
             ).fetchall()
         return [{**dict(r), "data": json.loads(r["data"])} for r in rows]
+
+    # ---- paginated public work session, excluding provider/harness internals --
+    def conversation(self, team: str, before: int | None = None, limit: int = 120) -> dict:
+        identifier(team)
+        if before is not None and before < 1:
+            raise ValueError("before must be a positive event cursor")
+        limit = min(max(limit, 1), 300)
+        kinds = (
+            "control.started",
+            "control.completed",
+            "control.failed",
+            "control.cancelled",
+            "team.turn.started",
+            "team.turn.completed",
+            "team.turn.failed",
+            "team.turn.cancelled",
+            "model.started",
+            "model.completed",
+            "agent.message",
+            "agent.progress",
+            "tool.started",
+            "tool.completed",
+            "tool.failed",
+            "tool.recoverable_error",
+            "workspace.patch",
+            "iteration.planned",
+            "iteration.blocked",
+            "iteration.updated",
+            "simulation.status.updated",
+            "judge.submitted",
+            "judge.submission.updated",
+        )
+        query = (
+            "SELECT * FROM events WHERE team=? AND kind IN (" + ",".join("?" for _ in kinds) + ")"
+        )
+        args = [team, *kinds]
+        if before is not None:
+            query += " AND seq<?"
+            args.append(before)
+        with self.connection() as db:
+            if not db.execute("SELECT 1 FROM teams WHERE id=?", (team,)).fetchone():
+                raise ValueError("unknown registered team")
+            rows = db.execute(query + " ORDER BY seq DESC LIMIT ?", (*args, limit + 1)).fetchall()
+        page = list(reversed(rows[:limit]))
+        return {
+            "team": team,
+            "has_more": len(rows) > limit,
+            "next_before": page[0]["seq"] if page else None,
+            "latest": page[-1]["seq"] if page else 0,
+            "events": [
+                {
+                    **dict(row),
+                    "data": {
+                        k: v
+                        for k, v in json.loads(row["data"]).items()
+                        if k
+                        not in {"reasoning_content", "reasoning", "thinking", "additional_kwargs"}
+                    },
+                }
+                for row in page
+            ],
+        }
 
     # ---- bounded live bootstrap; complete history remains in the journal ----
     def dashboard_events(self, limit: int = 1500) -> dict:

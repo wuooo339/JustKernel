@@ -13,6 +13,7 @@ from langchain_core.tools import tool
 from aworker.lab.domain import Experience, Stage, StageUpdate
 from aworker.lab.iteration import ExperimentPlan
 from aworker.lab.project import project_manifest
+from aworker.lab.receipts import official_case_results
 
 if TYPE_CHECKING:
     from aworker.lab.service import LabService
@@ -50,6 +51,30 @@ class EngineeringTools:
 
     # ---- tool construction --------------------------------------------------
     def build(self, read_only: bool = False, role: str | None = None):
+        @tool
+        def report_progress(summary: str, next_action: str = "") -> str:
+            """Publish a concise user-facing update about evidence, current intent and next action.
+
+            Use 1–3 sentences at task start, after feedback and before a material code/test action.
+            This is a public explanation, never private reasoning or an invented test result.
+            It does not change validation state or count as code/experiment progress.
+            Can be batched with independent read tools. Actual outcomes remain separate receipts.
+            """
+            if not 5 <= len(summary.strip()) <= 2000 or len(next_action) > 1200:
+                raise ValueError("summary must contain 5–2000 characters; next_action at most 1200")
+            update = {
+                "summary": self.service.redact(summary),
+                "next_action": self.service.redact(next_action),
+            }
+            seq = self.service.store.event(
+                self.team,
+                "agent.progress",
+                run_id=self.run_id,
+                agent=role or "coordinator",
+                **update,
+            )
+            return json.dumps({"published": True, "seq": seq, **update}, ensure_ascii=False)
+
         @tool
         def record_experiment_plan(
             evidence: str,
@@ -200,13 +225,22 @@ class EngineeringTools:
                         ],
                         "own_official": [
                             {
-                                k: r.get(k)
-                                for k in (
-                                    "id",
-                                    "source_sha256",
-                                    "official_submission_id",
-                                    "official",
-                                )
+                                **{
+                                    k: r.get(k)
+                                    for k in (
+                                        "id",
+                                        "source_sha256",
+                                        "official_submission_id",
+                                        "official",
+                                    )
+                                },
+                                "official_case_results": official_case_results(
+                                    r.get("official") or {},
+                                    self.service.judger.read("latest.json", {}).get(
+                                        "official_testcase_ids"
+                                    ),
+                                ),
+                                "official_time_unit": "us",
                             }
                             for r in sorted(own, key=lambda r: r.get("created", 0), reverse=True)[
                                 :3
@@ -451,6 +485,7 @@ class EngineeringTools:
             )
 
         common = [
+            report_progress,
             read_simulation_results,
             inspect_policy,
             list_public_results,

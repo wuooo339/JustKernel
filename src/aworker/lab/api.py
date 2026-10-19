@@ -213,6 +213,12 @@ def create_lab_app(service: LabService) -> FastAPI:
     async def source(team: str):
         return service.candidate(team)
 
+    @api.get("/control/teams/{team}/conversation")
+    def conversation(team: str, before: int | None = None, limit: int = 120):
+        return JSONResponse(
+            service.store.conversation(team, before, limit), headers={"Cache-Control": "no-store"}
+        )
+
     @api.post("/control/teams")
     async def join(request: JoinTeamRequest):
         service.join(request.team, request.runtime, request.model)

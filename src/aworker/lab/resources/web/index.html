@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="visualization.css">
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="workbench.css">
+  <link rel="stylesheet" href="conversation.css">
 </head>
 <body>
 <main class="terminal" id="terminal">
@@ -153,8 +154,10 @@
 <dialog id="messageDialog"><div class="dialog-heading"><span>// team collaboration</span><button class="close-dialog" aria-label="关闭">×</button></div><form id="messageForm" class="control-form"><h2>跨团队通信</h2><label>接收团队<select id="messageTeam" required></select></label><label>消息<textarea id="messageText" rows="4" required></textarea></label><button class="primary-button" type="submit">发送并记录</button></form></dialog>
 <dialog id="eventDialog"><div class="dialog-heading"><span>记录详情</span><button class="close-dialog" aria-label="关闭">×</button></div><div id="friendlyEvidence" class="friendly-evidence"></div><details class="raw-evidence"><summary>查看原始记录</summary><pre id="eventDetail" class="event-detail"></pre></details></dialog>
 <div id="toast" class="toast" role="status"></div>
+<dialog id="conversationDialog" class="conversation-dialog"><div class="dialog-heading"><span id="conversationTitle">团队工作会话</span><button class="close-dialog" aria-label="关闭">×</button></div><div class="session-toolbar"><button type="button" class="text-button" data-session-older>更早记录</button><span>公开说明 · 实际操作 · 实验反馈</span><button type="button" class="text-button" data-session-follow>跟随最新 ↓</button></div><p class="session-history-status" id="conversationHistoryStatus"></p><div id="conversationExpanded" class="session-scroll"></div></dialog>
 <script src="visualization.js"></script>
 <script src="activity.js"></script>
+<script src="conversation.js"></script>
 <script src="app.js"></script>
 <script src="vendor/xterm.js"></script>
 <script src="workbench.js"></script>
