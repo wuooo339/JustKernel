@@ -570,6 +570,7 @@ def test_real_deep_agent_selector_graph_reviews_and_nominates_one_snapshot(lab, 
             "read_candidate",
             "review_candidate",
             "nominate_candidate",
+            "read_file",
         }
         for names in offered
     )

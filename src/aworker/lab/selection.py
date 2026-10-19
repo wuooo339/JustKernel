@@ -6,6 +6,7 @@ import json
 import time
 
 from deepagents import create_deep_agent
+from deepagents.middleware.filesystem import FilesystemMiddleware
 from langchain.agents.middleware import ToolErrorMiddleware, wrap_model_call
 from langchain_core.tools import tool
 
@@ -22,6 +23,7 @@ async def selector_artifact_tools(request, handler):
         "read_candidate",
         "review_candidate",
         "nominate_candidate",
+        "read_file",
     }
     tools = [t for t in request.tools if getattr(t, "name", None) in allowed]
     return await handler(request.override(tools=tools))
@@ -174,12 +176,15 @@ class CandidateSelector:
                             )
                         }
                         | {
-                            "simulation": self.service.simulator.evidence(
-                                r["team"],
-                                r["source_sha256"],
-                                r["case_pack_sha256"],
-                                require_coverage=True,
-                            )
+                            "simulation": self.service.simulator.dashboard_receipt(
+                                self.service.simulator.evidence(
+                                    r["team"],
+                                    r["source_sha256"],
+                                    r["case_pack_sha256"],
+                                    require_coverage=True,
+                                )
+                                or {}
+                            ),
                         }
                         for r in self.pool()
                     ],
@@ -204,10 +209,30 @@ class CandidateSelector:
             )
 
         @tool
-        def read_candidate(candidate_id: str) -> str:
-            """Read immutable source, including the verified champion, before deciding."""
+        def read_candidate(candidate_id: str, file_path: str = "") -> str:
+            """Read complete editable Host/Kernel files from the immutable ZIP.
+
+            Default returns all editable implementations, sufficient to review the source.
+            Use an exact supporting_paths entry as file_path for unchanged template/build files.
+            """
             candidate = self.monitor.code(candidate_id)
-            read.add((candidate_id, candidate["source_sha256"]))
+            files = candidate["files"]
+            if file_path:
+                if file_path not in files:
+                    raise ValueError("Use an exact path listed in supporting_paths.")
+                candidate = {
+                    "source_sha256": candidate["source_sha256"],
+                    "files": {file_path: files[file_path]},
+                }
+            else:
+                editable = set(project_manifest(root)["editable_paths"])
+                read.add((candidate_id, candidate["source_sha256"]))
+                candidate = {
+                    "id": candidate_id,
+                    "source_sha256": candidate["source_sha256"],
+                    "files": {p: text for p, text in files.items() if p in editable},
+                    "supporting_paths": sorted(set(files) - editable),
+                }
             return json.dumps(candidate, ensure_ascii=False)
 
         @tool
@@ -261,7 +286,8 @@ Only the backend can submit. Finish with a short public decision summary.
             prompt += (
                 "\nEligible candidates have matching own simulation evidence\n"
                 "covering the default provisional local cases. Compare its actual correctness,\n"
-                "profiling CSV previews and changes; simulator data is never an official score.\n"
+                "representative profile pass states and changes; simulator data is never an "
+                "official score.\n"
                 "Prefer evidence of a general improvement, not source-only performance guesses.\n"
             )
         try:
@@ -275,7 +301,11 @@ Only the backend can submit. Finish with a short public decision summary.
                     nominate_candidate,
                 ],
                 system_prompt=prompt,
-                middleware=[ToolErrorMiddleware(recover), selector_artifact_tools],
+                middleware=[
+                    FilesystemMiddleware(tools=["read_file"], tool_token_limit_before_evict=None),
+                    ToolErrorMiddleware(recover),
+                    selector_artifact_tools,
+                ],
                 name="justkernel-selector",
             )
             async with asyncio.timeout(self.service.settings.lab_selector_timeout):
