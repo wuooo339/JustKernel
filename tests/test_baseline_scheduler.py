@@ -2,6 +2,7 @@
 
 import asyncio
 
+import pytest
 from pydantic import SecretStr
 from test_judge_automation import lab as lab
 
@@ -39,9 +40,13 @@ def test_baseline_can_bind_qwen_without_overwriting_existing_work(lab):
 
 
 # ---- a terminal billing/auth failure blocks subsequent dispatch until resumption ----
-def test_balance_failure_stops_retries_and_explicit_resume_can_try_again(lab, monkeypatch):
+@pytest.mark.parametrize(
+    "error",
+    ["Error code: 402 Insufficient Balance", "BASELINE_NO_PROGRESS: no source or new experiment"],
+)
+def test_terminal_failure_stops_retries_and_explicit_resume_can_try_again(lab, monkeypatch, error):
     lab.store.operation("fixture-failed", "gpt-001", "run")
-    lab.store.operation_finished("fixture-failed", "failed", "Error code: 402 Insufficient Balance")
+    lab.store.operation_finished("fixture-failed", "failed", error)
     lab.swarm.write(
         {"enabled": True, "progress": {"gpt-001": {"operation_id": "fixture-failed", "turns": 1}}}
     )

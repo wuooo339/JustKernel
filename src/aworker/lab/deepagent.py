@@ -10,7 +10,12 @@ from uuid import UUID
 
 from deepagents import FilesystemPermission, create_deep_agent
 from deepagents.middleware import FilesystemMiddleware
-from langchain.agents.middleware import TodoListMiddleware, ToolErrorMiddleware, before_model
+from langchain.agents.middleware import (
+    TodoListMiddleware,
+    ToolErrorMiddleware,
+    before_model,
+    wrap_tool_call,
+)
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.tracers.langchain import LangChainTracer
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -18,7 +23,9 @@ from langsmith import Client, tracing_context
 
 from aworker.lab.domain import Stage, StageUpdate
 from aworker.lab.filesystem import UTF8FilesystemBackend
+from aworker.lab.progress import BaselineProgressGuard
 from aworker.lab.project import project_manifest
+from aworker.lab.tool_arguments import normalize_arguments
 from aworker.lab.tools import EngineeringTools
 from aworker.messages import last_message_text
 
@@ -65,6 +72,7 @@ class DeepAgentRuntime:
         self.context = EngineeringTools(service, team, run_id, self.workspace)
         self.delegations = {}
         self.public_streams = {}
+        self.progress_guard = None
 
     # ---- batched public output; never inspect private reasoning fields -------
     def flush_public_output(self, call_id):
@@ -123,6 +131,25 @@ class DeepAgentRuntime:
                 source.backup(target)
         return destination
 
+    # ---- normalize known provider aliases before schema validation -----------
+    def argument_middleware(self):
+        @wrap_tool_call
+        async def normalized_tool_arguments(request, handler):
+            call = request.tool_call
+            arguments = normalize_arguments(call["name"], call["args"])
+            if arguments != call["args"]:
+                self.store.event(
+                    self.team,
+                    "tool.arguments.normalized",
+                    run_id=self.run_id,
+                    tool=call["name"],
+                    fields=list(arguments),
+                )
+                request = request.override(tool_call={**call, "args": arguments})
+            return await handler(request)
+
+        return normalized_tool_arguments
+
     # ---- graph construction -------------------------------------------------
     def tool_error(self, exc, request):
         if not isinstance(exc, (ValueError, OSError, subprocess.SubprocessError)):
@@ -149,12 +176,16 @@ class DeepAgentRuntime:
 
         @before_model
         def shared_feedback(state, runtime):
+            if self.progress_guard:
+                self.progress_guard.observe()
             existing = {m.id for m in state.get("messages", [])}
             observations = []
+            current_source = self.service.candidate(self.team)["sha256"]
             for row in self.service.simulator.jobs(self.team)[:8]:
                 identity = "own-simulation-" + row["id"]
                 if (
                     row["state"] not in {"completed", "failed"}
+                    or row.get("source_sha256") != current_source
                     or identity in existing
                     or identity in seen
                 ):
@@ -311,6 +342,7 @@ class DeepAgentRuntime:
                     "skills": ["/skills/"],
                     "middleware": [
                         self.inbox_middleware(member["name"]),
+                        self.argument_middleware(),
                         ToolErrorMiddleware(self.tool_error),
                         FilesystemMiddleware(
                             backend=backend,
@@ -328,6 +360,7 @@ class DeepAgentRuntime:
             tools=self.context.build(),
             middleware=[
                 self.inbox_middleware("coordinator"),
+                self.argument_middleware(),
                 TodoListMiddleware(),
                 ToolErrorMiddleware(self.tool_error),
             ],
@@ -489,6 +522,16 @@ class DeepAgentRuntime:
         client, callbacks, trace_url = None, [], None
         output = None
         try:
+            plan = self.service.swarm.read()
+            guard = None
+            if plan.get("strategy", "baseline") == "baseline" and plan.get("enabled"):
+                guard = BaselineProgressGuard(
+                    self.service.candidate(self.team)["sha256"],
+                    (job["id"] for job in self.service.simulator.jobs(self.team)),
+                    seconds=self.settings.lab_baseline_idle_seconds,
+                    calls=self.settings.lab_baseline_idle_calls,
+                )
+            self.progress_guard = guard
             if self.settings.lab_langsmith_enabled:
                 if not self.settings.lab_langsmith_api_key:
                     raise ValueError("LangSmith is enabled but its API key is missing")
@@ -524,6 +567,26 @@ class DeepAgentRuntime:
                             version="v2",
                         ):
                             self.observable(event)
+                            if guard:
+                                kind, name = event["event"], event.get("name")
+                                source = (
+                                    self.service.candidate(self.team)["sha256"]
+                                    if kind == "on_tool_end" and name in {"write_file", "edit_file"}
+                                    else None
+                                )
+                                jobs = (
+                                    [job["id"] for job in self.service.simulator.jobs(self.team)]
+                                    if kind == "on_tool_end" and name == "simulate_kernel"
+                                    else []
+                                )
+                                guard.observe(
+                                    source=source,
+                                    jobs=jobs,
+                                    call=str(event["run_id"])
+                                    if kind == "on_chat_model_end"
+                                    else None,
+                                    check_calls=False,
+                                )
                             if event["event"] == "on_chain_end" and not event.get("parent_ids"):
                                 output = event.get("data", {}).get("output")
             answer = (

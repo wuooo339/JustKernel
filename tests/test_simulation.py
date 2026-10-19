@@ -76,6 +76,22 @@ def fixture_receipt(service, team="gpt-001", state="completed"):
 
 
 # ---- independent ownership and source/input integrity -----------------------
+def test_simulation_index_is_bounded_without_large_profiler_previews(lab, monkeypatch):
+    record = fixture_receipt(lab)
+    record["cases"][0]["profiling_files"] = [{"preview": "large-explicit-fixture" * 5000}]
+    monkeypatch.setattr(lab.simulator, "jobs", lambda team=None: [record] * 30)
+    reader = next(
+        t
+        for t in EngineeringTools(lab, "gpt-001", "fixture", lab.team_folder("gpt-001")).build()
+        if t.name == "read_simulation_results"
+    )
+    output = json.loads(reader.invoke({}))
+    assert len(output["jobs"]) == 8
+    assert output["jobs"][0]["cases"][0]["pass"]
+    assert "large-explicit-fixture" not in json.dumps(output)
+    assert "job_id" in output["details"]
+
+
 def test_expanding_input_range_invalidates_an_otherwise_complete_cached_proof(lab):
     path = lab.root / "challenge/cases.json"
     cases = json.loads(path.read_text(encoding="utf-8"))

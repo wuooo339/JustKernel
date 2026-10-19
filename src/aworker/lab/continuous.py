@@ -164,12 +164,16 @@ class ContinuousSwarm:
                         "incorrect api key",
                         "error code: 402",
                         "error code: 401",
+                        "baseline_no_progress",
                     )
                 )
             ):
-                data.update(
-                    enabled=False, blocked_reason="模型额度或认证失败，请修复连接并测试后重新启动。"
+                reason = (
+                    "主队分析无源码变化或新实验，已停止派发；检查工具错误并缩小任务后恢复。"
+                    if "baseline_no_progress" in error
+                    else "模型额度或认证失败，请修复连接并测试后重新启动。"
                 )
+                data.update(enabled=False, blocked_reason=reason)
                 state["credential_failure"] = prior["id"]
                 self.write(data)
                 self.service.store.event(

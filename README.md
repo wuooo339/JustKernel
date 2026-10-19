@@ -92,6 +92,8 @@ uv run python tools/import_official_template.py --zip /path/to/official-template
 
 主队先读取最近失败回执，每轮修一个问题并做针对性探针；探针通过后运行完整本地点与固定代表点仿真，再经独立审查、精选官测，根据真实反馈继续修正。认证错误或余额不足会暂停派发，修复并测试连接后可手动恢复，不会无限空转。单队与多队均使用同一验证门槛；本地通过不代表官方通过。
 
+单队模式默认在 **5分钟或12次模型响应仍无算子源码变化、无新仿真实验**时停止本轮并暂停派发，写分析文件和重复读取旧结果不会重置计数。源码、模型会话和已排队的仿真实验保留。可通过 `AWORKER_LAB_BASELINE_IDLE_SECONDS` / `AWORKER_LAB_BASELINE_IDLE_CALLS` 调整；这不是模型输出长度限制。工具列表默认返回最近8次实验摘要，按实验 ID 可读取原始诊断。
+
 - **OpenAI / GPT**：使用自己账号可用的标准 API 模型。
 - **DeepSeek**：使用 DeepSeek API；思考模式与工具历史由专用适配器处理。
 - **Qwen**：预置千问平台 Qwen3.8-Flash，支持流式工具调用、工具轮次思考字段保留及提供商 Token 用量记录。

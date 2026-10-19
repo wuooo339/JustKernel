@@ -1,0 +1,162 @@
+"""Evidence-based stop and real tool normalization/permission regression tests."""
+
+import asyncio
+import json
+
+import pytest
+from langchain_core.messages import AIMessage
+from test_unified_lab import ScriptedModel
+from test_unified_lab import service as service
+
+from aworker.lab.progress import BaselineProgressGuard
+from aworker.lab.tool_arguments import normalize_arguments
+
+
+# ---- idle clocks and response limits require code or a new experiment -------
+def test_reads_and_repeated_old_jobs_cannot_keep_a_turn_alive():
+    now = [0]
+    guard = BaselineProgressGuard(
+        "original", ["old-job"], seconds=300, calls=12, clock=lambda: now[0]
+    )
+    for i in range(11):
+        guard.observe(source="original", jobs=["old-job"], call=str(i))
+    now[0] = 300
+    with pytest.raises(RuntimeError, match="BASELINE_NO_PROGRESS"):
+        guard.observe(source="original", jobs=["old-job"])
+
+
+def test_code_change_or_new_job_resets_guard_but_duplicate_callbacks_do_not_count():
+    guard = BaselineProgressGuard("old", calls=2)
+    guard.observe(call="one")
+    guard.observe(call="one")
+    guard.observe(source="new")
+    guard.observe(call="two")
+    guard.observe(jobs=["fresh-job"])
+    guard.observe(call="three")
+    with pytest.raises(RuntimeError, match="BASELINE_NO_PROGRESS"):
+        guard.observe(call="four")
+
+
+# ---- actual graph stops analysis-only writes without changing source ---------
+def test_baseline_graph_stops_after_analysis_only_without_spending_more_calls(service, monkeypatch):
+    service.settings.lab_baseline_idle_calls = 2
+    service.swarm.write({"enabled": True, "strategy": "baseline", "main_team": "team-a"})
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "analysis",
+                        "name": "write_file",
+                        "args": {"file_path": "/analysis.txt", "content": "fixture notes"},
+                    }
+                ],
+            ),
+            AIMessage(
+                "",
+                tool_calls=[{"id": "read", "name": "read_file", "args": {"file_path": "/TEAM.md"}}],
+            ),
+            AIMessage("should never be called"),
+        ]
+    )
+    monkeypatch.setattr(service.registry, "build", lambda key: model)
+    original = service.candidate("team-a")["sha256"]
+    with pytest.raises(RuntimeError, match="BASELINE_NO_PROGRESS"):
+        asyncio.run(service.run_team("team-a", "fixture idle turn"))
+    assert len(model.responses) == 1
+    assert service.candidate("team-a")["sha256"] == original
+    assert (service.team_folder("team-a") / "analysis.txt").exists()
+    assert service.store.snapshot()["runs"][0]["state"] == "failed"
+
+
+# ---- allow the final response's real source edit before checking another call --
+def test_final_allowed_response_can_edit_before_the_next_call_is_checked(service, monkeypatch):
+    service.settings.lab_baseline_idle_calls = 2
+    service.swarm.write({"enabled": True, "strategy": "baseline", "main_team": "team-a"})
+    path = service.team_folder("team-a") / "kernel.asc"
+    original = path.read_text(encoding="utf-8")
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {"id": "read", "name": "read_file", "args": {"file_path": "/kernel.asc"}}
+                ],
+            ),
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "edit",
+                        "name": "edit_file",
+                        "args": {
+                            "file_path": "/kernel.asc",
+                            "old_string": original,
+                            "new_string": original + "\n// fixture source change\n",
+                        },
+                    }
+                ],
+            ),
+            AIMessage("fixture complete"),
+        ]
+    )
+    monkeypatch.setattr(service.registry, "build", lambda key: model)
+    assert (
+        asyncio.run(service.run_team("team-a", "fixture last allowed edit")) == "fixture complete"
+    )
+    assert "fixture source change" in path.read_text(encoding="utf-8")
+
+
+# ---- aliases still pass through the same permission boundary ----------------
+def test_tool_aliases_preserve_protected_files_and_private_read_denials(service, monkeypatch):
+    folder = service.team_folder("team-a")
+    (folder / ".env.fixture").write_text("private-fixture-value", encoding="utf-8")
+    (folder / "read-fixture.txt").write_text("public-fixture-value", encoding="utf-8")
+    before = (folder / "cases.json").read_bytes()
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {"id": "read", "name": "read_file", "args": {"path": "/read-fixture.txt"}}
+                ],
+            ),
+            AIMessage(
+                "",
+                tool_calls=[
+                    {"id": "secret", "name": "read_file", "args": {"path": "/.env.fixture"}}
+                ],
+            ),
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "protected",
+                        "name": "write_file",
+                        "args": {"path": "/cases.json", "content": "[]"},
+                    }
+                ],
+            ),
+            AIMessage("fixture finished"),
+        ]
+    )
+    monkeypatch.setattr(service.registry, "build", lambda key: model)
+    assert asyncio.run(service.run_team("team-a", "fixture aliases")) == "fixture finished"
+    assert (folder / "cases.json").read_bytes() == before
+    events = service.store.events()
+    assert "private-fixture-value" not in json.dumps(events)
+    assert any(e["kind"] == "tool.arguments.normalized" for e in events)
+    assert any(
+        e["kind"] == "tool.completed" and "public-fixture-value" in e["data"].get("output", "")
+        for e in events
+    )
+
+
+# ---- parse only JSON arrays of strings, never arbitrary Python expressions ---
+def test_stringified_arguments_are_narrowly_normalized_without_mutation():
+    args = {"script_path": "analysis.py", "arguments": '["a", "b"]'}
+    assert normalize_arguments("run_python", args)["arguments"] == ["a", "b"]
+    assert isinstance(args["arguments"], str)
+    for value in ("__import__('os')", '{"a":1}', "[1]"):
+        assert normalize_arguments("run_python", {"arguments": value})["arguments"] == value

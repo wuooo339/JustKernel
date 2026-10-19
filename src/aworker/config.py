@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     lab_provider_keys: dict[str, SecretStr] = Field(default_factory=dict)
     lab_agent_timeout: int = Field(default=3600, ge=10, le=7200)
     lab_max_steps: int = Field(default=400, ge=4, le=1000)
+    lab_baseline_idle_seconds: int = Field(default=300, ge=30, le=3600)
+    lab_baseline_idle_calls: int = Field(default=12, ge=2, le=100)
     lab_max_teams: int = Field(default=100, ge=1, le=100)
     lab_team_concurrency: int = Field(default=4, ge=1, le=100)
     lab_simulator_concurrency: int = Field(default=1, ge=1, le=32)

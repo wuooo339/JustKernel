@@ -183,7 +183,33 @@ class EngineeringTools:
                 if job_id
                 else {
                     "capability": self.service.simulator.status(),
-                    "jobs": self.service.simulator.jobs(target)[:30],
+                    "jobs": [
+                        {
+                            **{
+                                key: row.get(key)
+                                for key in (
+                                    "id",
+                                    "team",
+                                    "source_sha256",
+                                    "case_pack_sha256",
+                                    "state",
+                                    "phase",
+                                    "error",
+                                    "functional_pass",
+                                    "case_ids",
+                                )
+                            },
+                            "cases": [
+                                {
+                                    key: case.get(key)
+                                    for key in ("id", "pass", "correctness", "profile_pass")
+                                }
+                                for case in row.get("cases", [])
+                            ],
+                        }
+                        for row in self.service.simulator.jobs(target)[:8]
+                    ],
+                    "details": "Use read_simulation_results(job_id) for raw diagnostics.",
                 }
             )
             return json.dumps(result, ensure_ascii=False)
