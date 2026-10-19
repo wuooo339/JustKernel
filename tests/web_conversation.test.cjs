@@ -3,6 +3,11 @@ const assert=require('node:assert/strict');
 const {timeline,markup,officialCases,caseTable,formatTime,View}=require('../src/aworker/lab/resources/web/conversation.js');
 const e=(seq,kind,data={},team='qwen-001')=>({seq,at:100+seq,kind,team,data});
 
+test('compile-only receipt does not invent numerical coverage',()=>{
+ const rows=timeline([e(1,'simulation.status.updated',{job_id:'compile',state:'completed',phase:'compiled',evaluation_mode:'compile-only',compile_pass:true,source_sha256:'sha'})],'qwen-001');
+ assert.match(markup(rows),/未执行数值校验/);assert.doesNotMatch(markup(rows),/0\/0|本地通过|全点/);
+});
+
 test('chronological rounds retain previous explanations and group actual tools/diffs',()=>{
  const events=[e(1,'control.started',{operation_id:'r1'}),e(2,'model.started',{run_id:'r1',model_call_id:'m1',model:'configured-model'}),
  e(3,'model.output.delta',{model_call_id:'m1',text:'partial'}),e(4,'agent.message',{model_call_id:'m1',text:'public explanation',reasoning_content:'PRIVATE'}),

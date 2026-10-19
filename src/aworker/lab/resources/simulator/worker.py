@@ -252,6 +252,13 @@ class SimulationJob:
         )
         mode = req.get("evaluation_mode", "full-profile")
         self.record["evaluation_mode"] = mode
+        self.record["compile_pass"] = True
+        if mode == "compile-only":
+            actual = {name: safe_path(source, name).read_bytes().decode() for name in req["files"]}
+            if source_identity(actual) != req["source_sha256"]:
+                raise ValueError("source changed during build")
+            self.record.update(state="completed", phase="compiled", functional_pass=False)
+            return
         if mode == "functional-then-profile":
             for case in cases:
                 self.evaluate_case(case, custom, profile=False)

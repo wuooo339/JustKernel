@@ -33,3 +33,34 @@ def official_case_results(official: dict, case_ids: list[str] | None = None) -> 
             }
         )
     return sorted(rows, key=lambda r: r["number"])
+
+
+# ---- compare evidence, never infer an input shape or a hidden branch ---------
+def official_comparison(current: dict, previous: dict | None) -> dict | None:
+    if previous is None:
+        return None
+    before = {r["testcase_id"]: r for r in official_case_results(previous["official"])}
+    changes = []
+    for row in official_case_results(current["official"]):
+        prior = before.get(row["testcase_id"]) if row["testcase_id"] else None
+        if prior and (row["status"] != "Pass" or prior["status"] != "Pass"):
+            changes.append(
+                {
+                    "testcase_id": row["testcase_id"],
+                    "previous_status": prior["status"],
+                    "current_status": row["status"],
+                    "previous_error_percent": prior["error_percent"],
+                    "current_error_percent": row["error_percent"],
+                    "same_accuracy_feedback": (prior["status"], prior["precision_ratio"])
+                    == (row["status"], row["precision_ratio"])
+                    if prior["precision_ratio"] is not None and row["precision_ratio"] is not None
+                    else None,
+                }
+            )
+    return {
+        "previous_submission_id": previous["official_submission_id"],
+        "previous_source_sha256": previous["source_sha256"],
+        "accuracy_changes": changes,
+        "note": "Unchanged official error ratios are not evidence of improvement. "
+        "They do not identify hidden shapes, dtypes, axes or which implementation branch ran.",
+    }

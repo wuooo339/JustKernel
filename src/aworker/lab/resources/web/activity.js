@@ -5,11 +5,11 @@
     if(!task)return null;
     const phases={'needs-plan':'根据失败证据制定实验',implement:'实施具体改动',probe:'运行针对性探针','awaiting-experiment':'等待独立实验回执','full-validation':'探针通过，进入完整验证','awaiting-official':'完整验证通过，交给 Judger',blocked:'任务已暂停，等待新证据'};
     const plan=task.plan,result=task.last_result,cases=result?.cases||[];
-    return {title:phases[task.phase]||task.phase,
+    return {title:task.phase==='awaiting-official'&&task.validation_mode==='official-feedback'?'已编译，交给 Judger 诊断送测':phases[task.phase]||task.phase,
       evidence:task.evidence?.official_submission_id?`官测 ${task.evidence.status} · ${task.evidence.failed_cases?.length||0} 个失败点`:'尚无官测结果，先建立本地基线',
       hypothesis:plan?.hypothesis||'',change:plan?.change||'',
       source:task.current_source===task.starting_source?'尚无源码变化':`${task.starting_source?.slice(0,8)} → ${task.current_source?.slice(0,8)}`,
-      result:result?`本地实验 ${result.id.slice(0,8)} · ${cases.filter(c=>c.pass===true).length}/${result.case_ids?.length||cases.length} · ${result.state}`:'本任务尚无实验回执',
+      result:result?.evaluation_mode==='compile-only'?(result.compile_pass?'编译通过 · 未执行数值验证':'编译未通过 · 待修正'):result?`本地实验 ${result.id.slice(0,8)} · ${cases.filter(c=>c.pass===true).length}/${result.case_ids?.length||cases.length} · ${result.state}`:'本任务尚无实验回执',
       next:task.blocked_reason||task.next_action||'',experiments:task.experiment_count||0};
   }
   function teamProgress(events,team,operations=[],baseline=null){
@@ -72,8 +72,8 @@
     for(const e of incoming)rows.set('message-'+e.seq,{seq:e.seq,at:e.at,agent:e.team,title:e.data.topic==='sota'?'收到已验证 SOTA':e.data.topic==='judge-feedback'?'收到官测反馈':'收到协作消息',detail:e.data.transport==='a2a'?'A2A 已送达':'共享收件箱',state:'已送达'});
     const jobs=simulationJobs.filter(j=>j.team===team);
     const simulation=jobs.find(j=>j.state==='running')||jobs.find(j=>j.state==='queued')||jobs.find(j=>j.state!=='cancelled')||jobs[0];
-    const phaseLabels={configure:'配置构建',compile:'编译 Host 与 Kernel',package:'打包算子',install:'部署算子',runner:'准备执行程序',inputs:'生成本队输入',completed:'实验完成'};
-    const simulationPhase=phaseLabels[simulation?.phase]||String(simulation?.phase||'等待 CPU 资源').replace(/^waiting-profiler:/,'等待性能采集槽 · ').replace(/^simulate:/,'运行用例 ');
+    const phaseLabels={configure:'配置构建',compile:'编译 Host 与 Kernel',package:'打包算子',install:'部署算子',runner:'准备执行程序',inputs:'生成本队输入',compiled:'仅编译通过 · 精度未验证',completed:'实验完成'};
+    const simulationPhase=phaseLabels[simulation?.phase]||String(simulation?.phase||'等待 CPU 资源').replace(/^waiting-profiler:/,'等待性能采集槽 · ').replace(/^simulate:/,'运行用例 ').replace(/^functional:/,'数值测试 ');
     const active=operations.some(o=>o.team===team&&o.state==='running');
     const modelBusy=Boolean(begin&&!end&&active);
     const simulatorOffline=simulatorAvailable===false&&['running','queued'].includes(simulation?.state);

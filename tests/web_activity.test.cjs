@@ -3,6 +3,14 @@ const assert=require('node:assert/strict');
 const {teamProgress,teamMonitor,projectRecord}=require('../src/aworker/lab/resources/web/activity.js');
 const e=(seq,kind,data={},team='gpt-001')=>({seq,at:100+seq,kind,team,data});
 
+test('diagnostic compilation never appears as full local correctness',()=>{
+ const {iterationSummary}=require('../src/aworker/lab/resources/web/activity.js');
+ const view=iterationSummary({phase:'awaiting-official',validation_mode:'official-feedback',
+   evidence:{},last_result:{id:'fixture',evaluation_mode:'compile-only',compile_pass:true,functional_pass:false,cases:[],case_ids:['draft-01']}});
+ assert.match(view.title,/诊断送测/);assert.match(view.result,/未执行数值验证/);
+ assert.doesNotMatch(view.title,/完整验证通过/);assert.doesNotMatch(view.result,/本地通过|1\/1/);
+});
+
 test('repair task shows evidence, actual source and experiment outcome without inventing an official pass',()=>{
  const {iterationSummary}=require('../src/aworker/lab/resources/web/activity.js');
  const task={team:'gpt-001',phase:'full-validation',evidence:{official_submission_id:'official',status:'Wrong Answer',failed_cases:[{},{}]},

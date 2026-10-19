@@ -388,7 +388,20 @@ class DeepAgentRuntime:
                 "the coding owner must not self-certify them. Never handle login credentials.\n"
                 "Report uncompiled/unmeasured status and never invent execution results.\n"
             )
-        if self.service.simulator.required:
+        if self.service.judger.automation.configuration()["diagnostic_mode"]:
+            prompt += (
+                "\nOFFICIAL-FEEDBACK DIAGNOSTIC POLICY (active submission gate):\n"
+                "Use compile_kernel for a fast actual build after a planned general repair.\n"
+                "An independent Judge reviews the exact frozen build and submits for feedback;\n"
+                "a complete provisional local pass is not required in this mode. Do not\n"
+                "self-approve source or call a build a functional pass. Read all official\n"
+                "case statuses/error ratios/times. Use propose_local_cases to add separate\n"
+                "reproducible local hypotheses, not claim recovered hidden test shapes.\n"
+                "simulate_kernel remains available for focused, useful numerical probes.\n"
+                "Never alter protected cases, reference, tolerance or timing. End the turn\n"
+                "after a pending build/probe. Avoid unnecessary repeated full-file reads.\n"
+            )
+        elif self.service.simulator.required:
             prompt += (
                 "\nINDEPENDENT SIMULATION EXECUTION POLICY:\n"
                 "No physical NPU is present. A CPU CANN simulator worker is an independent lane.\n"
@@ -770,7 +783,8 @@ class DeepAgentRuntime:
                                 )
                                 jobs = (
                                     [job["id"] for job in self.service.simulator.jobs(self.team)]
-                                    if kind == "on_tool_end" and name == "simulate_kernel"
+                                    if kind == "on_tool_end"
+                                    and name in {"simulate_kernel", "compile_kernel"}
                                     else []
                                 )
                                 guard.observe(

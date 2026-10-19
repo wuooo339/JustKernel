@@ -28,3 +28,10 @@ Judger independently reviews and nominates it before official submission. The co
 owner does not approve its own candidate. Never modify the reference or thresholds.
 A staged package is not an official submission or passing result.
 Public testcase IDs do not reveal hidden input values. Keep provisional cases labeled.
+
+If the active task says validation_mode=official-feedback, use compile_kernel for a fast
+actual build after a general repair. Full local passing coverage is optional for diagnostic
+submission in this mode; independent Judger source review remains required. Never label
+compile-only results as correct or SOTA. Read complete official feedback and iterate.
+propose_local_cases stores additional reproducible hypotheses separately, bound to an
+actual official receipt. It never modifies canonical cases or proves hidden-input identity.

@@ -4,7 +4,7 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const finite=v=>typeof v==='number'&&Number.isFinite(v);
   const time=at=>finite(at)?new Date(at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):'时间未记录';
-  const names={read_file:'读取文件',ls:'查看目录',grep:'搜索源码',glob:'查找文件',edit_file:'修改源码',write_file:'写入文件',run_python:'辅助检查',simulate_kernel:'编译与本地仿真',read_simulation_results:'读取实验诊断',inspect_policy:'检查硬约束',record_experiment_plan:'登记实验假设',report_progress:'公开工作说明',read_judge_status:'读取官测反馈',queue_official_test:'冻结候选',task:'成员协作',write_todos:'更新计划'};
+  const names={read_file:'读取文件',ls:'查看目录',grep:'搜索源码',glob:'查找文件',edit_file:'修改源码',write_file:'写入文件',run_python:'辅助检查',simulate_kernel:'编译与本地仿真',compile_kernel:'仅编译 · 官测诊断',propose_local_cases:'补充本地测试假设',list_local_cases:'读取本地测试覆盖',read_simulation_results:'读取实验诊断',inspect_policy:'检查硬约束',record_experiment_plan:'登记实验假设',report_progress:'公开工作说明',read_judge_status:'读取官测反馈',queue_official_test:'冻结候选',task:'成员协作',write_todos:'更新计划'};
   const parse=v=>{if(typeof v!=='string')return v||{};try{return JSON.parse(v);}catch{return {};}};
   const pretty=v=>{try{return JSON.stringify(JSON.parse(v),null,2);}catch{return String(v??'');}};
 
@@ -88,7 +88,7 @@
       if(kind==='iteration.blocked')rows.push({type:'notice',id:'blocked-'+e.seq,seq:e.seq,at:e.at,title:'任务等待新证据',text:d.message,bad:true});
       if(kind==='simulation.status.updated'){
         const key=d.job_id;if(!receipts.has(key)){const row={type:'receipt',id:'receipt-'+key,seq:e.seq,at:e.at,title:'本地实验回执'};receipts.set(key,row);rows.push(row);}
-        Object.assign(receipts.get(key),{state:d.state,text:`${d.passed_cases??0}/${d.requested_cases??0} 本地用例 · ${d.phase||d.state} · ${(d.source_sha256||'').slice(0,8)}`,evidence:e.seq,bad:d.state==='failed'});
+        Object.assign(receipts.get(key),{state:d.state,text:d.evaluation_mode==='compile-only'?`${d.compile_pass?'编译通过 · 未执行数值校验':d.state==='failed'?'编译失败':'编译中'} · ${(d.source_sha256||'').slice(0,8)}`:`${d.passed_cases??0}/${d.requested_cases??0} 本地用例 · ${d.phase||d.state} · ${(d.source_sha256||'').slice(0,8)}`,evidence:e.seq,bad:d.state==='failed'});
       }
       if(kind==='judge.submission.updated'){
         const id=d.submission_id||d.candidate_id||e.seq,key='judge-'+id,r=d.official||{};

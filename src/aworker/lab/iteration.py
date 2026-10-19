@@ -11,7 +11,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from aworker.lab.persistence import replace_file, serialized
-from aworker.lab.receipts import official_case_results
+from aworker.lab.receipts import official_case_results, official_comparison
 from aworker.lab.store import identifier
 
 
@@ -84,6 +84,7 @@ class IterationController:
                 "last_result",
                 "next_action",
                 "blocked_reason",
+                "validation_mode",
             )
         }
         view["recent_attempts"] = [
@@ -107,7 +108,8 @@ class IterationController:
             and r.get("official_submission_id")
             and self.service.judger.terminal(r.get("official", {}).get("status"))
         ]
-        latest = max(rows, key=lambda r: r.get("submitted_at") or r.get("created", 0), default=None)
+        rows.sort(key=lambda r: r.get("submitted_at") or r.get("created", 0), reverse=True)
+        latest = rows[0] if rows else None
         evidence = {
             "candidate_id": latest["id"] if latest else None,
             "official_submission_id": latest.get("official_submission_id") if latest else None,
@@ -117,7 +119,7 @@ class IterationController:
             "status": latest["official"]["status"] if latest else "no-official-result",
             "failed_cases": [
                 {k: c.get(k) for k in ("testcase_id", "testcase_status", "precision_ratio")}
-                for c in latest["official"].get("result", [])
+                for c in (latest["official"].get("result") or [])
                 if c.get("testcase_status") != "Pass"
             ]
             if latest
@@ -130,6 +132,7 @@ class IterationController:
             if latest
             else [],
             "official_time_unit": "us",
+            "comparison": official_comparison(latest, rows[1]) if len(rows) > 1 else None,
         }
         rejected = next(
             (
@@ -155,13 +158,14 @@ class IterationController:
         ):
             evidence["source_review"] = task["evidence"]["source_review"]
         capability = self.service.simulator.status()
-        context = [capability.get("case_pack_sha256"), capability.get("worker_sha256")]
+        diagnostic = self.service.judger.automation.configuration()["diagnostic_mode"]
+        context = [capability.get("case_pack_sha256"), capability.get("worker_sha256"), diagnostic]
         if task:
             # Enrich an existing receipt without abandoning an in-flight experiment.
             # Changed values on an already known receipt still create fresh evidence.
             additions = {
                 k: evidence[k]
-                for k in ("official_case_results", "official_time_unit")
+                for k in ("official_case_results", "official_time_unit", "comparison")
                 if k not in task["evidence"]
             }
             if additions and all(
@@ -190,6 +194,7 @@ class IterationController:
                 "evidence": evidence,
                 "context": context,
                 "phase": "needs-plan",
+                "validation_mode": "official-feedback" if diagnostic else "verified",
                 "starting_source": source,
                 "current_source": source,
                 "plan": None,
@@ -211,10 +216,11 @@ class IterationController:
         if task["phase"] in {"blocked", "awaiting-experiment", "awaiting-official"}:
             raise ValueError("当前任务等待实验、官测或新证据；不能重复规划。")
         if len(set(plan.case_ids)) != len(plan.case_ids) or not set(plan.case_ids) <= set(
-            self.service.simulator.default_cases()
+            self.service.simulator.available_case_ids(team)
         ):
             raise ValueError(
-                "case_ids 必须是 cases.json 中不重复的本地 ID；官测 ID 的输入对应关系未确认。"
+                "case_ids 必须是 cases.json 或 propose_local_cases 返回的不重复本地 ID；"
+                "官测对应关系未确认。"
             )
         source = self.service.candidate(team)["sha256"]
         signature = hashlib.sha256(
@@ -336,6 +342,37 @@ class IterationController:
             )
             if row and row["state"] not in {"queued", "running", "pending"}:
                 task["last_result"] = self.service.simulator.dashboard_receipt(row)
+                if self.service.judger.automation.configuration()["diagnostic_mode"]:
+                    build = self.service.simulator.build_evidence(
+                        team, source, row.get("case_pack_sha256")
+                    )
+                    if build and build["id"] == row["id"] and row["source_sha256"] == source:
+                        tested = any(
+                            r["source_sha256"] == source and r.get("official_submission_id")
+                            for r in self.service.judger.read("queue.json", [])
+                        )
+                        if tested:
+                            task["attempts"].append(
+                                {
+                                    **copy.deepcopy(plan),
+                                    "source_after": source,
+                                    "result": task["last_result"],
+                                }
+                            )
+                            task.update(
+                                phase="needs-plan",
+                                plan=None,
+                                next_action="此源码已送测；依据官方回执作通用修正，不能重复送测同一源码。",
+                            )
+                        else:
+                            task.update(
+                                phase="awaiting-official",
+                                next_action="仅编译通过，独立 Judger 正在复核并诊断送测；"
+                                "未声明本地全过。",
+                            )
+                        self.write(task)
+                        self.emit(task, "updated")
+                        return task
                 passed = self.service.simulator.evidence(
                     team, row["source_sha256"], row.get("case_pack_sha256")
                 )
@@ -440,6 +477,21 @@ class IterationController:
     # ---- concise instructions with bound evidence and a single next action ----
     def prompt(self, task):
         context = self.public_task(task)
+        if self.service.judger.automation.configuration()["diagnostic_mode"]:
+            return (
+                "单主力官测反馈驱动任务；直接编辑，不委派整轮任务。\n"
+                + json.dumps(context, ensure_ascii=False)
+                + "\n优先修复官方回执显示的数学/归约/尾块问题。"
+                "不要从测试点 ID 或错误占比猜测隐藏形状，"
+                "不要编写逐点专属路径、缓存或跳算。先登记一个具体实验假设，再改码。"
+                "本地用例尚不能代表隐藏输入；用 propose_local_cases 补充通用边界/数值假设，"
+                "保持原始用例不变。通常改码后调用 compile_kernel 作快速真实编译，结束本轮。"
+                "独立 Judger 将复核并自动诊断送测，无需等全套 CPU 仿真。"
+                "仅在有明确定位价值时才 simulate_kernel 做少量针对性本地数值探针。"
+                "新增探针通过不证明其就是官方 case，也不证明官方正确。"
+                "pending 后结束，不轮询；awaiting-official 后等新回执。"
+                "先报告简短公开工作说明，说明此次改动和依据。"
+            )
         return (
             "单主力 coding agent 修正任务；直接编辑和验证，不委派整轮分析/审查。\n"
             + json.dumps(context, ensure_ascii=False)

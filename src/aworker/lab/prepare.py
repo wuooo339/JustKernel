@@ -22,6 +22,10 @@ sentences at milestones. Keep explanations distinct from actual validation recei
 Optional specialists in parallel mode receive only a narrow question, not the whole task.
 Skills are in /skills/. Read their instructions when relevant.
 Use inspect_policy for source checks, simulate_kernel for the CPU CANN lane, and
+compile_kernel when the active task explicitly selects official-feedback diagnostics:
+only a real build and independent source review are required there, not local all-pass.
+Use propose_local_cases for separate feedback-linked local hypotheses; these are never
+identified hidden cases and never replace the canonical INPUT/reference/tolerance.
 evaluate_kernel only when a physical NPU is actually configured.
 Use run_python for workspace analysis scripts. Do not SSH or access the physical NPU.
 Do not modify inputs, constraints, tools, judge, timers or accuracy thresholds.

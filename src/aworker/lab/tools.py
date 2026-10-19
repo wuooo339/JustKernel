@@ -12,6 +12,7 @@ from langchain_core.tools import tool
 
 from aworker.lab.domain import Experience, Stage, StageUpdate
 from aworker.lab.iteration import ExperimentPlan
+from aworker.lab.probes import LocalCaseProposal, local_cases, propose_cases
 from aworker.lab.project import project_manifest
 from aworker.lab.receipts import official_case_results
 
@@ -291,6 +292,61 @@ class EngineeringTools:
             )
 
         @tool
+        def list_local_cases() -> str:
+            """Read baseline INPUT and separately labelled feedback-driven probe hypotheses."""
+            return json.dumps(
+                {
+                    "baseline": json.loads(
+                        (self.service.root / "challenge/cases.json").read_text(encoding="utf-8")
+                    ),
+                    "probes": local_cases(self.service, self.team),
+                    "official_mapping": "unconfirmed; matching point counts "
+                    "does not identify hidden inputs",
+                },
+                ensure_ascii=False,
+            )
+
+        @tool
+        def propose_local_cases(
+            submission_id: str, hypothesis: str, cases: list[LocalCaseProposal]
+        ) -> str:
+            """Add 1–4 reproducible local probes to test a hypothesis from actual official feedback.
+
+            These are not recovered hidden tests. Canonical cases, reference, tolerances and
+            constraints remain unchanged. Cover general shape/tail/reduction/FP32 cancellation
+            risks; never specialize kernel branches to guessed tests. Returns probe IDs usable
+            in record_experiment_plan and simulate_kernel. Do not add huge unfocused batches.
+            """
+            return json.dumps(
+                propose_cases(self.service, self.team, submission_id, hypothesis, cases),
+                ensure_ascii=False,
+            )
+
+        @tool
+        async def compile_kernel(hypothesis: str = "") -> str:
+            """Build exact Host/Kernel source for an official-feedback diagnostic submission.
+
+            Requires diagnostic_mode enabled. This runs no numerical cases or profiling,
+            never declares a functional pass. The independent Judger reviews and submits
+            the immutable compiled version; official feedback drives the next repair.
+            Register an experiment plan before a source edit/build. End the turn if pending.
+            """
+            if not self.service.judger.automation.configuration()["diagnostic_mode"]:
+                raise ValueError("compile_kernel requires official-feedback diagnostic mode")
+            task = self.service.iterations.read(self.team)
+            selected = (
+                None
+                if not task or task["phase"] == "full-validation"
+                else (task.get("plan") or {}).get("case_ids")
+            )
+            self.service.iterations.before_experiment(self.team, selected)
+            result = await self.service.simulator.evaluate(
+                self.team, self.run_id, hypothesis, selected, evaluation_mode="compile-only"
+            )
+            self.service.iterations.attach(self.team, result)
+            return json.dumps(result, ensure_ascii=False)
+
+        @tool
         async def simulate_kernel(
             hypothesis: str = "",
             case_ids: list[str] | None = None,
@@ -486,6 +542,7 @@ class EngineeringTools:
 
         common = [
             report_progress,
+            list_local_cases,
             read_simulation_results,
             inspect_policy,
             list_public_results,
@@ -507,6 +564,8 @@ class EngineeringTools:
                 record_experiment_plan,
                 run_python,
                 simulate_kernel,
+                compile_kernel,
+                propose_local_cases,
                 queue_official_test,
                 evaluate_kernel,
                 publish_result,

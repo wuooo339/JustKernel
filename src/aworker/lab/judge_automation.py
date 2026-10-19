@@ -9,6 +9,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
+from aworker.lab.iteration import ExperimentPlan
 from aworker.lab.judge_browser import (
     JudgeRejected,
     LoginRequired,
@@ -42,6 +43,7 @@ class JudgeAutomation:
             "enabled": False,
             "max_submissions": 50,
             "selector_model": None,
+            "diagnostic_mode": False,
             **{
                 k: v
                 for k, v in raw.items()
@@ -59,8 +61,10 @@ class JudgeAutomation:
             "selection": self.selector.status(),
         }
 
-    async def configure(self, enabled, max_submissions=50, selector_model=None):
-        if not 1 <= max_submissions <= 100000:
+    async def configure(
+        self, enabled, max_submissions=50, selector_model=None, diagnostic_mode=None
+    ):
+        if max_submissions is not None and not 1 <= max_submissions <= 100000:
             raise ValueError("设置有效的全局官测预算。")
         config = self.configuration()
         if enabled and not config.get("enabled"):
@@ -70,6 +74,8 @@ class JudgeAutomation:
             max_submissions=max_submissions,
             selector_model=selector_model,
         )
+        if diagnostic_mode is not None:
+            config["diagnostic_mode"] = diagnostic_mode
         self.monitor.write("automation.json", config)
         self.service.store.event(
             "controller",
@@ -77,6 +83,7 @@ class JudgeAutomation:
             enabled=enabled,
             max_submissions=max_submissions,
             selector_model=selector_model,
+            diagnostic_mode=config["diagnostic_mode"],
         )
         self.wake.set()
         if enabled:
@@ -99,8 +106,14 @@ class JudgeAutomation:
             "timezone": "Asia/Shanghai",
             "used": used,
             "limit": config["max_submissions"],
-            "remaining": max(0, config["max_submissions"] - used),
+            "remaining": max(0, config["max_submissions"] - used)
+            if config["max_submissions"] is not None
+            else None,
         }
+
+    def budget_exhausted(self):
+        remaining = self.budget()["remaining"]
+        return remaining is not None and remaining <= 0
 
     def attempts(self):
         path = self.service.base_root / "judge-attempts.json"
@@ -144,13 +157,34 @@ class JudgeAutomation:
                 await asyncio.wait_for(self.wake.wait(), 20)
 
     # ---- source-bound readiness; no Host-only drafts or empty kernels --------
-    def readiness(self, row, require_review=True):
-        if self.service.simulator.required:
-            simulation = self.service.simulator.evidence(
-                row["team"], row["source_sha256"], row["case_pack_sha256"], require_coverage=True
+    def validation_evidence(self, row):
+        if row.get("validation_mode") == "official-feedback":
+            return self.service.simulator.build_evidence(
+                row["team"], row["source_sha256"], row["case_pack_sha256"]
             )
+        return self.service.simulator.evidence(
+            row["team"], row["source_sha256"], row["case_pack_sha256"], require_coverage=True
+        )
+
+    def readiness(self, row, require_review=True):
+        if (
+            row.get("validation_mode") == "official-feedback"
+            and not self.configuration()["diagnostic_mode"]
+        ):
+            return False, "此候选仅供诊断；当前未开启官测驱动诊断模式。"
+        if self.service.simulator.required or row.get("validation_mode") == "official-feedback":
+            diagnostic = (
+                self.configuration()["diagnostic_mode"]
+                and row.get("validation_mode") == "official-feedback"
+            )
+            simulation = self.validation_evidence(row)
             if simulation is None or row.get("simulation_job_id") != simulation["id"]:
-                return False, "等待本队对该冻结源码和输入包完成通过的独立仿真。"
+                return (
+                    False,
+                    "等待匹配源码的实际编译证据。"
+                    if diagnostic
+                    else "等待本队对该冻结源码和输入包完成通过的独立仿真。",
+                )
         candidate = self.monitor.code(row["id"])
         manifest = project_manifest(self.service.root)
         required = manifest.get(
@@ -234,6 +268,59 @@ class JudgeAutomation:
         return review
 
     # ---- independent official lane, no all-team completion barrier -----------
+    async def diagnose_current(self, team):
+        if not self.configuration()["diagnostic_mode"]:
+            raise ValueError("先开启官测驱动诊断模式。")
+        if any(
+            o["team"] == team and o["state"] == "running"
+            for o in self.service.store.snapshot()["operations"]
+        ):
+            raise ValueError("主队正在改码；请等本轮结束或由主队调用 compile_kernel。")
+        task = self.service.iterations.sync(team)
+        if task["phase"] == "awaiting-official":
+            return {"state": "awaiting-official", "message": task["next_action"]}
+        if task["phase"] == "blocked":
+            raise ValueError(task["blocked_reason"])
+        if task.get("plan") is None:
+            task = self.service.iterations.plan(
+                team,
+                ExperimentPlan(
+                    evidence="User enabled official-feedback diagnosis; prior evidence: "
+                    + json.dumps(
+                        {
+                            k: task["evidence"].get(k)
+                            for k in (
+                                "official_submission_id",
+                                "source_sha256",
+                                "status",
+                                "failed_cases",
+                            )
+                        },
+                        ensure_ascii=False,
+                    )[:1600],
+                    hypothesis="This general implementation needs official diagnosis; provisional "
+                    "local cases do not identify hidden inputs.",
+                    change="No edit: freeze and compile current source for independent review "
+                    "and official diagnosis.",
+                    validation="Compilation is not correctness. Read every official case result; "
+                    "retain unknown hidden-input mappings.",
+                    case_ids=self.service.simulator.default_cases()[:1],
+                    kind="diagnostic",
+                ),
+            )
+        selected = None if task["phase"] == "full-validation" else task["plan"]["case_ids"]
+        self.service.iterations.before_experiment(team, selected)
+        result = await self.service.simulator.evaluate(
+            team,
+            "judger-diagnostic-build",
+            task["plan"]["hypothesis"],
+            selected,
+            evaluation_mode="compile-only",
+        )
+        self.service.iterations.attach(team, result)
+        self.wake.set()
+        return result
+
     async def tick(self):
         root = self.service.root
         config = self.configuration()
@@ -249,6 +336,19 @@ class JudgeAutomation:
                 "官测状态待确认；搜索继续，暂不发送新提交。",
             )
             return
+        if config["diagnostic_mode"]:
+            # Freeze current source as soon as an actual build exists, without a model-turn barrier.
+            for team in self.service.store.snapshot()["teams"]:
+                if not team["active"]:
+                    continue
+                try:
+                    self.monitor.stage(
+                        team["id"],
+                        "Official-feedback diagnostic: compiled source; local numerical "
+                        "coverage may be incomplete or failing. Not a verified SOTA.",
+                    )
+                except (ValueError, OSError):
+                    continue
         # Comparing frozen source does not require a browser, NPU or idle teams.
         self.selector.schedule()
         if not self.browser.status()["opened"]:
@@ -293,7 +393,7 @@ class JudgeAutomation:
                 "精选候选正在官测，团队并行优化；等待反馈后再选下一位挑战者。",
             )
             return
-        if self.budget()["remaining"] <= 0:
+        if self.budget_exhausted():
             self.phase, self.message = (
                 "budget-exhausted",
                 "当日官测预算已用完，团队继续搜索、学习与积累候选。",
@@ -305,7 +405,9 @@ class JudgeAutomation:
             if not self.selector.pool():
                 self.phase, self.message = (
                     "awaiting-qualified-candidate",
-                    "暂无满足门槛的未测候选：等待本队完整仿真通过及源码复核；"
+                    "等待新源码编译完成及独立复核；诊断模式不要求本地全过。"
+                    if config["diagnostic_mode"]
+                    else "暂无满足门槛的未测候选：等待本队完整仿真通过及源码复核；"
                     "官测已连接，不占用额度。",
                 )
             elif self.selector.status()["running"]:
@@ -347,8 +449,7 @@ class JudgeAutomation:
         nomination = self.selector.nomination()
         if automatic and (not nomination or nomination["candidate_id"] != key):
             raise ValueError("Judger 只提交独立筛选器提名的 SOTA 挑战候选。")
-        budget = self.budget()
-        if budget["remaining"] <= 0:
+        if self.budget_exhausted():
             raise ValueError("全局每日官测预算已用完；团队仍可继续优化。")
         if any(
             r.get("official_submission_id")
@@ -373,7 +474,7 @@ class JudgeAutomation:
                 return {"candidate_id": key, "state": "paused"}
             # Reserve the global attempt BEFORE POST. Ambiguous/rejected attempts count too.
             # Pausing/restarting must never reset a day's upper bound.
-            if self.budget()["remaining"] <= 0:
+            if self.budget_exhausted():
                 raise ValueError("每日官测预算已用完，暂不提交。")
             attempt = {
                 "id": uuid4().hex,

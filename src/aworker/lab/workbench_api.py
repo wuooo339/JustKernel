@@ -49,8 +49,9 @@ class TrackJudge(BaseModel):
 # ---- AutomateJudge ----------------------------------------------------------
 class AutomateJudge(BaseModel):
     enabled: bool = True
-    max_submissions: int = Field(default=50, ge=1, le=100000)
+    max_submissions: int | None = Field(default=50, ge=1, le=100000)
     selector_model: str | None = None
+    diagnostic_mode: bool | None = None
 
 
 # ---- workbench_router -------------------------------------------------------
@@ -109,6 +110,10 @@ def workbench_router(service) -> APIRouter:
             service.judger.package(key), filename="ConfusionMulGrad_" + key + ".zip"
         )
 
+    @router.post("/judge/diagnose")
+    async def diagnose_judge(request: StageJudge):
+        return await service.judger.automation.diagnose_current(request.team)
+
     @router.post("/judge/track")
     async def track_judge(request: TrackJudge):
         return service.judger.track(request.candidate_id, request.submission_id)
@@ -125,7 +130,10 @@ def workbench_router(service) -> APIRouter:
             "open", source["problem_url"].rstrip("/") + "/submit"
         )
         await service.judger.automation.configure(
-            request.enabled, request.max_submissions, selector_model=request.selector_model
+            request.enabled,
+            request.max_submissions,
+            selector_model=request.selector_model,
+            diagnostic_mode=request.diagnostic_mode,
         )
         return {"session": session, "automation": service.judger.automation.status()}
 
@@ -147,7 +155,10 @@ def workbench_router(service) -> APIRouter:
     @router.post("/judge/automation")
     async def automate_judge(request: AutomateJudge):
         return await service.judger.automation.configure(
-            request.enabled, request.max_submissions, selector_model=request.selector_model
+            request.enabled,
+            request.max_submissions,
+            selector_model=request.selector_model,
+            diagnostic_mode=request.diagnostic_mode,
         )
 
     @router.post("/judge/candidates/{key}/submit")

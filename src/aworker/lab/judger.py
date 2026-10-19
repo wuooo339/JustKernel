@@ -270,10 +270,13 @@ class JudgeMonitor:
         manifest = project_manifest(self.service.root)
         if not manifest.get("project_files"):
             raise ValueError("only an official multi-file project can be staged")
-        simulation = self.service.simulator.evidence(
-            team, candidate["sha256"], require_coverage=True
+        diagnostic = self.automation.configuration()["diagnostic_mode"]
+        simulation = (
+            self.service.simulator.build_evidence(team, candidate["sha256"])
+            if diagnostic
+            else self.service.simulator.evidence(team, candidate["sha256"], require_coverage=True)
         )
-        if self.service.simulator.required and simulation is None:
+        if (self.service.simulator.required or diagnostic) and simulation is None:
             raise ValueError(
                 "当前源码尚无本队匹配的通过仿真记录，修正并 simulate_kernel 后再提名。"
             )
@@ -290,6 +293,8 @@ class JudgeMonitor:
         case_hash = hashlib.sha256(
             (self.service.root / "challenge/cases.json").read_bytes()
         ).hexdigest()
+        if diagnostic:
+            case_hash = simulation["case_pack_sha256"]
         existing = next(
             (
                 r
@@ -303,7 +308,9 @@ class JudgeMonitor:
         if existing:
             if simulation:
                 existing = self.automation.update(
-                    existing["id"], simulation_job_id=simulation["id"]
+                    existing["id"],
+                    simulation_job_id=simulation["id"],
+                    validation_mode="official-feedback" if diagnostic else "verified",
                 )
             if proposal.strip():
                 self.automation.update(existing["id"], proposal=proposal[:6000])
@@ -314,9 +321,6 @@ class JudgeMonitor:
         with zipfile.ZipFile(folder / (key + ".zip"), "w", zipfile.ZIP_DEFLATED) as archive:
             for name, text in candidate["files"].items():
                 archive.writestr("code/" + name, text)
-        case_hash = hashlib.sha256(
-            (self.service.root / "challenge/cases.json").read_bytes()
-        ).hexdigest()
         row = {
             "id": key,
             "team": team,
@@ -328,6 +332,10 @@ class JudgeMonitor:
             "policy_certified": False,
             "proposal": proposal[:6000],
             "simulation_job_id": simulation["id"] if simulation else None,
+            "validation_mode": "official-feedback" if diagnostic else "verified",
+            "validation_note": "仅已编译；本地精度与覆盖未确认，以官测诊断反馈为准。"
+            if diagnostic
+            else "完整本地验证；仍需官方判题。",
         }
         queue = self.read("queue.json", [])
         queue.append(row)

@@ -79,6 +79,20 @@ bash tools/start_judge_bridge.sh LINUX_ROOT PYTHON SHARED_BRIDGE OFFICIAL_URL
 
 [官方题目](https://cannjudge.cn/public/ladder_october/confusionmulgrad) · [官方榜单](https://cannjudge.cn/public/ladder_october/confusionmulgrad/ranking)
 
+## 用官方反馈校准本地测试假设
+
+开启 `diagnostic_mode` 后，修正闭环是：完整官测回执 → 主队登记假设并改码 → `compile_kernel` 实际构建 → 独立 Judger 复核冻结版本 → 自动提交 → 收取下一份逐点回执并经 A2A 反馈。此模式允许本地精度未通过或覆盖未完成的候选诊断送测，不将编译视为正确性通过。硬约束、源码绑定、工程完整性、独立复核、登录身份、重复提交保护与平台退避均保留。
+
+主队可用 `propose_local_cases(submission_id, hypothesis, cases)` 添加本地测试假设，字段为二维 `shape`、`dtype`、`axis`、`keep_dims`、`seed` 与可选均匀分布范围 `low/high`。提案必须引用本队真实终态官测回执；每次可提 1–4 点，每份回执最多补充 8 点，避免无定位目的地堆积重型测试。原始 15 点保持不变；补充探针存于独立目录，始终 `official_case_id=null`，不能当作已恢复的官方隐藏输入。模型可用返回的 `probe-*` ID 登记数值实验并调用 `simulate_kernel`；参考语义和精度阈值不开放修改。
+
+面板「每日上限」留空对应 `max_submissions: null`，取消本地预算门槛。平台仍可拒绝或要求等待，程序不会绕过限制或把不确定提交自动重发。API 示例：
+
+```json
+{"enabled": true, "diagnostic_mode": true, "max_submissions": null, "selector_model": "qwen-api"}
+```
+
+发送到 `POST /workspace/judge/automation`。`POST /workspace/judge/diagnose` 的 `{"team":"当前团队ID"}` 可在主队空闲时编译当前版本，独立 Judger 随后自动复核并送测。持续优化开启后，后续改码与反馈迭代自动进行。无可用 Linux/CANN Worker 时不会伪造编译证据。新增 `compile-only` 请求需要更新并重启 Worker，旧实验记录仍保留原身份；运行中的实验应先完成后再更新。
+
 ## 监督与回放
 
 点击团队查看实际模型、当前步骤、公开答复、Todo、工具调用、源码版本和本队实验；Token 仅展示提供商实际返回的用量，不读取隐藏推理。A2A 已送达数字是消息投递确认次数，不是队伍数或 Token。

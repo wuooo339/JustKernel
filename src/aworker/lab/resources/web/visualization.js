@@ -475,6 +475,7 @@
           this.$('processLatest').previousElementSibling.textContent='本队仿真';
           const passed=(sim?.cases||[]).filter(c=>c.pass).length,total=sim?.case_ids?.length||0;
           this.$('processLatest').textContent=!sim?'等待实验':sim.state==='queued'?'仿真排队':sim.state==='cancelled'?'已取消排队':sim.state==='failed'?`未通过 · ${passed}/${total}`:`${passed}/${total} · ${sim.state==='completed'?'本地通过':'进行中'}`;
+          if(sim?.evaluation_mode==='compile-only'){this.$('processLatest').previousElementSibling.textContent='本队编译';this.$('processLatest').textContent=sim.compile_pass?'已编译 · 精度未验证':sim.state==='failed'?'编译失败':sim.state==='queued'?'编译排队':'编译中';}
           if(d.simulation.available===false&&['queued','running'].includes(sim?.state))this.$('processLatest').textContent='等待仿真环境恢复';
           this.$('processEvidence').disabled=!sim;
         }else this.$('processLatest').previousElementSibling.textContent='最新实测';

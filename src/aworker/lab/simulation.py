@@ -14,6 +14,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from aworker.lab.domain import Stage, StageUpdate
+from aworker.lab.probes import local_cases
 
 
 # ---- SimulationRequest ------------------------------------------------------
@@ -35,7 +36,9 @@ class SimulationRequest(BaseModel):
     timeout_seconds: int = Field(default=3600, ge=30, le=3600)
     functional_timeout_seconds: int = Field(default=1800, ge=30, le=3600)
     created_at: float
-    evaluation_mode: Literal["full-profile", "functional-then-profile"] = "full-profile"
+    evaluation_mode: Literal["full-profile", "functional-then-profile", "compile-only"] = (
+        "full-profile"
+    )
     profile_case_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
@@ -135,6 +138,8 @@ class Simulator:
                         passed_cases=sum(c.get("pass") is True for c in cases),
                         requested_cases=len(row["case_ids"]),
                         error=row.get("error"),
+                        evaluation_mode=row.get("evaluation_mode"),
+                        compile_pass=row.get("compile_pass"),
                     )
                     if not selected:
                         continue
@@ -291,6 +296,7 @@ class Simulator:
             "started_at",
             "finished_at",
             "functional_pass",
+            "compile_pass",
             "functional_finished_at",
             "evaluation_mode",
             "error",
@@ -327,6 +333,7 @@ class Simulator:
                 }
             )
             row.setdefault("case_ids", request["case_ids"])
+            row.setdefault("evaluation_mode", request.get("evaluation_mode", "full-profile"))
             row.setdefault("worker_sha256", request["worker_sha256"])
             row.setdefault("profile_case_ids", request.get("profile_case_ids", []))
             if not summary:
@@ -335,6 +342,33 @@ class Simulator:
             row["created_at"] = request["created_at"]
             rows.append(row)
         return sorted(rows, key=lambda row: row["created_at"], reverse=True)
+
+    # ---- a build receipt is never a functional pass --------------------------
+    def build_evidence(self, team, digest, case_hash=None):
+        for row in self.jobs(team, summary=True):
+            if not (
+                row.get("schema") == "justkernel.simulation.v1"
+                and row.get("source") == "cann-simulator"
+                and row.get("source_sha256") == digest
+                and row.get("worker_sha256") == self.identity()
+                and (case_hash is None or row.get("case_pack_sha256") == case_hash)
+                # Worker sets this only after kernel/package/deploy and linked driver succeed.
+                and row.get("compile_pass") is True
+            ):
+                continue
+            request = self.spool / "jobs" / row["id"] / "request.json"
+            raw = request.read_bytes()
+            payload = json.loads(raw)
+            if (
+                row.get("request_sha256") == hashlib.sha256(raw).hexdigest()
+                and payload["team"] == team
+                and payload["source_sha256"] == digest
+                and payload["case_pack_sha256"] == row["case_pack_sha256"]
+                and payload["worker_sha256"] == self.identity()
+                and row.get("target_soc") == payload["target_soc"]
+            ):
+                return row
+        return None
 
     def evidence(self, team, digest, case_hash=None, require_coverage=False):
         if case_hash is None:
@@ -404,6 +438,26 @@ class Simulator:
         cases = json.loads((self.service.root / "challenge/cases.json").read_text(encoding="utf-8"))
         return [c["id"] for c in cases]
 
+    # ---- added probes never rewrite or relabel the canonical INPUT pack ------
+    def available_case_ids(self, team):
+        return self.default_cases() + [c["id"] for c in local_cases(self.service, team)]
+
+    def case_pack(self, team, case_ids=None):
+        baseline = (self.service.root / "challenge/cases.json").read_bytes().decode()
+        selected = case_ids or self.default_cases()
+        cases = json.loads(baseline)
+        known = {c["id"]: c for c in cases}
+        canonical = set(known)
+        known.update({c["id"]: c for c in local_cases(self.service, team)})
+        if not selected or len(set(selected)) != len(selected) or not set(selected) <= set(known):
+            raise ValueError("select distinct known local baseline/probe IDs")
+        text = (
+            baseline
+            if set(selected) <= canonical
+            else json.dumps([known[key] for key in selected], ensure_ascii=False, sort_keys=True)
+        )
+        return text, selected
+
     # ---- fixed representative set, independent of team code or output ---------
     def profile_cases(self):
         cases = json.loads((self.service.root / "challenge/cases.json").read_text(encoding="utf-8"))
@@ -414,10 +468,13 @@ class Simulator:
         return list(selected.values())
 
     def can_learn(self, team):
+        worker = self.identity()
         return not self.required or any(
             self.evidence(team, row["source_sha256"], row.get("case_pack_sha256"))
-            for row in self.jobs(team)
+            for row in self.jobs(team, summary=True)
             if row.get("state") == "completed"
+            and row.get("functional_pass") is True
+            and row.get("worker_sha256") == worker
         )
 
     def require_learning(self, team):
@@ -549,7 +606,15 @@ class Simulator:
         return True
 
     # ---- every team submits and receives its own experiment ------------------
-    async def evaluate(self, team, run_id, hypothesis="", case_ids=None, learned_from=None):
+    async def evaluate(
+        self,
+        team,
+        run_id,
+        hypothesis="",
+        case_ids=None,
+        learned_from=None,
+        evaluation_mode="functional-then-profile",
+    ):
         if not self.status()["available"]:
             result = {
                 "state": "unavailable",
@@ -565,7 +630,9 @@ class Simulator:
             task = self.team_tasks.get(team)
             if task is None or task.done():
                 task = asyncio.create_task(
-                    self._experiment(team, run_id, hypothesis, case_ids, learned_from)
+                    self._experiment(
+                        team, run_id, hypothesis, case_ids, learned_from, evaluation_mode
+                    )
                 )
                 self.team_tasks[team] = task
                 self.pending.add(task)
@@ -596,17 +663,20 @@ class Simulator:
                 message=self.service.redact(str(error))[:1000],
             )
 
-    async def _experiment(self, team, run_id, hypothesis, case_ids, learned_from):
+    async def _experiment(
+        self,
+        team,
+        run_id,
+        hypothesis,
+        case_ids,
+        learned_from,
+        evaluation_mode="functional-then-profile",
+    ):
         candidate = self.service.candidate(team)
         policy = self.service.inspect_policy(team, run_id)
         if not policy.automated_pass:
             return {"state": "blocked", "error": "修正源码规则检查发现的问题后再仿真。"}
-        cases_text = (self.service.root / "challenge/cases.json").read_bytes().decode()
-        cases = json.loads(cases_text)
-        known = {c["id"] for c in cases}
-        selected = case_ids or self.default_cases()
-        if not selected or len(set(selected)) != len(selected) or not set(selected) <= known:
-            raise ValueError("select distinct IDs from the trusted local input pack")
+        cases_text, selected = self.case_pack(team, case_ids)
         case_hash = hashlib.sha256(cases_text.encode()).hexdigest()
         pending = next(
             (
@@ -617,6 +687,8 @@ class Simulator:
                 and row["case_pack_sha256"] == case_hash
                 and row["worker_sha256"] == self.identity()
                 and set(row["case_ids"]) == set(selected)
+                and (row.get("evaluation_mode") == "compile-only")
+                == (evaluation_mode == "compile-only")
             ),
             None,
         )
@@ -649,8 +721,10 @@ class Simulator:
                 hypothesis=hypothesis,
                 learned_from=learned_from or [],
                 created_at=time.time(),
-                evaluation_mode="functional-then-profile",
-                profile_case_ids=[c for c in self.profile_cases() if c in selected],
+                evaluation_mode=evaluation_mode,
+                profile_case_ids=[c for c in self.profile_cases() if c in selected]
+                if evaluation_mode != "compile-only"
+                else [],
                 timeout_seconds=self.service.settings.lab_simulation_timeout_seconds,
                 functional_timeout_seconds=self.service.settings.lab_simulation_case_timeout_seconds,
             )
