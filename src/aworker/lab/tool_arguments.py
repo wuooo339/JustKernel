@@ -12,11 +12,18 @@ def normalize_arguments(name: str, arguments: dict) -> dict:
         and "path" in result
     ):
         result["file_path"] = result.pop("path")
-    if name == "run_python" and isinstance(result.get("arguments"), str):
+    fields = {
+        "run_python": {"arguments": str},
+        "simulate_kernel": {"case_ids": str, "learned_from": str},
+        "write_todos": {"todos": dict},
+    }
+    for field, item_type in fields.get(name, {}).items():
+        if not isinstance(result.get(field), str):
+            continue
         try:
-            parsed = json.loads(result["arguments"])
+            parsed = json.loads(result[field])
         except (ValueError, TypeError):
             parsed = None
-        if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
-            result["arguments"] = parsed
+        if isinstance(parsed, list) and all(isinstance(item, item_type) for item in parsed):
+            result[field] = parsed
     return result

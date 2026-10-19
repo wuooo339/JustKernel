@@ -336,3 +336,56 @@ def test_python_source_generation_resets_progress_but_not_analysis_notes(service
     )
     assert "generated fixture implementation" in (folder / "kernel.asc").read_text(encoding="utf-8")
     assert not any(e["kind"] == "baseline.progress.warning" for e in service.store.events())
+
+
+# ---- compatible providers may stringify typed arrays; never drop the requested subset ----
+def test_simulation_and_plan_arrays_are_normalized_narrowly():
+    data = {"case_ids": '["draft-01"]', "learned_from": '["artifact-a"]'}
+    normalized = normalize_arguments("simulate_kernel", data)
+    assert normalized == {"case_ids": ["draft-01"], "learned_from": ["artifact-a"]}
+    assert isinstance(data["case_ids"], str)
+    assert normalize_arguments("simulate_kernel", {"case_ids": "[1]"})["case_ids"] == "[1]"
+    assert (
+        normalize_arguments("simulate_kernel", {"case_ids": '__import__("os")'})["case_ids"]
+        == '__import__("os")'
+    )
+    assert normalize_arguments(
+        "write_todos", {"todos": '[{"content":"fixture","status":"pending"}]'}
+    )["todos"] == [{"content": "fixture", "status": "pending"}]
+
+
+# ---- real graph reaches the simulator with exactly the requested parsed case IDs ----
+def test_graph_simulation_stringified_subset_never_silently_becomes_all_cases(service, monkeypatch):
+    calls = []
+
+    async def evaluate(team, run_id, hypothesis, case_ids, learned_from):
+        calls.append((case_ids, learned_from))
+        return {"pending": True, "job_id": "fixture-job-not-real-execution", "state": "queued"}
+
+    monkeypatch.setattr(service.simulator, "evaluate", evaluate)
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                "",
+                tool_calls=[
+                    {
+                        "id": "probe",
+                        "name": "simulate_kernel",
+                        "args": {
+                            "hypothesis": "explicit protocol fixture",
+                            "case_ids": '["draft-01"]',
+                            "learned_from": "[]",
+                        },
+                    }
+                ],
+            ),
+            AIMessage("Fixture probe queued, no real execution claimed."),
+        ]
+    )
+    monkeypatch.setattr(service.registry, "build", lambda _: model)
+    assert (
+        asyncio.run(service.run_team("team-a", "Fixture one-case request"))
+        == "Fixture probe queued, no real execution claimed."
+    )
+    assert calls == [(["draft-01"], [])]
+    assert not any(e["kind"] == "tool.recoverable_error" for e in service.store.events())

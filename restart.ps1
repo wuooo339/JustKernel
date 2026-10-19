@@ -33,10 +33,10 @@ if ($boundProcess) {
     if (-not $ownedProcess -or $runningProcess.CommandLine -notlike '*aworker.lab.cli*serve*') {
       throw 'Port owner does not match this project. No process was stopped.'
     }
-    $snapshot = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/lab/snapshot" -TimeoutSec 5
+    $snapshot = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/lab/snapshot" -TimeoutSec 20
     if ($snapshot.continuous.enabled) { throw 'Pause continuous search in the dashboard before restarting.' }
     if ($snapshot.judge_selector_running) {
-      $judge = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/lab/workspace/judge" -TimeoutSec 5
+      $judge = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/lab/workspace/judge" -TimeoutSec 20
       # Read-only selection may be interrupted only during an explicitly paused maintenance window.
       if ($snapshot.continuous.enabled -or $judge.automation.enabled -or $judge.automation.busy) {
         throw 'Pause continuous search and official judging before restarting active selection.'
