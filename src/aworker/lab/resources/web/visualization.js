@@ -12,6 +12,18 @@
     const configured=new Set(models.filter(m=>m.configured).map(m=>m.id));
     return teams.filter(t=>t.active&&(recording||configured.has(t.model)));
   }
+  // ---- current model labels never replace durable team / artifact identity --
+  function teamDisplayNames(teams,models){
+    const profiles=new Map(models.map(m=>[m.id,m])),counts=new Map(),names=new Map();
+    for(const team of teams.filter(t=>t.active).slice().sort((a,b)=>a.id.localeCompare(b.id))){
+      const profile=profiles.get(team.model),provider=profile?.provider;
+      const family=provider==='qwen'?'Qwen':provider==='deepseek'?'DeepSeek':['chatgpt','openai'].includes(provider)?'GPT':profile?.name||'团队';
+      const serial=(counts.get(family)||0)+1;counts.set(family,serial);
+      names.set(team.id,family+'-'+String(serial).padStart(3,'0'));
+    }
+    return names;
+  }
+  const nodeDisplayName=(nodes,name)=>nodes.find(n=>n.name===name)?.label||name;
   const visibleNode=n=>!['unregistered','excluded','unconfigured'].includes(n.state);
   function networkGroups(nodes){
     const labels=['GPT','GLM','DeepSeek','Qwen'],counts=new Map();
@@ -326,8 +338,8 @@
       if(metric==='score')this.$('attemptValue').textContent=number(latest?.score)?latest.score.toFixed(2):latest?.error||'待官测';
       this.$('attemptValue').classList.toggle('status-value',Boolean(latest?.error));
       const time = latest?.at ? new Date(latest.at*1000).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Shanghai'})+' · ' : '';
-      this.$('attemptDetail').textContent = latest ? time+latest.team+(metric==='score'?' · 提交 '+latest.job:latest.error ? ' · 未取得测量' : ' · '+latest.coverage+' 点回执') : d.running ? '团队正在工作，结果返回后自动更新' : d.judgeOnly?'等待首次官方回执':'等待第一次设备评测';
-      if(local&&latest)this.$('attemptDetail').textContent=time+latest.team+' · 源码 '+latest.sha?.slice(0,8)+' · 流水 '+latest.profiles+'/'+latest.profileTotal+(latest.pending?' · 进行中':'');
+      this.$('attemptDetail').textContent = latest ? time+nodeDisplayName(d.nodes,latest.team)+(metric==='score'?' · 提交 '+latest.job:latest.error ? ' · 未取得测量' : ' · '+latest.coverage+' 点回执') : d.running ? '团队正在工作，结果返回后自动更新' : d.judgeOnly?'等待首次官方回执':'等待第一次设备评测';
+      if(local&&latest)this.$('attemptDetail').textContent=time+nodeDisplayName(d.nodes,latest.team)+' · 源码 '+latest.sha?.slice(0,8)+' · 流水 '+latest.profiles+'/'+latest.profileTotal+(latest.pending?' · 进行中':'');
       this.$('attemptFailureButton').hidden=!latest?.failed;
       this.$('attemptBest').textContent = best === null ? '—' : metric === 'score' ? best.toFixed(2)+' 分' : metric === 'latency' ? best.toFixed(2)+' μs' : best.toFixed(1)+'%';
       this.$('bestLabel').textContent = metric === 'score' ? '最好官测分数' : metric === 'latency' ? '当前最低耗时' : local ? '本地最好覆盖率' : '当前最好正确率';
@@ -363,7 +375,7 @@
       if (attempts.length===1 && runningBest!==null) bestLine += `H${right}`;
       const marks = attempts.map((p,i) => {
         const value=p[metric], py=number(value)?y(value):failY;
-        const label = p.team+' · 尝试 '+(i+1)+' · '+(number(value)?metric==='score'?value.toFixed(2)+' 官测分':metric==='latency'?value.toFixed(3)+' μs':p.passed+'/'+p.total+' 通过':p.error||'未取得完整通过耗时')+' · 点击查看回执';
+        const label = nodeDisplayName(d.nodes,p.team)+' · 尝试 '+(i+1)+' · '+(number(value)?metric==='score'?value.toFixed(2)+' 官测分':metric==='latency'?value.toFixed(3)+' μs':p.passed+'/'+p.total+' 通过':p.error||'未取得完整通过耗时')+' · 点击查看回执';
         return `<g class="plot-point ${p.failed?'bad':'good'}" data-point="${i}" tabindex="0" role="button" aria-label="${escape(label)}"><title>${escape(label)}</title><circle class="hit" cx="${x(i)}" cy="${py}" r="11"/>${number(value)?`<circle class="dot" cx="${x(i)}" cy="${py}" r="${i===attempts.length-1?3:attempts.length>80?1.4:2.3}"/>`:p.pending?`<circle cx="${x(i)}" cy="${py}" r="3" fill="none" stroke="#829aaf" stroke-dasharray="2 2"/>`:`<path class="failure-cross" d="M${x(i)-3} ${py-3}l6 6m-6 0l6-6"/>`}</g>`;
       }).join('');
       const lastValue=latest?.[metric];
@@ -378,7 +390,7 @@
       const metric = this.$('trajectoryMetric').value;
       if(point.local){this.$('plotTooltip').textContent=point.team+' · 源码 '+point.sha?.slice(0,12)+'\n'+point.passed+'/'+point.total+' 本地数值校验 · '+point.profiles+'/'+point.profileTotal+' 流水采集\n暂拟测试集，非官方成绩 · 点击查看仿真回执';this.$('plotTooltip').hidden=false;return;}
       if(point.official){this.$('plotTooltip').textContent=point.team+' · 提交 '+point.job+'\n'+(point.valid?point.score.toFixed(2)+' 分':point.error)+'\n源码 '+(point.sha||'').slice(0,12)+' · 用户关联提交';this.$('plotTooltip').hidden=false;return;}
-      this.$('plotTooltip').textContent = point.team+' · '+(point.sha?.slice(0,12) || point.job)+'\n'+
+      this.$('plotTooltip').textContent = nodeDisplayName(this.data.nodes,point.team)+' · '+(point.sha?.slice(0,12) || point.job)+'\n'+
         (point.error ? point.error.slice(0,120) : point.passed+'/'+point.total+' 本地点通过'+(number(point.latency)?' · '+point.latency.toFixed(3)+' μs 几何均值':''))+
         (metric==='latency' && !number(point.latency)?'\n未绘入性能线：未完整通过或测量环境不同':'')+'\n点击查看原始回执';
       this.$('plotTooltip').hidden=false;
@@ -477,25 +489,27 @@
         const coverage=rows.find(r=>r.total>0);
         if(this.data.simulation?.required){
           const d=this.data,at=d.recording?(d.replayClock?.start||0)+(d.replayClock?.position||0):Infinity;
-          const local=simulationAttempts(d.simulationJobs||[],d.expectedCases,null,d.simulation,at);
+          const visibleNames=new Set(d.nodes.filter(visibleNode).map(n=>n.name));
+          const local=simulationAttempts(d.simulationJobs||[],d.expectedCases,null,d.simulation,at).filter(p=>visibleNames.has(p.team));
           const best=local.filter(p=>p.valid).at(-1),bestPartial=[...local].sort((a,b)=>b.passed-a.passed)[0];
           const shown=best||bestPartial;
+          const latest=points.filter(p=>visibleNames.has(p.team)&&p.total>0).sort((a,b)=>a.at-b.at).at(-1);
           board.closest('.panel').querySelector('.mini-label').textContent='本地仿真 / 官方反馈';
-          board.innerHTML=`<div class="board-best"><strong>${shown?shown.passed+'/'+shown.total+' <small>本地校验</small>':'等待本地校验'}</strong><span>${shown?'流水 '+shown.profiles+'/'+shown.profileTotal+' · '+escape(shown.sha.slice(0,8)):'独立实验返回后自动更新'}</span></div><div class="board-best official-summary"><strong>${top?top.score.toFixed(2)+' <small>官测分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>官测通过</small>':'等待官测'}</strong><span>与本地结果分别记录</span></div><div class="board-columns local-board"><span>排名</span><span>团队</span><span>本地</span><span>官测</span></div><div class="board-rows">${rows.map((r,i)=>{
+          board.innerHTML=`<div class="board-best"><strong>${shown?shown.passed+'/'+shown.total+' <small>本地校验</small>':'等待本地校验'}</strong><span>${shown?'流水 '+shown.profiles+'/'+shown.profileTotal+' · '+escape(shown.sha.slice(0,8)):'独立实验返回后自动更新'}</span></div><div class="board-best official-summary"><strong>${top?top.score.toFixed(2)+' <small>官测最高分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>历史官测最好</small>':'等待官测'}</strong><span>${latest?'最近官测 '+latest.passed+'/'+latest.total+' · '+escape(latest.sha?.slice(0,8)||''):'与本地结果分别记录'}</span></div><div class="board-columns local-board"><span>排名</span><span>团队</span><span>本地</span><span>官测最好</span></div><div class="board-rows">${rows.map((r,i)=>{
             const own=local.filter(p=>p.team===r.name),p=own.filter(p=>p.valid).at(-1)||own.at(-1);
-            return `<button class="board-row local-board" data-rank-team="${r.id}" title="${escape(p?'本地源码 '+p.sha+' · 流水 '+p.profiles+'/'+p.profileTotal+'；官测列可能属于另一源码版本':'尚无当前测试集仿真结果')}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(r.name)}</b><strong>${p?p.passed+'/'+p.total:'未测'}</strong><strong>${number(r.score)?r.score.toFixed(2):r.total?r.passed+'/'+r.total:r.attempts?'判题中':'未提交'}</strong></button>`;
+            return `<button class="board-row local-board" data-rank-team="${r.id}" title="${escape(p?'本地源码 '+p.sha+' · 流水 '+p.profiles+'/'+p.profileTotal+'；官测列可能属于另一源码版本':'尚无当前测试集仿真结果')}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(nodeDisplayName(d.nodes,r.name))}</b><strong>${p?p.passed+'/'+p.total:'未测'}</strong><strong>${number(r.score)?r.score.toFixed(2):r.total?r.passed+'/'+r.total:r.attempts?'判题中':'未提交'}</strong></button>`;
           }).join('')}</div>`;
           board.onclick=e=>{const id=Number(e.target.closest('[data-rank-team]')?.dataset.rankTeam);if(id)this.selectAgent(id);};return;
         }
         board.closest('.panel').querySelector('.mini-label').textContent='CANN Judge / 官方反馈';
-        board.innerHTML=`<div class="board-best"><strong>${top?top.score.toFixed(2)+' <small>分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>官测通过</small>':'等待官测'}</strong><span>${top?escape(top.name):coverage?escape(coverage.name)+' · 尚未全点通过': '候选代码尚未取得官方回执'}</span></div><div class="board-columns"><span>排名</span><span>团队</span><span>官测最好</span></div><div class="board-rows">${rows.map((r,i)=>`<button class="board-row" data-rank-team="${r.id}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(r.name)}</b><strong>${number(r.score)?r.score.toFixed(2)+' 分':r.total?r.passed+'/'+r.total+' · 未全过':r.attempts?'判题中':'未提交'}</strong></button>`).join('')}</div>`;
+        board.innerHTML=`<div class="board-best"><strong>${top?top.score.toFixed(2)+' <small>分</small>':coverage?coverage.passed+'/'+coverage.total+' <small>官测通过</small>':'等待官测'}</strong><span>${top?escape(nodeDisplayName(this.data.nodes,top.name)):coverage?escape(nodeDisplayName(this.data.nodes,coverage.name))+' · 尚未全点通过': '候选代码尚未取得官方回执'}</span></div><div class="board-columns"><span>排名</span><span>团队</span><span>官测最好</span></div><div class="board-rows">${rows.map((r,i)=>`<button class="board-row" data-rank-team="${r.id}"><span>${number(r.score)?i+1:'—'}</span><b>${escape(nodeDisplayName(this.data.nodes,r.name))}</b><strong>${number(r.score)?r.score.toFixed(2)+' 分':r.total?r.passed+'/'+r.total+' · 未全过':r.attempts?'判题中':'未提交'}</strong></button>`).join('')}</div>`;
         board.onclick=e=>{const id=Number(e.target.closest('[data-rank-team]')?.dataset.rankTeam);if(id)this.selectAgent(id);};return;
       }
       const d=this.data,points=d.demo?this.demoPoints():attemptsFromEvents(d.events,d.expectedCases);
       const rows=rankTeams(points,d.nodes,Boolean(d.recording)),top=rows.find(r=>number(r.latency));
       const heading=board.closest('.panel').querySelector('h2');heading.innerHTML='<span>//</span> SOTA / 团队榜单';
       board.closest('.panel').querySelector('.mini-label').textContent=d.demo?'模拟榜单':'同环境实测';
-      board.innerHTML=`<div class="board-best"><strong>${top?top.latency.toFixed(2)+' <small>μs</small>':'等待完整通过'}</strong><span>${top?escape(top.name):'尚无有效性能成绩'}</span></div><div class="board-columns"><span>排名</span><span>团队</span><span>最好结果</span></div><div class="board-rows">${rows.map((r,i)=>`<button type="button" class="board-row ${r.id===d.selected?'selected':''}" ${r.id?'data-rank-team="'+r.id+'"':'disabled'} title="${escape(r.name)}"><span>${number(r.latency)?String(i+1).padStart(2,'0'):'—'}</span><b>${escape(r.name)}</b><strong>${number(r.latency)?r.latency.toFixed(2)+' μs':r.total?r.passed+'/'+r.total:'未测'}</strong></button>`).join('')}</div>`;
+      board.innerHTML=`<div class="board-best"><strong>${top?top.latency.toFixed(2)+' <small>μs</small>':'等待完整通过'}</strong><span>${top?escape(nodeDisplayName(this.data.nodes,top.name)):'尚无有效性能成绩'}</span></div><div class="board-columns"><span>排名</span><span>团队</span><span>最好结果</span></div><div class="board-rows">${rows.map((r,i)=>`<button type="button" class="board-row ${r.id===d.selected?'selected':''}" ${r.id?'data-rank-team="'+r.id+'"':'disabled'} title="${escape(nodeDisplayName(this.data.nodes,r.name))}"><span>${number(r.latency)?String(i+1).padStart(2,'0'):'—'}</span><b>${escape(nodeDisplayName(this.data.nodes,r.name))}</b><strong>${number(r.latency)?r.latency.toFixed(2)+' μs':r.total?r.passed+'/'+r.total:'未测'}</strong></button>`).join('')}</div>`;
       board.onclick=e=>{const id=Number(e.target.closest('[data-rank-team]')?.dataset.rankTeam);if(id)this.selectAgent(id);};
     }
 
@@ -505,7 +519,7 @@
       this.$('networkClusters').innerHTML=groups.map(g=>`<span style="left:${g.caption[0]}%;top:${g.caption[1]}%">${escape(g.label)}<b>${g.count}</b></span>`).join('');
       this.$('swarmField').classList.toggle('network-dense',groups.reduce((a,g)=>a+g.count,0)>16);
       const selected=d.nodes[d.selected-1];
-      this.$('networkSelection').textContent=selected&&visibleNode(selected) ? selected.name+' · '+selected.model+(selected.effort?' · '+selected.effort:'') : '组建团队后在这里查看协作';
+      this.$('networkSelection').textContent=selected&&visibleNode(selected) ? (selected.label||selected.name)+' · '+selected.model+(selected.effort?' · '+selected.effort:'') : '组建团队后在这里查看协作';
       const at=d.recording?(d.replayClock?.start||0)+(d.replayClock?.position||0):Date.now()/1000;
       this.network=networkProjection(d.nodes,d.events,at);
       this.$('networkEdges').textContent=d.demo ? '演示通信' : `${this.network.connections.length} 队已连接 · A2A ${this.network.delivered} 次送达`;
@@ -539,7 +553,7 @@
         const {x,y,size}=positions[i];
         const dense=this.$('swarmField').classList.contains('network-dense');
         const proof=this.networkRanks?.get(n.name);
-        node.title='A'+String(n.id).padStart(3,'0')+' · '+n.name+' · '+n.model+(n.effort?' · '+n.effort:'')+' · '+(number(proof?.score)?'官测 '+proof.score+' 分':proof?.total?'官测通过 '+proof.passed+'/'+proof.total+'（尚未全过）':d.demo?'演示节点':'暂无本队官测回执');
+        node.title='A'+String(n.id).padStart(3,'0')+' · '+(n.label||n.name)+' · '+n.model+(n.effort?' · '+n.effort:'')+' · '+(number(proof?.score)?'官测 '+proof.score+' 分':proof?.total?'官测通过 '+proof.passed+'/'+proof.total+'（尚未全过）':d.demo?'演示节点':'暂无本队官测回执');
         const label=networkNodeLabel(n,count);
         if(node.textContent!==label)node.textContent=label;
         node.style.whiteSpace='pre';node.style.fontSize=dense&&n.id!==d.selected&&n.state!=='testing'?'0':Math.max(9,Math.min(16,size*.22))+'px';
@@ -604,6 +618,6 @@
       }
     }
   }
-  if (typeof module !== 'undefined' && module.exports) module.exports={View,simulationAttempts,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,networkLayout,networkNodeLabel,officialAttemptsFromEvents,rankOfficialTeams};
-  else root.JustKernelVisuals={View,connectedTeams};
+  if (typeof module !== 'undefined' && module.exports) module.exports={View,simulationAttempts,attemptsFromEvents,performanceGroup,rankTeams,connectedTeams,teamDisplayNames,networkGroups,networkProjection,messageActive,motionEnabled,workActive,networkNodeSize,networkLayout,networkNodeLabel,officialAttemptsFromEvents,rankOfficialTeams};
+  else root.JustKernelVisuals={View,connectedTeams,teamDisplayNames};
 })(typeof window === 'undefined' ? {} : window);

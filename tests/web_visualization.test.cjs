@@ -226,3 +226,31 @@ test('judge-only dashboard keeps local and official results visibly separate',()
   assert.match(board.innerHTML,/等待官测/);assert.match(board.innerHTML,/本地校验/);
   assert.doesNotMatch(board.innerHTML,/100.*官测分/);
 });
+
+test('current model names stay distinct while A2A and receipts retain durable team IDs',()=>{
+  const {teamDisplayNames}=require('../src/aworker/lab/resources/web/visualization.js');
+  const teams=[{id:'gpt-004',model:'qwen-api',active:0},{id:'deepseek-003',model:'qwen-api',active:1},
+    {id:'gpt-003',model:'qwen-api',active:1}];
+  const names=teamDisplayNames(teams,[{id:'qwen-api',provider:'qwen'}]);
+  assert.equal(names.get('deepseek-003'),'Qwen-001');
+  assert.equal(names.get('gpt-003'),'Qwen-002');
+  assert.equal(names.has('gpt-004'),false);
+  assert.equal(teams[1].id,'deepseek-003');
+  const nodes=teams.filter(t=>t.active).map((t,i)=>({id:i+1,name:t.id,label:names.get(t.id),state:'waiting'}));
+  const traffic=networkProjection(nodes,[{seq:1,at:1,team:'judger',kind:'team.message',data:{recipient:'deepseek-003',transport:'a2a'}}]);
+  assert.equal(traffic.delivered,1);
+});
+
+test('active team board hides archived experiments and distinguishes best from latest official coverage',()=>{
+  const label={},board={closest:()=>({querySelector:()=>label})};
+  const official=(seq,team,passed)=>({seq,at:seq,team,kind:'judge.submission.updated',data:{submission_id:'submission-'+seq,
+    source_sha256:'version-'+seq,official:{status:'Wrong Answer',score:null,
+      result:Array.from({length:15},(_,i)=>({testcase_status:i<passed?'Pass':'Wrong Answer'}))}}});
+  const data={judgeOnly:true,expectedCases:15,simulation:{required:true},simulationJobs:[],
+    nodes:[{id:1,name:'deepseek-003',label:'Qwen-001',state:'generating'}],
+    events:[official(1,'deepseek-003',14),official(2,'deepseek-003',12),official(3,'gpt-004',15)]};
+  View.prototype.renderLeaderboard.call({data,$:()=>board});
+  assert.match(board.innerHTML,/Qwen-001/);assert.doesNotMatch(board.innerHTML,/<b>deepseek-003<\/b>|gpt-004/);
+  assert.match(board.innerHTML,/14\/15.*历史官测最好/);assert.match(board.innerHTML,/最近官测 12\/15/);
+  assert.doesNotMatch(board.innerHTML,/15\/15/);
+});

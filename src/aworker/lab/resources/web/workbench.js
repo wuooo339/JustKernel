@@ -4,6 +4,8 @@
   if(window.JUSTKERNEL_DEMO_ONLY)return;
   const $=id=>document.getElementById(id);
   const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const teamLabel=id=>window.JustKernelTeams?.label(id)||id;
+  const activeTeamIds=()=>new Set(window.JustKernelTeams?.active()||[]);
   let catalog=null, models=[], images=[], terminal=null, socket=null;
   async function api(path,data){
     const r=await fetch('/api/lab'+path,{method:data===undefined?'GET':'POST',headers:data===undefined?{}:{'Content-Type':'application/json'},body:data===undefined?undefined:JSON.stringify(data)});
@@ -62,6 +64,13 @@
   const judgeConnection=document.createElement('section');judgeConnection.className='judge-connection';
   judgeConnection.innerHTML=`<h2>精选挑战 · 官方评测</h2><p id="judgeSessionText" class="wb-intro">各队持续优化、共享候选。独立筛选器挑选最有希望刷新 SOTA 的版本，Judger 只送测精选版本。</p><div class="form-pair"><label>每日官测上限 · 全局<input id="judgeRounds" type="number" min="1" max="100000" value="50"></label><div class="control-actions">${button('connectJudgeSession','连接并开启自动官测')}${button('toggleJudgeAutomation','暂停官测')}${button('disconnectJudgeSession','断开登录')}</div></div><p id="judgeAutomationText" class="wb-intro"></p><p id="judgeSelectionText" class="wb-intro"></p>`;
   judgeDialog.querySelector('.settings-form').prepend(judgeConnection);
+  const selectorField=document.createElement('label');selectorField.textContent='Judger 使用模型';
+  const selectorModel=document.createElement('select');selectorModel.id='judgeSelectorModel';selectorField.append(selectorModel);
+  judgeConnection.querySelector('.form-pair').before(selectorField);
+  selectorModel.onchange=busy('connectJudgeSession',async()=>{
+    await api('/workspace/judge/automation',{enabled:Boolean(judgeState?.automation?.enabled),max_submissions:Number($('judgeRounds').value),selector_model:selectorModel.value});
+    await renderJudge();message('judgeStatus','已更新 Judger 模型，候选复核与提名使用所选连接。');
+  });
   const officialNavigation=document.createElement('div');officialNavigation.className='control-actions official-navigation';
   officialNavigation.innerHTML='<a id="officialRankingLink" class="quiet-button" target="_blank" rel="noopener noreferrer">打开本算子官榜 ↗</a><a id="ownSubmissionLink" class="quiet-button" target="_blank" rel="noopener noreferrer">我的最新提交 ↗</a>';
   judgeConnection.append(officialNavigation);
@@ -81,8 +90,12 @@
     const session=judgeState.session||{},auto=judgeState.automation||{};
     $('judgeSessionText').textContent=session.connected?'已登录 '+(session.nickname||'CANN Judge')+' · '+session.message:session.message||'尚未连接官测登录会话';
     const budget=auto.budget||{},selection=auto.selection||{},champion=judgeState.champion;
+    if(!models.length)models=(await api('/control/models')).models;
+    const options=models.filter(m=>m.configured),preferred=auto.selector_model||options.find(m=>m.provider==='qwen')?.id||'';
+    if(document.activeElement!==selectorModel){selectorModel.innerHTML=options.map(m=>`<option value="${esc(m.id)}">${esc(m.name)} · ${esc(m.model)}</option>`).join('');selectorModel.value=preferred;}
     $('judgeAutomationText').textContent=(auto.enabled?'官测已开启 · ':'官测已暂停 · ')+`今日 ${budget.used||0}/${budget.limit||50} · 上海时间零点换日 · `+(auto.phase==='selecting'&&!selection.running?'尚无新提名；等待各队独立仿真与修正，当前不送测。':auto.message||'');
-    $('judgeSelectionText').textContent=(champion?`已验证 SOTA：${champion.team} · ${champion.official.score} 分`:'等待首次官测通过')+(selection.nomination?' · 当前挑战：'+selection.nomination.source_sha256.slice(0,10)+' · '+selection.nomination.reason:selection.running?' · 正在比较候选':' · 候选池持续更新');
+    const pendingNomination=selection.nomination&&(judgeState.queue||[]).some(r=>r.id===selection.nomination.candidate_id&&!r.official_submission_id);
+    $('judgeSelectionText').textContent=(champion?`已验证 SOTA：${teamLabel(champion.team)} · ${champion.official.score} 分`:'等待首次官测通过')+(pendingNomination?' · 当前挑战：'+selection.nomination.source_sha256.slice(0,10)+' · '+selection.nomination.reason:selection.running?' · 正在比较候选':' · 等待新源码完成验证；已送测的同一源码不重复提交');
     $('toggleJudgeAutomation').textContent=auto.enabled?'暂停自动官测':'开启自动官测';
     $('disconnectJudgeSession').disabled=!session.opened||Boolean(auto.busy);
     if(document.activeElement!==$('judgeRounds'))$('judgeRounds').value=auto.max_submissions||50;
@@ -90,22 +103,24 @@
     $('watchJudge').textContent=judgeState.watching?'停止监控':'开启持续监控';
     $('officialSummary').textContent=d.updated_at?`${d.title} · ${d.total_ranked} 条官方排名 · 更新于 ${new Date(d.updated_at*1000).toLocaleTimeString('zh-CN')}`:'尚未同步官方公开榜单';
     $('officialRanking').innerHTML=(d.rows||[]).map(r=>`<p>#${esc(r.rank)} · 提交 ${esc(r.submission_number||r.submission_id)} · ${esc(r.status)} · ${esc(r.score)} 分</p>`).join('');
-    $('judgeCandidates').innerHTML=(judgeState.queue||[]).map(r=>`<article><b>${esc(r.team)}</b> · ${esc(r.source_sha256.slice(0,12))}<p>${esc(r.official?`${r.official.status} · ${r.official.score??'—'} 分 · 排名 ${r.official.rank??'未列入当前公榜'}`:r.readiness||r.submit_error||r.state)}${r.binding?' · 已关联提交 '+esc(r.official_submission_id):''}</p>${r.simulation_job_id?`<button type="button" class="quiet-button" data-simulation-proof="${esc(r.simulation_job_id)}">查看本队仿真回执 ↗</button> `:'等待本队完整仿真 · '}<a href="/api/lab/workspace/judge/packages/${esc(r.id)}" download>下载工程 ZIP ↗</a>${r.review?` · ${r.review.ready?'复核可送官测':'复核要求修正'}`:''}${r.official&&!r.feedback_operation?` <button type="button" class="quiet-button" data-judge-feedback="${esc(r.id)}">用此回执继续优化 →</button>`:r.feedback_operation?' · 已派发反馈轮次':''}</article>`).join('')||'<p>团队实现后会在这里生成候选，复核后自动送测。</p>';
-    const old=$('judgeCandidateId').value;$('judgeCandidateId').innerHTML=(judgeState.queue||[]).map(r=>`<option value="${esc(r.id)}">${esc(r.team)} · ${esc(r.source_sha256.slice(0,8))}</option>`).join('');if((judgeState.queue||[]).some(r=>r.id===old))$('judgeCandidateId').value=old;
+    const activeIds=activeTeamIds(),currentCandidates=(judgeState.queue||[]).filter(r=>activeIds.has(r.team)),archivedCandidates=(judgeState.queue||[]).filter(r=>!activeIds.has(r.team));
+    const candidateHTML=r=>`<article><b>${esc(teamLabel(r.team))}</b> · ${esc(r.source_sha256.slice(0,12))}<p>${esc(r.official?`${r.official.status} · ${r.official.score??'—'} 分 · 排名 ${r.official.rank??'未列入当前公榜'}`:r.readiness||r.submit_error||r.state)}${r.binding?' · 已关联提交 '+esc(r.official_submission_id):''}</p>${r.simulation_job_id?`<button type="button" class="quiet-button" data-simulation-proof="${esc(r.simulation_job_id)}">查看本队仿真回执 ↗</button> `:'等待本队完整仿真 · '}<a href="/api/lab/workspace/judge/packages/${esc(r.id)}" download>下载工程 ZIP ↗</a>${r.review?` · ${r.review.ready?'复核可送官测':'复核要求修正'}`:''}${r.official&&!r.feedback_operation?` <button type="button" class="quiet-button" data-judge-feedback="${esc(r.id)}">用此回执继续优化 →</button>`:r.feedback_operation?' · 已派发反馈轮次':''}</article>`;
+    $('judgeCandidates').innerHTML=(currentCandidates.map(candidateHTML).join('')||'<p>主队实现后会在这里生成候选，复核后自动送测。</p>')+(archivedCandidates.length?`<details><summary>已退出团队的历史候选 · ${archivedCandidates.length}</summary>${archivedCandidates.map(candidateHTML).join('')}</details>`:'');
+    const old=$('judgeCandidateId').value;$('judgeCandidateId').innerHTML=currentCandidates.map(r=>`<option value="${esc(r.id)}">${esc(teamLabel(r.team))} · ${esc(r.source_sha256.slice(0,8))}</option>`).join('');if((judgeState.queue||[]).some(r=>r.id===old))$('judgeCandidateId').value=old;
   }
   judgeButton.onclick=async()=>{judgeDialog.showModal();try{await renderJudge();judgeTimer=setInterval(()=>renderJudge().catch(()=>{}),5000);}catch(e){message('judgeStatus',e.message,true);}};
   judgeDialog.addEventListener('close',()=>{clearInterval(judgeTimer);judgeTimer=null;});
   $('syncJudge').onclick=busy('syncJudge',async()=>{message('judgeStatus','正在读取官方公开题目与榜单…');await api('/workspace/judge/sync',{});await renderJudge();message('judgeStatus','已同步官方公开信息；隐藏 INPUT 仍保持未确认。');});
   $('watchJudge').onclick=busy('watchJudge',async()=>{await api('/workspace/judge/watch',{enabled:!judgeState?.watching});await renderJudge();message('judgeStatus',judgeState.watching?'已开启，每分钟同步；失败时自动退避。':'监控已停止。');});
-  $('connectJudgeSession').onclick=busy('connectJudgeSession',async()=>{message('judgeStatus','正在打开项目的官方登录窗口…');await api('/workspace/judge/session/open',{enabled:true,max_submissions:Number($('judgeRounds').value)});await renderJudge();message('judgeStatus','请在打开的窗口登录。Judger 仅送测筛选器提名的挑战版本，团队持续优化。');});
-  $('toggleJudgeAutomation').onclick=busy('toggleJudgeAutomation',async()=>{await api('/workspace/judge/automation',{enabled:!judgeState?.automation?.enabled,max_submissions:Number($('judgeRounds').value)});await renderJudge();});
+  $('connectJudgeSession').onclick=busy('connectJudgeSession',async()=>{message('judgeStatus','正在打开项目的官方登录窗口…');await api('/workspace/judge/session/open',{enabled:true,max_submissions:Number($('judgeRounds').value),selector_model:selectorModel.value||judgeState?.automation?.selector_model||null});await renderJudge();message('judgeStatus','请在打开的窗口登录。Judger 仅送测筛选器提名的挑战版本，团队持续优化。');});
+  $('toggleJudgeAutomation').onclick=busy('toggleJudgeAutomation',async()=>{await api('/workspace/judge/automation',{enabled:!judgeState?.automation?.enabled,max_submissions:Number($('judgeRounds').value),selector_model:selectorModel.value||judgeState?.automation?.selector_model||null});await renderJudge();});
   const simulationProof=dialog('simulationProof','本队独立仿真回执','<pre id="simulationProofContent" style="white-space:pre-wrap;overflow-wrap:anywhere;max-height:65vh;overflow:auto"></pre>');
   $('judgeCandidates').addEventListener('click',async event=>{
     const key=event.target.closest('[data-simulation-proof]')?.dataset.simulationProof;if(!key)return;
     try{const proof=await api('/workspace/simulator/jobs/'+encodeURIComponent(key));$('simulationProofContent').textContent=JSON.stringify(proof,null,2);simulationProof.showModal();}catch(error){message('judgeStatus',error.message,true);}
   });
   $('disconnectJudgeSession').onclick=busy('disconnectJudgeSession',async()=>{await api('/workspace/judge/session/close',{});await renderJudge();message('judgeStatus','已关闭项目登录会话；候选和回执保留。');});
-  $('stageJudge').onclick=busy('stageJudge',async()=>{const team=$('agentTeam').textContent.trim();const row=await api('/workspace/judge/stage',{team});await renderJudge();message('judgeStatus',`${row.team} 候选已冻结，可下载并在官方浏览器页面提交。`);});
+  $('stageJudge').onclick=busy('stageJudge',async()=>{const team=$('agentTeam').dataset.team;const row=await api('/workspace/judge/stage',{team});await renderJudge();message('judgeStatus',`${teamLabel(row.team)} 候选已冻结，可下载并在官方浏览器页面提交。`);});
   $('trackJudge').onclick=busy('trackJudge',async()=>{await api('/workspace/judge/track',{candidate_id:$('judgeCandidateId').value,submission_id:$('judgeSubmissionId').value.trim()});await api('/workspace/judge/sync',{});await renderJudge();message('judgeStatus','已关联提交，持续监控会更新状态和公榜排名。');});
   $('judgeCandidates').onclick=async e=>{const target=e.target.closest('[data-judge-feedback]');if(!target)return;target.disabled=true;try{const r=await api('/workspace/judge/candidates/'+encodeURIComponent(target.dataset.judgeFeedback)+'/feedback',{});await renderJudge();message('judgeStatus',r.team+' 已收到官方回执，开始下一轮代码修正。');}catch(err){message('judgeStatus',err.message,true);target.disabled=false;}};
   let trustedHost=null;

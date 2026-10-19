@@ -63,7 +63,7 @@
     item.className = `receipt ${type === 'candidate.rejected' ? 'warn' : type === 'sota.updated' ? 'sota' : type === 'skill.created' ? 'skill' : ''}`;
     const actualTeam=state.source==='live'&&detail.evidence?live.teams.find(t=>t.id===detail.evidence.team):null;
     const actualModel=actualTeam?profile(actualTeam):null;
-    const label=actualTeam?.id || (state.source==='live'?detail.evidence?.team||'系统':agentId?`A${pad(agentId)}`:'SYS');
+    const label=actualTeam?teamLabel(actualTeam):state.source==='live'?detail.evidence?.team||'系统':agentId?`A${pad(agentId)}`:'SYS';
     const names = { 'agent.state': 'search', 'candidate.created': 'patch', 'candidate.rejected': 'revise', 'evaluation.completed': 'verify', 'sota.updated': 'sota ↑', 'skill.created': 'distill', 'agent.message': state.source==='live'?'reply':'a2a', 'run.started': 'start', 'policy.checked': 'policy' };
     item.innerHTML = `<time>${esc(event.at)}</time><span class="receipt-agent" title="${esc(actualModel?actualModel.model+' · '+(actualModel.effort||'默认强度'):label)}">${esc(label)}${actualModel?`<small>${esc(actualModel.model)}</small>`:''}</span><span class="receipt-text"><b>${esc(names[type] || type)}</b> ${esc(text)}</span>`;
     $('receiptList').prepend(item);
@@ -203,12 +203,13 @@
     const nodes = agents.map((a) => {
       const team = real ? teamForId(a.id) : null;
       return {id:a.id,name:real ? team?.id || '未注册' : 'A'+pad(a.id),
+        label:real&&team?teamLabel(team):'A'+pad(a.id),
         model:real ? profile(team)?.model || team?.model || '' : a.model,effort:real?profile(team)?.effort:'',
         groupKey:real ? [profile(team)?.provider,profile(team)?.model,profile(team)?.name].join(' ') : a.model,state:a.state};
     });
     visuals.update({demo:state.source === 'demo',recording,judgeOnly:real && live.status.execution_mode==='judge-only',selected:state.selected,
       replayClock:recording?live.replayClock:null,
-      simulation:real?live.simulation:null,simulationJobs:real?(live.simulation_jobs||[]):[],
+      simulation:real?live.simulation:null,simulationJobs:real?(live.simulation_jobs||[]).filter(j=>recording||connectedNames.has(j.team)):[],
       selectedTeam:real ? activeTeam()?.id || '__unregistered__' : null,
       nodes,events:real ? live.events.filter(e=>recording||connectedNames.has(e.team)||['controller','judger'].includes(e.team)&&e.kind==='team.message') : [],demoEvents:state.events,history:state.history,
       expectedCases:live.challenge?.cases?.length ?? 15,
@@ -378,6 +379,11 @@
     return result;
   }
   function visibleTeams() { return window.JustKernelVisuals.connectedTeams(live.teams,live.status.models||[],Boolean(live.recording)); }
+  function teamLabel(team) {
+    const id=typeof team==='string'?team:team?.id;
+    return window.JustKernelVisuals.teamDisplayNames(visibleTeams(),live.status.models||[]).get(id)||id||'暂无团队';
+  }
+  window.JustKernelTeams={label:teamLabel,active:()=>visibleTeams().map(t=>t.id)};
   function activeTeam() { return teamForId(state.selected); }
   function teamForId(id) { return visibleTeams()[id - 1]; }
   const STAGES = [['input','读取规格与技能'],['search','规划 · 协作 · 改码'],['policy','硬约束自查'],['queue','申请逻辑 NPU'],['execute','编译与设备运行'],['verify','逐点正确性与计时'],['share','发布公共候选'],['distill','蒸馏条件经验']];
@@ -406,7 +412,7 @@
   }
   function renderLiveFlow() {
     const team = activeTeam(), entries = flowEvents(team);
-    $('liveFlow').innerHTML = `<div class="flow-context">${esc(team?.id || '选择团队')} <span>${esc(currentRun(team)?.id.slice(0,8) || '等待任务')}</span></div>` + STAGES.map(([key,label],i) => {
+    $('liveFlow').innerHTML = `<div class="flow-context">${esc(team?teamLabel(team):'选择团队')} <span>${esc(currentRun(team)?.id.slice(0,8) || '等待任务')}</span></div>` + STAGES.map(([key,label],i) => {
       const e = entries.findLast((e) => e.kind === 'stage.updated' && e.data.stage === key);
       const status = e?.data.state || 'pending';
       return `<button class="live-step ${esc(status)}" data-live-stage="${key}"><span class="step-number">${String(i+1).padStart(2,'0')}</span><span><b>${label}</b><small>${esc(e?.data.message || '等待实际事件')}</small></span><em>${stageLabels[status]}</em></button>`;
@@ -420,7 +426,7 @@
       const el = $('agentGrid').children[a.id - 1];
       el.className = `agent ${a.state}${a.id === state.selected ? ' selected' : ''}`;
       const model=profile(team);
-      const label = team ? `${team.id} · ${model?.model || team.model}${model?.effort?' · '+model.effort:''} · ${STATE_LABELS[a.state]}` : `槽位 ${pad(a.id)} · 未注册`;
+      const label = team ? `${teamLabel(team)} · ${model?.model || team.model}${model?.effort?' · '+model.effort:''} · ${STATE_LABELS[a.state]}` : `槽位 ${pad(a.id)} · 未注册`;
       el.title = label; el.setAttribute('aria-label', label); el.setAttribute('aria-pressed', String(a.id === state.selected));
       if (['generating','testing'].includes(a.state)) active++;
     }
@@ -428,7 +434,7 @@
     $('queueCount').textContent = String(visibleTeams().filter(t=>['queued','model_queued'].includes(teamState(t))).length);
     for (let i = 0; i < 8; i++) {
       const device = live.devices[i], job = device && live.jobs.find((j) => j.device === device.id && j.state === 'running');
-      $('device'+i).textContent = !device ? '未接入' : job ? job.team : '空闲';
+      $('device'+i).textContent = !device ? '未接入' : job ? teamLabel(job.team) : '空闲';
     }
     document.querySelector('.swarm-panel .mini-label').textContent = `${visibleTeams().length} 支团队`;
     document.querySelectorAll('.swarm-models input').forEach((el) => {
@@ -460,7 +466,7 @@
   }
   function renderLiveInspector() {
     const team = activeTeam(), slot = state.selected, model = profile(team);
-    $('agentAvatar').textContent = team?pad(slot):'—'; $('agentName').textContent = team?.id || '暂无团队';
+    $('agentAvatar').textContent = team?pad(slot):'—'; $('agentName').textContent = team?teamLabel(team):'暂无团队';
     $('agentModel').textContent = model?model.model+(model.effort?' · '+model.effort:''):'';
     $('agentRole').textContent = team ? `${model?.name || team.model} · Deep Agents · ${model?.model||team.model}${model?.effort ? ' · '+model.effort : ''}` : '先配置模型并组建团队';
     $('agentStatus').textContent = STATE_LABELS[teamState(team)];
@@ -470,7 +476,8 @@
     const monitor=window.JustKernelActivity.teamMonitor(live.events,team?.id,live.operations,live.simulation_jobs||[],live.recording?(live.events.at(-1)?.at||0):Date.now()/1000,live.simulation?.available);
     const usage=monitor.usage.reported?`本轮已返回 Token · 输入 ${monitor.usage.input.toLocaleString()} / 输出 ${monitor.usage.output.toLocaleString()}`:'Token 用量等待提供商返回';
     $('teamProgress').innerHTML=`<strong>${esc(monitor.title)}</strong><div class="progress-facts">${esc(usage)}</div><div class="progress-facts">${progress.changes} 个源码版本${monitor.elapsed!==null?` · 最近模型调用 ${monitor.elapsed} 秒`:''}${progress.lastAt?' · 更新 '+new Date(progress.lastAt*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):''}</div>${progress.plan.length?`<details${planOpen?' open':''}><summary>开发计划 ${progress.done}/${progress.plan.length}</summary>${progress.plan.map(p=>`<div>${p.status==='completed'?'✓':p.status==='in_progress'?'→':'○'} ${esc(p.content)}</div>`).join('')}</details>`:''}`;
-    $('agentTeam').textContent = team?.id || '—'; $('agentBranch').textContent = team ? `${team.id}/${live.challenge?.manifest?.project_files?'project/':'kernel.asc'}` : '—';
+    $('agentTeam').dataset.team=team?.id||'';
+    $('agentTeam').textContent = team?teamLabel(team):'—'; $('agentBranch').textContent = team ? `${team.id}/${live.challenge?.manifest?.project_files?'project/':'kernel.asc'}` : '—';
     $('agentParent').textContent = live.code.get(team?.id)?.sha256?.slice(0,16) || '冻结基准 / 见任务';
     $('agentFooter').textContent = '统一工具轨迹 · 检查点 · 条件经验'; $('followButton').textContent = '查看团队任务 ↗';
     document.querySelectorAll('[data-tab]').forEach((el) => el.setAttribute('aria-selected',String(el.dataset.tab === state.tab)));
@@ -487,7 +494,7 @@
     if(state.tab==='overview'){
       $('inspectorContent').innerHTML=`<div class="monitor-team-list">${visibleTeams().map(t=>{
         const m=window.JustKernelActivity.teamMonitor(live.events,t.id,live.operations,live.simulation_jobs||[],live.recording?(live.events.at(-1)?.at||0):Date.now()/1000,live.simulation?.available);
-        return `<button class="monitor-team" data-monitor-team="${esc(t.id)}"><b>${esc(t.id)}</b><span>${esc(m.title)}</span><small>${m.usage.reported?'输出 '+m.usage.output.toLocaleString()+' Token':'等待用量回执'}${m.lastAt?' · '+new Date(m.lastAt*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):''}</small></button>`;
+        return `<button class="monitor-team" data-monitor-team="${esc(t.id)}"><b>${esc(teamLabel(t))}</b><span>${esc(m.title)}</span><small>${m.usage.reported?'输出 '+m.usage.output.toLocaleString()+' Token':'等待用量回执'}${m.lastAt?' · '+new Date(m.lastAt*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):''}</small></button>`;
       }).join('')}</div>`;
       return;
     }
@@ -503,7 +510,7 @@
       related = live.events.filter((e) => e.kind === 'team.message' && (e.team === team.id || e.data.recipient === team.id) || e.team === team.id && e.kind === 'agent.message');
       $('inspectorContent').innerHTML = deliverySummary + (live.recording ? '<p class="dim">离线通信记录</p>' : `<button class="text-button" id="sendMessage">跨团队发消息 ↗</button>`) + (related.length ? related.slice(-20).reverse().map(evidenceButton).join('') : '<p class="dim">等待真实成员回复或团队通信。</p>');
       const sendMessageButton=$('sendMessage'); if(sendMessageButton)sendMessageButton.onclick = () => {
-        $('messageTeam').innerHTML = visibleTeams().filter((t)=>t.id!==team.id).map((t)=>`<option>${esc(t.id)}</option>`).join('');
+        $('messageTeam').innerHTML = visibleTeams().filter((t)=>t.id!==team.id).map((t)=>`<option value="${esc(t.id)}">${esc(teamLabel(t))}</option>`).join('');
         $('messageDialog').showModal();
       };
     } else {
@@ -556,7 +563,7 @@
     const verified=new Set((live.runs || []).filter((r)=>r.state==='completed').map((r)=>r.team)).size;
     const continuous=Boolean(live.continuous?.enabled);
     const budget=live.judge_budget,simulation=live.simulation,waiting=live.continuous?.waiting_for==='simulator';
-    $('liveStatusLine').textContent=`${count} 支登记团队 · ${live.continuous?.strategy==='parallel'?'多队并行':'单主队基线'}${live.continuous?.main_team?' · '+live.continuous.main_team:''} · ${live.continuous?.blocked_reason|| (waiting?'等待仿真环境':continuous?'持续搜索':'已暂停')} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?`实验 ${simulation.worker?.concurrency||simulation.concurrency||1} 槽 / 采集 ${simulation.worker?.profiling_concurrency||simulation.profiling_concurrency||1} 槽`:'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
+    $('liveStatusLine').textContent=`${count} 支登记团队 · ${live.continuous?.strategy==='parallel'?'多队并行':'单主队基线'}${live.continuous?.main_team?' · '+teamLabel(live.continuous.main_team):''} · ${live.continuous?.blocked_reason|| (waiting?'等待仿真环境':continuous?'持续搜索':'已暂停')} · ${running.length} 个任务进行中${simulation?.required?' · '+(simulation.available?`实验 ${simulation.worker?.concurrency||simulation.concurrency||1} 槽 / 采集 ${simulation.worker?.profiling_concurrency||simulation.profiling_concurrency||1} 槽`:'仿真未连接'):''} · ${live.status.execution_mode==='judge-only'?(budget?`今日官测 ${budget.used}/${budget.limit} · 精选挑战`:'精选候选官测'):'混合执行'}`;
     $('playButton').textContent=continuous?'暂停持续优化':'启动持续优化';
     $('playButton').title=continuous?'暂停派发新一轮，当前任务继续完成；官测独立控制':'持续搜索、相互学习和提出候选，直到暂停';
     $('liveStatusLine').title=live.latestError || `${verified} 支团队完成过模型会话`;
@@ -567,7 +574,7 @@
     const deviceBusy=live.jobs.some(j=>j.state==='running')||live.simulation?.available&&(live.simulation_jobs||[]).some(j=>j.state==='running');
     $('terminal').classList.toggle('paused',!running.length&&!deviceBusy);
     $('footerStatus').textContent=`真实模式 · ${count} 支团队`;
-    $('runStatus').textContent=running.length ? running.map((o)=>`${o.team} / ${o.kind} / ${o.id.slice(0,8)} 正在执行`).join('\n') : '优化过程和设备实测会自动记录，可随时回看。';
+    $('runStatus').textContent=running.length ? running.map((o)=>`${teamLabel(o.team)} / ${o.kind} / ${o.id.slice(0,8)} 正在执行`).join('\n') : '优化过程和设备实测会自动记录，可随时回看。';
   }
   async function refreshLive() {
     const generation = liveGeneration;
@@ -588,7 +595,7 @@
     if(state.source!=='live'||live.recording||entry.seq<=live.seq)return;
     live.seq=entry.seq;
     live.totalEvents=(live.totalEvents||0)+1;
-    if(!live.teams.some((t)=>t.id===entry.team)&&!['controller','judger'].includes(entry.team))return;
+    if(!visibleTeams().some((t)=>t.id===entry.team)&&!['controller','judger'].includes(entry.team))return;
     if(entry.kind==='harness.event')return;
     live.events.push(entry);if(live.events.length>20000)live.events.shift();
     if(entry.kind==='evaluation.completed')live.latest=entry.data;
@@ -596,7 +603,7 @@
     if(entry.kind==='team.turn.started')live.latestError='';
     if(entry.kind==='workspace.changed')live.code.delete(entry.team);
     if(entry.kind==='judge.sota.updated'){
-      if(Date.now()/1000-entry.at<15){state.broadcastUntil=performance.now()+4000;$('broadcastVersion').textContent=`${entry.data.team} · ${entry.data.official?.score??'Pass'} 分`;}
+      if(Date.now()/1000-entry.at<15){state.broadcastUntil=performance.now()+4000;$('broadcastVersion').textContent=`${teamLabel(entry.data.team)} · ${entry.data.official?.score??'Pass'} 分`;}
       if(state.following){const index=visibleTeams().findIndex(t=>t.id===entry.data.team);if(index>=0)state.selected=index+1;}
     }
     if(meaningfulEvent(entry)){pendingLiveReceipts.push(entry);if(pendingLiveReceipts.length>7)pendingLiveReceipts.shift();}
@@ -698,7 +705,7 @@
       if(state.source!=='live'||generation!==liveGeneration)return;
       live.events=bootstrap.events;live.seq=bootstrap.cursor;live.totalEvents=bootstrap.total;
       $('receiptList').innerHTML='';
-      for(const e of live.events.filter(meaningfulEvent).slice(-7)){
+      for(const e of live.events.filter(e=>meaningfulEvent(e)&&(visibleTeams().some(t=>t.id===e.team)||['controller','judger'].includes(e.team))).slice(-7)){
         const index=visibleTeams().findIndex(t=>t.id===e.team);
         addReceipt(e.kind,index<0?null:index+1,String(eventSummary(e)).slice(0,500),{at:new Date(e.at*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}),evidence:e});
         $('receiptList').firstElementChild.dataset.seq=e.seq;
@@ -723,7 +730,7 @@
     $('runTeam').innerHTML='<option value="__swarm__">全部活动团队 · PK（仅多队模式）</option>';
     for (const team of visibleTeams()) {
       const option = document.createElement('option'); option.value = team.id;
-      option.textContent = `${team.id} / ${profile(team)?.name || team.model}`; $('runTeam').append(option);
+      option.textContent = `${teamLabel(team)} / ${profile(team)?.model || team.model}`; $('runTeam').append(option);
     }
     $('runTeam').value=live.continuous?.main_team||activeTeam()?.id||visibleTeams()[0]?.id||'';
     const preferred=mainModel();
@@ -744,7 +751,7 @@
       if(action==='run'&&strategy==='baseline'&&!(live.status.models||[]).some(m=>m.id===model&&m.configured))throw new Error('先在「配置 → 添加连接 → Qwen」保存 API Key 并测试连接，再启动主队。');
       if(action==='run'&&strategy==='baseline'&&team==='__swarm__')throw new Error('单主队模式请选择一支具体团队。');
       const result = action==='run' ? await lab('/control/swarm/continuous',{enabled:true,strategy,main_team:strategy==='baseline'?team:null,teams:strategy==='baseline'?[team]:team==='__swarm__'?null:[team],model:strategy==='baseline'?model:null,prompt:$('runPrompt').value}) : await lab('/control/' + action, { team, prompt: $('runPrompt').value });
-      toast(action==='run'?(strategy==='baseline'?`单主队 ${team} 已启动，先修失败点，再完整验证与官测`:'多队持续优化已开启'):`已提交 ${team} · 真实设备评测 · ${result.operation_id.slice(0, 8)}`);
+      toast(action==='run'?(strategy==='baseline'?`单主队 ${teamLabel(team)} 已启动，先修失败点，再完整验证与官测`:'多队持续优化已开启'):`已提交 ${team} · 真实设备评测 · ${result.operation_id.slice(0, 8)}`);
       $('runDialog').close(); await refreshLive();
     } catch (error) { toast(error.message); $('runStatus').textContent = error.message; }
     finally { live.busy = false; }
