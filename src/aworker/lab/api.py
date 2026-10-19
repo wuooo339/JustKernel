@@ -155,6 +155,7 @@ def create_lab_app(service: LabService) -> FastAPI:
         data["continuous"] = service.swarm.status()
         data["iterations"] = service.iterations.snapshot()
         data["judge_selector_running"] = service.judger.automation.selector.status()["running"]
+        data["judge_selector"] = service.judger.automation.selector.status()
         data["judge_budget"] = service.judger.automation.budget()
         data["simulation"] = service.simulator.status()
         data["simulation_jobs"] = service.simulator.jobs(summary=True)

@@ -66,6 +66,7 @@
         <div id="trajectoryActivity" class="trajectory-activity" role="status">等待真实事件</div>
         <button id="attemptFailureButton" class="text-button failure-details" hidden>查看这次记录与日志 ↗</button>
       </div>
+      <div id="taskPlan" class="task-plan" hidden aria-label="当前团队任务清单"></div>
       <div class="flow-wrap"><div id="liveFlow" class="live-flow" hidden></div>
         <svg id="flow" viewBox="0 0 360 390" role="group" aria-label="算子输入、蜂群搜索、规则检查、NPU实测、验证、SOTA发布和经验蒸馏组成的优化闭环">
           <defs><marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0 0L6 3L0 6" fill="#536475"/></marker><filter id="flowGlow"><feGaussianBlur stdDeviation="3"/></filter></defs>
@@ -105,6 +106,7 @@
     </section>
     <section class="panel inspector-panel">
       <div class="panel-heading"><h2><span>//</span> agent inspector</h2><span id="agentModel" class="model-tag">GPT</span></div>
+      <div class="session-scope" role="group" aria-label="监督对象"><button type="button" data-work-scope="team" aria-pressed="true">主队会话</button><button type="button" data-work-scope="judge" aria-pressed="false">Judger 会话</button></div>
       <div class="agent-identity"><div class="agent-avatar" id="agentAvatar">017</div><div><h3 id="agentName">AGENT_017</h3><span class="dim" id="agentRole">访存与数据复用</span></div><span id="agentStatus" class="agent-status">生成候选</span></div>
       <dl class="agent-meta"><div><dt>TEAM</dt><dd id="agentTeam">04 / memory</dd></div><div><dt>BRANCH</dt><dd id="agentBranch">a017/buffer-reuse</dd></div><div><dt>PARENT</dt><dd id="agentParent">public/sota-v001</dd></div></dl>
       <div class="inspector-tabs" role="tablist" aria-label="智能体详情"><button role="tab" aria-selected="true" data-tab="path">实时监督</button><button role="tab" aria-selected="false" data-tab="overview">全队进展</button><button role="tab" aria-selected="false" data-tab="code">源码</button><button role="tab" aria-selected="false" data-tab="chat">A2A 通信</button></div>
@@ -158,6 +160,7 @@
 <script src="visualization.js"></script>
 <script src="activity.js"></script>
 <script src="conversation.js"></script>
+<script src="taskplan.js"></script>
 <script src="app.js"></script>
 <script src="vendor/xterm.js"></script>
 <script src="workbench.js"></script>

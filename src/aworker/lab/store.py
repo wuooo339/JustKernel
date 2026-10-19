@@ -119,16 +119,31 @@ class LabStore:
             "simulation.status.updated",
             "judge.submitted",
             "judge.submission.updated",
+            "judge.candidate.selected",
+            "candidate.reviewed",
+            "judge.selector.message",
+            "judge.selector.failed",
         )
         query = (
             "SELECT * FROM events WHERE team=? AND kind IN (" + ",".join("?" for _ in kinds) + ")"
         )
         args = [team, *kinds]
+        if team == "controller":
+            # Judger spans its read-only model session and actual team submissions.
+            query = (
+                "SELECT * FROM events WHERE ((team=? AND kind IN ("
+                + ",".join("?" for _ in kinds)
+                + ")) OR kind IN ('judge.submitted','judge.submission.updated',"
+                "'judge.candidate.selected','candidate.reviewed'))"
+            )
         if before is not None:
             query += " AND seq<?"
             args.append(before)
         with self.connection() as db:
-            if not db.execute("SELECT 1 FROM teams WHERE id=?", (team,)).fetchone():
+            if (
+                team != "controller"
+                and not db.execute("SELECT 1 FROM teams WHERE id=?", (team,)).fetchone()
+            ):
                 raise ValueError("unknown registered team")
             rows = db.execute(query + " ORDER BY seq DESC LIMIT ?", (*args, limit + 1)).fetchall()
         page = list(reversed(rows[:limit]))

@@ -55,6 +55,11 @@ observed evidence. Keep it concise; show status, code and results, not private r
 Use report_progress for 1–3 user-facing sentences at task start, after feedback and
 before a material edit or experiment. Batch it with read tools when useful. Explain
 what you observed and intend to verify, not a private reasoning transcript.
+Keep write_todos synchronized with the actual current task: a short concrete plan,
+one in_progress item, mark completed only after its action returns successfully.
+Update the checklist when moving to the next action or when new feedback changes it.
+Task completion does not mean the kernel passed; report validation separately.
+Use concise Chinese for public progress notes and todo items unless requested otherwise.
 Never claim an official score, universal speedup, or a proven cross-operator transfer.
 """
 

@@ -3,6 +3,14 @@ const assert=require('node:assert/strict');
 const {teamProgress,teamMonitor,projectRecord}=require('../src/aworker/lab/resources/web/activity.js');
 const e=(seq,kind,data={},team='gpt-001')=>({seq,at:100+seq,kind,team,data});
 
+test('malformed model todos never break the live supervision panel',()=>{
+ for(const todos of ['not an array',{content:'wrong shape'},null,[null,'invalid',{content:'valid',status:'completed'}]]){
+  const events=[e(1,'control.started'),e(2,'tool.started',{tool:'write_todos',input:JSON.stringify({todos})})];
+  const result=teamProgress(events,'gpt-001');assert.ok(Array.isArray(result.plan));
+  assert.doesNotThrow(()=>teamMonitor(events,'gpt-001'));
+ }
+});
+
 test('diagnostic compilation never appears as full local correctness',()=>{
  const {iterationSummary}=require('../src/aworker/lab/resources/web/activity.js');
  const view=iterationSummary({phase:'awaiting-official',validation_mode:'official-feedback',

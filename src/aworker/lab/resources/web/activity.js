@@ -20,6 +20,8 @@
     const names={read_file:'阅读工程与规格',ls:'检查工程目录',write_file:'编写代码',edit_file:'修正代码',task:'成员协作与复核',inspect_policy:'检查硬约束',record_review:'记录源码复核',queue_official_test:'冻结候选工程',run_python:'运行静态辅助检查',record_experiment_plan:'登记实验假设',write_todos:'更新开发计划',read_judge_status:'读取官方反馈',read_judge_candidate:'学习公开候选',simulate_kernel:'本队独立仿真',read_simulation_results:'分析本队实验反馈'};
     const planEvent=current.findLast(e=>e.kind==='tool.started'&&e.data?.tool==='write_todos');
     let plan=[];try{plan=JSON.parse(planEvent?.data.input||'{}').todos||[];}catch{}
+    if(!Array.isArray(plan))plan=[];
+    plan=plan.filter(p=>p&&typeof p.content==='string');
     const message=current.findLast(e=>e.kind==='agent.message'&&e.data?.text)?.data.text||'';
     const failure=current.findLast(e=>['control.failed','team.turn.failed'].includes(e.kind));
     const staged=current.findLast(e=>e.kind==='judge.candidate.staged');

@@ -27,3 +27,34 @@
 .official-cases td,.official-cases th{padding:9px 10px;border-bottom:1px solid #263642}.official-cases td:not(:nth-child(2)){text-align:right}.official-cases th:not(:nth-child(2)){text-align:right}
 .official-cases .case-failed{color:#eab08b;background:#b97d4810}.official-case-details{margin:12px 0}.official-case-details summary{color:#a8c4d8;cursor:pointer}
 @media(max-width:650px){.session-toolbar>span{display:none}.conversation-dialog .session-scroll{padding:10px 14px}}
+
+/* Task checklist replaces the decorative loop only during real work/replay. */
+.task-plan[hidden]{display:none!important}
+.terminal.live-mode .loop-panel .flow-wrap{display:none!important}
+.live-mode .task-plan{display:flex;flex-direction:column;flex:1;min-height:0;overflow:auto;padding:18px 16px}
+.task-plan-head{display:flex;justify-content:space-between;gap:12px;color:#e1b08b;font-size:16px}
+.task-plan-head b{font-variant-numeric:tabular-nums;font-weight:500}
+.task-plan-kind{font-size:12px;color:#819aaf;margin:5px 0 18px}
+.task-checklist{list-style:none;padding:0;margin:0}
+.task-item{display:flex;gap:12px;align-items:flex-start;position:relative;padding:0 0 24px;color:#8ea3b6}
+.task-item:not(:last-child):before{content:'';position:absolute;left:12px;top:28px;bottom:4px;border-left:1px solid #2b3c49}
+.task-check{display:grid;place-items:center;width:26px;height:26px;flex:none;border:1px solid #3a4a58;border-radius:50%;font-size:11px}
+.task-item>div{flex:1;min-width:0;padding-top:2px}.task-item b{font-size:14px;font-weight:500;overflow-wrap:anywhere;line-height:1.65}
+.task-item small{display:block;font-size:12px;margin-top:5px;color:#849db1;overflow-wrap:anywhere}
+.task-description{font-size:12px;color:#96afc2;margin-top:7px}.task-description summary{cursor:pointer}.task-description p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8}
+.task-item em{font-style:normal;font-size:11px;white-space:nowrap;margin-top:5px}
+.task-item.completed .task-check{color:#9dceb0;border-color:#547862;background:#23382d}
+.task-item.in_progress{color:#edc2a3}.task-item.in_progress .task-check{border-color:#d1a17f;box-shadow:0 0 14px #e5a67d25}
+.task-item.failed .task-check{color:#e3a39d;border-color:#af7773}
+.task-plan-hint{margin-top:auto;padding-top:12px;font-size:11px;color:#7f96a8;border-top:1px solid #293744;line-height:1.7}
+.session-scope{display:none;gap:5px;padding:9px 12px;border-bottom:1px solid #293744;flex:none}
+.live-mode .session-scope{display:flex}.session-scope button{flex:1;background:transparent;color:#91a9bd;border:1px solid transparent;border-radius:4px;padding:7px 10px;font-size:13px}
+.session-scope button[aria-pressed=true]{color:#e8b38d;background:#30271f;border-color:#76583e}
+.live-mode .agent-meta,.live-mode .agent-bottom{display:none}
+.live-mode .agent-identity{padding:9px 12px}.live-mode .agent-identity .dim{display:none}
+.live-mode .team-progress{max-height:58px;padding:6px 12px;overflow:auto}.live-mode .team-progress>strong{font-size:13px}
+.live-mode .team-progress .progress-facts{font-size:11px}
+.live-mode .watching-judge .inspector-tabs,.live-mode .watching-judge .agent-status{display:none}
+.session-call summary small{max-width:100%}
+@media(min-width:1001px){.terminal.live-mode .main-grid{grid-template-columns:minmax(0,.8fr) minmax(0,1fr) minmax(0,1.4fr)}}
+@media(max-width:1000px){.live-mode .task-plan{padding:10px}.task-item{padding-bottom:15px;gap:8px}.task-item b{font-size:12px}.task-item em,.task-plan-hint{display:none}.session-scope{padding:3px 8px}.session-scope button{font-size:11px;padding:4px}.live-mode .team-progress{display:none}}

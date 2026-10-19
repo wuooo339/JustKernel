@@ -52,7 +52,13 @@ if ($boundProcess) {
       $monitorStatus = Get-Content -LiteralPath $monitorStatusPath -Raw | ConvertFrom-Json
       if ($monitorStatus.service_pid -eq $recordedPid -and $monitorStatus.state -eq 'watching') {
         $oldMonitor = Get-Process -Id $monitorStatus.supervisor_pid -ErrorAction SilentlyContinue
-        if ($oldMonitor) { Wait-Process -Id $oldMonitor.Id -Timeout 15 -ErrorAction Stop }
+        if ($oldMonitor) {
+          try { Wait-Process -Id $oldMonitor.Id -Timeout 15 -ErrorAction Stop }
+          catch {
+            # The supervisor can exit between Get-Process and Wait-Process.
+            if (Get-Process -Id $oldMonitor.Id -ErrorAction SilentlyContinue) { throw }
+          }
+        }
       }
     }
   }

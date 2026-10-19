@@ -11,6 +11,7 @@ from langchain.agents.middleware import ToolErrorMiddleware, wrap_model_call
 from langchain_core.tools import tool
 
 from aworker.lab.project import project_manifest
+from aworker.lab.public_session import JudgeSession
 from aworker.messages import last_message_text
 
 
@@ -153,6 +154,8 @@ class CandidateSelector:
         )
         self.monitor.write("selection.json", state)
         read = set()
+        session = JudgeSession(self.service, profile)
+        session.start()
 
         @tool
         def read_spec() -> str:
@@ -344,6 +347,7 @@ public decision and review_candidate/nominate_candidate calls for the exact froz
                     config={"recursion_limit": 64},
                     version="v2",
                 ):
+                    session.observe(event)
                     if event["event"] == "on_tool_start":
                         self.service.store.event(
                             "controller", "judge.selector.tool", tool=event.get("name")
@@ -361,7 +365,9 @@ public decision and review_candidate/nominate_candidate calls for the exact froz
                 state["phase"] = "nominated" if state.get("nomination") else "deferred"
                 self.monitor.write("selection.json", state)
                 self.automation.wake.set()
+            session.finish()
         except asyncio.CancelledError:
+            session.finish("cancelled", "复核已停止，冻结候选和已有回执保留。")
             raise
         except Exception as exc:
             if root == self.service.root:
@@ -375,3 +381,4 @@ public decision and review_candidate/nominate_candidate calls for the exact froz
                 self.service.store.event(
                     "controller", "judge.selector.failed", message=state["error"]
                 )
+                session.finish("failed", state["error"])

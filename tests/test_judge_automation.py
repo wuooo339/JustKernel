@@ -562,6 +562,13 @@ def test_real_deep_agent_selector_graph_reviews_and_nominates_one_snapshot(lab, 
     assert selector.nomination()["candidate_id"] == row["id"]
     assert not lab.judger.read("queue.json", [])[0].get("official_submission_id")
     assert lab.judger.read("queue.json", [])[0]["review"]["reviewer"] == "independent-selector"
+    session = lab.store.conversation("controller", limit=300)["events"]
+    assert any(e["kind"] == "model.started" for e in session)
+    assert any(e["kind"] == "model.completed" for e in session)
+    tool_returns = [e["data"] for e in session if e["kind"] == "tool.completed"]
+    assert any(e["tool"] == "read_candidate" and e["output"] for e in tool_returns)
+    assert all(e.get("model_call_id") for e in tool_returns)
+    assert any(e["kind"] == "control.completed" for e in session)
     assert offered and all(
         names
         == {

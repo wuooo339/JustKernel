@@ -68,6 +68,59 @@ def test_public_progress_does_not_modify_source_or_validation(service, monkeypat
         tool.invoke({"summary": "x"})
 
 
+# ---- Judger history includes actual receipts without importing team calls ----
+def test_judger_session_cross_team_receipts(service):
+    service.store.event("controller", "agent.message", text="public review", reasoning="PRIVATE")
+    service.store.event("team-a", "tool.started", tool="edit_file", input="TEAM EDIT")
+    service.store.event("team-a", "judge.submitted", submission_id="official-id")
+    service.store.event("team-a", "judge.submission.updated", official={"status": "Wrong Answer"})
+    page = service.store.conversation("controller")
+    text = json.dumps(page)
+    assert "public review" in text and "official-id" in text and "Wrong Answer" in text
+    assert "PRIVATE" not in text and "TEAM EDIT" not in text
+
+
+# ---- read-only reviewer streams public text/tools, never private blocks ------
+def test_judge_observer_public_projection(service):
+    from aworker.lab.public_session import JudgeSession
+
+    observer = JudgeSession(service, "fixture")
+    observer.start()
+    observer.observe({"event": "on_chat_model_start", "run_id": "m"})
+    observer.observe(
+        {
+            "event": "on_chat_model_end",
+            "run_id": "m",
+            "data": {
+                "output": AIMessage(
+                    "Public decision", additional_kwargs={"reasoning_content": "PRIVATE"}
+                )
+            },
+        }
+    )
+    observer.observe(
+        {
+            "event": "on_tool_start",
+            "run_id": "t",
+            "name": "read_candidate",
+            "data": {"input": {"candidate_id": "frozen"}},
+        }
+    )
+    observer.observe(
+        {
+            "event": "on_tool_end",
+            "run_id": "t",
+            "name": "read_candidate",
+            "data": {"output": "Actual source"},
+        }
+    )
+    observer.finish()
+    events = service.store.conversation("controller")["events"]
+    assert "PRIVATE" not in json.dumps(events)
+    tool = next(e["data"] for e in events if e["kind"] == "tool.completed")
+    assert tool["model_call_id"] == "m" and tool["output"] == "Actual source"
+
+
 # ---- actual observer binds tools/diffs to their model call and measured duration ----
 def test_observer_records_actual_diff_and_not_private_reasoning(service):
     runtime = DeepAgentRuntime(service, "team-a", "round")

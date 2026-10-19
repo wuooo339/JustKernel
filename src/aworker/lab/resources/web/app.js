@@ -20,7 +20,7 @@
     state: 'waiting', candidate: 0
   }));
   const state = {
-    paused: false, speed: 2, tick: 0, selected: 17, tab: 'path', core: 'search',
+    paused: false, speed: 2, tick: 0, selected: 17, tab: 'path', core: 'search', workScope:'team',
     operator: 'ConfusionMulGrad', version: 1, speedup: 1, champion: null,
     candidateCount: 0, events: [], history: [{ round: 0, value: 1 }], skills: [],
     enabled: new Set(MODELS), source: 'demo', originSource: 'demo', replay: [], replayIndex: 0,
@@ -411,12 +411,18 @@
     return profile(team)?.configured ? 'waiting' : 'unconfigured';
   }
   function renderLiveFlow() {
-    const team = activeTeam(), entries = flowEvents(team);
-    $('liveFlow').innerHTML = `<div class="flow-context">${esc(team?teamLabel(team):'选择团队')} <span>${esc(currentRun(team)?.id.slice(0,8) || '等待任务')}</span></div>` + STAGES.map(([key,label],i) => {
-      const e = entries.findLast((e) => e.kind === 'stage.updated' && e.data.stage === key);
-      const status = e?.data.state || 'pending';
-      return `<button class="live-step ${esc(status)}" data-live-stage="${key}"><span class="step-number">${String(i+1).padStart(2,'0')}</span><span><b>${label}</b><small>${esc(e?.data.message || '等待实际事件')}</small></span><em>${stageLabels[status]}</em></button>`;
-    }).join('');
+    const team=activeTeam(),judging=state.workScope==='judge';
+    const events=sessionEvents(judging?'controller':team?.id);
+    const task=(live.iterations||[]).find(t=>t.team===team?.id);
+    const p=judging?window.JustKernelTaskPlan.judgePlan(events):window.JustKernelTaskPlan.plan(events,team?.id,task);
+    const content=window.JustKernelTaskPlan.markup(p,judging?'独立 Judger':team?teamLabel(team):'选择团队');
+    if($('taskPlan').dataset.planMarkup!==content){
+      const opens=[...$('taskPlan').querySelectorAll('.task-description')].map(d=>d.open);
+      $('taskPlan').innerHTML=content;$('taskPlan').dataset.planMarkup=content;
+      [...$('taskPlan').querySelectorAll('.task-description')].forEach((d,i)=>{d.open=Boolean(opens[i]);});
+    }
+    $('taskPlan').hidden=false;
+    document.querySelector('.loop-panel .panel-heading h2').textContent='任务规划';
   }
   function renderLiveAgents() {
     $('agentGrid').setAttribute('aria-label',`${visibleTeams().length} 支已配置团队`);
@@ -483,19 +489,28 @@
       if(older||!h.ready){h.before=page.next_before;h.more=page.has_more;}
       h.ready=true;h.checked=Date.now();
     }catch(error){h.error=error.message;h.checked=Date.now();}
-    finally{h.pending=false;if(state.source==='live')renderLiveInspector();}
+    finally{h.pending=false;if(state.source==='live'){renderLiveFlow();renderLiveInspector();}}
   }
   function sessionEvents(team){
     if(live.recording)return live.events;
     const h=historyFor(team),events=new Map(h.events);
-    for(const e of live.events)if(e.team===team&&(!h.ready||!h.before||e.seq>=h.before))events.set(e.seq,e);
+    const judgeKinds=['judge.candidate.selected','candidate.reviewed','judge.submitted','judge.submission.updated'];
+    for(const e of live.events)if((e.team===team||team==='controller'&&judgeKinds.includes(e.kind))&&(!h.ready||!h.before||e.seq>=h.before))events.set(e.seq,e);
     return [...events.values()];
   }
-  function sessionRows(team){return window.JustKernelConversation.timeline(sessionEvents(team),team,live.operations,live.recording?(live.events.at(-1)?.at||0):Date.now()/1000);}
+  function sessionRows(team){
+    let operations=live.operations;
+    if(team==='controller'&&live.judge_selector_running){
+      const events=sessionEvents(team),start=events.filter(e=>e.team===team).findLast(e=>e.kind==='control.started');
+      if(start)operations=[...operations,{team,id:start.data.run_id||start.data.operation_id,state:'running'}];
+    }
+    return window.JustKernelConversation.timeline(sessionEvents(team),team,operations,live.recording?(live.events.at(-1)?.at||0):Date.now()/1000);
+  }
+  function sessionLabel(team){return team==='controller'?'独立 Judger':teamLabel(team);}
   function historyStatus(team){const h=historyFor(team);return live.recording?'离线回放 · 仅显示当前播放时刻的记录':h.error?'记录读取失败：'+h.error:h.pending?'正在读取工作会话…':h.more?'较早记录可继续加载':'已加载可用记录';}
   function updateExpandedSession(){
     if(!conversationDialog.open||!expandedTeam)return;
-    $('conversationTitle').textContent=teamLabel(expandedTeam)+' · 工作会话';
+    $('conversationTitle').textContent=sessionLabel(expandedTeam)+' · 工作会话';
     $('conversationHistoryStatus').textContent=historyStatus(expandedTeam);
     expandedSession.update(sessionRows(expandedTeam));
   }
@@ -512,7 +527,7 @@
     inspectorSession.update(sessionRows(team));
   }
   function sessionAction(event,expanded=false){
-    const team=expanded?expandedTeam:activeTeam()?.id;if(!team)return;
+    const team=expanded?expandedTeam:state.workScope==='judge'?'controller':activeTeam()?.id;if(!team)return;
     if(event.target.closest('[data-session-expand]')){
       expandedTeam=team;
       if(!expandedSession)expandedSession=new window.JustKernelConversation.View($('conversationExpanded'));
@@ -524,22 +539,33 @@
     if(seq){const evidence=sessionEvents(team).find(e=>e.seq===seq);if(evidence)showEvidence(evidence);else toast('当前记录中没有该事件。');}
   }
   conversationDialog.addEventListener('click',e=>sessionAction(e,true));
+  document.querySelectorAll('[data-work-scope]').forEach(button=>button.addEventListener('click',()=>{
+    state.workScope=button.dataset.workScope;state.tab='path';renderAll();
+  }));
   function renderLiveInspector() {
     updateExpandedSession();
     const team = activeTeam(), slot = state.selected, model = profile(team);
+    const judging=state.workScope==='judge';
+    document.querySelectorAll('[data-work-scope]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.workScope===state.workScope)));
+    document.querySelector('.inspector-panel').classList.toggle('watching-judge',judging);
+    if(judging){
+      const m=(live.status.models||[]).find(m=>m.id===live.judge_selector?.model);
+      $('agentName').textContent='独立 Judger';$('agentAvatar').textContent='J';
+      $('agentModel').textContent=m?.model||'独立评审';
+      $('agentRole').textContent='审查冻结源码 · 提交 · 收取回执';
+      $('teamProgress').hidden=true;
+      renderSession('controller',$('inspectorContent'));
+      return;
+    }
     $('agentAvatar').textContent = team?pad(slot):'—'; $('agentName').textContent = team?teamLabel(team):'暂无团队';
     $('agentModel').textContent = model?model.model+(model.effort?' · '+model.effort:''):'';
     $('agentRole').textContent = team ? `${model?.name || team.model} · Deep Agents · ${model?.model||team.model}${model?.effort ? ' · '+model.effort : ''}` : '先配置模型并组建团队';
     $('agentStatus').textContent = STATE_LABELS[teamState(team)];
     $('teamProgress').hidden=false;
-    const planOpen=$('teamProgress').querySelector('details')?.open;
-    const progress=window.JustKernelActivity.teamProgress(live.events,team?.id,live.operations,live.challenge?.manifest?.baseline_sha256);
     const monitor=window.JustKernelActivity.teamMonitor(live.events,team?.id,live.operations,live.simulation_jobs||[],live.recording?(live.events.at(-1)?.at||0):Date.now()/1000,live.simulation?.available);
     const usage=monitor.usage.reported?`本轮已返回 Token · 输入 ${monitor.usage.input.toLocaleString()} / 输出 ${monitor.usage.output.toLocaleString()}`:'Token 用量等待提供商返回';
-    $('teamProgress').innerHTML=`<strong>${esc(monitor.title)}</strong><div class="progress-facts">${esc(usage)}</div><div class="progress-facts">${progress.changes} 个源码版本${monitor.elapsed!==null?` · 最近模型调用 ${monitor.elapsed} 秒`:''}${progress.lastAt?' · 更新 '+new Date(progress.lastAt*1000).toLocaleTimeString('zh-CN',{hour12:false,timeZone:'Asia/Shanghai'}):''}</div>${progress.plan.length?`<details${planOpen?' open':''}><summary>开发计划 ${progress.done}/${progress.plan.length}</summary>${progress.plan.map(p=>`<div>${p.status==='completed'?'✓':p.status==='in_progress'?'→':'○'} ${esc(p.content)}</div>`).join('')}</details>`:''}`;
+    $('teamProgress').innerHTML=`<strong>${esc(monitor.title)}</strong><div class="progress-facts">${esc(usage)}</div>`;
     $('agentTeam').dataset.team=team?.id||'';
-    const work=window.JustKernelActivity.iterationSummary((live.iterations||[]).find(t=>t.team===team?.id));
-    if(work)$('teamProgress').insertAdjacentHTML('afterbegin',`<section class="iteration-card"><strong>${esc(work.title)}</strong><p>${esc(work.evidence)}</p>${work.hypothesis?`<p><b>假设</b> ${esc(work.hypothesis)}</p><p><b>改动</b> ${esc(work.change)}</p>`:''}<p>${esc(work.source)} · ${work.experiments} 次实验</p><p>${esc(work.result)}</p><p class="iteration-next">${esc(work.next)}</p></section>`);
     $('agentTeam').textContent = team?teamLabel(team):'—'; $('agentBranch').textContent = team ? `${team.id}/${live.challenge?.manifest?.project_files?'project/':'kernel.asc'}` : '—';
     $('agentParent').textContent = live.code.get(team?.id)?.sha256?.slice(0,16) || '冻结基准 / 见任务';
     $('agentFooter').textContent = '统一工具轨迹 · 检查点 · 条件经验'; $('followButton').textContent = '查看团队任务 ↗';
@@ -676,6 +702,8 @@
     live.stream?.close(); live.stream = null;
     clearInterval(live.timer); live.timer = null;
     $('terminal').classList.remove('live-mode');
+    $('taskPlan').hidden=true;
+    document.querySelector('.loop-panel .panel-heading h2').textContent='optimization loop';
     $('liveFlow').hidden=true; $('flow').style.display='';
     $('liveStatusLine').hidden = true; $('realResults').hidden = true;
     $('sotaChart').style.display = '';
