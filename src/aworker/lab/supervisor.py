@@ -22,6 +22,7 @@ def native_crash(code):
         0xC0000005,
         0xC0000409,
         0xC00000FD,
+        0xC0000374,  # Windows heap corruption: recover in a fresh process, retaining crash limits.
     }
 
 

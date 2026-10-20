@@ -11,14 +11,14 @@ from aworker.lab import supervisor
 def test_native_exit_codes_do_not_treat_normal_shutdown_as_crash():
     for code in [0, 1, 130, 0xC000013A]:
         assert not supervisor.native_crash(code)
-    for code in [0xC0000409, -1073740791, 0xC0000005, -signal.SIGSEGV]:
+    for code in [0xC0000409, -1073740791, 0xC0000005, 0xC0000374, -1073740940, -signal.SIGSEGV]:
         assert supervisor.native_crash(code)
 
 
 def test_native_crash_respawns_with_same_root_and_planned_exit_stays_stopped(tmp_path, monkeypatch):
     settings = Settings(lab_root=tmp_path, _env_file=None)
     (tmp_path / "judge-attempts.json").write_text('[{"id":"already-counted"}]')
-    codes = iter([0xC0000409, 0])
+    codes = iter([0xC0000374, 0])
     calls = []
 
     class Child:
