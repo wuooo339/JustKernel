@@ -76,6 +76,25 @@ def fixture_receipt(service, team="gpt-001", state="completed"):
 
 
 # ---- independent ownership and source/input integrity -----------------------
+def test_evidence_loads_only_matching_raw_receipts_not_historical_profiler_dumps(lab, monkeypatch):
+    source = lab.team_folder("gpt-001") / "project/op_kernel/confusion_mul_grad.h"
+    for number in range(4):
+        fixture_receipt(lab)
+        source.write_text(source.read_text() + f"// fixture version {number}\n", encoding="utf-8")
+    current = fixture_receipt(lab)
+    reads = []
+    original = lab.simulator.cached_json
+
+    def counted(path, cache, **kwargs):
+        if cache is lab.simulator._receipt_cache:
+            reads.append(path.parent.name)
+        return original(path, cache, **kwargs)
+
+    monkeypatch.setattr(lab.simulator, "cached_json", counted)
+    assert lab.simulator.evidence("gpt-001", current["source_sha256"])["id"] == current["id"]
+    assert reads == [current["id"]]
+
+
 def test_simulation_index_is_bounded_without_large_profiler_previews(lab, monkeypatch):
     record = fixture_receipt(lab)
     record["cases"][0]["profiling_files"] = [{"preview": "large-explicit-fixture" * 5000}]
@@ -279,6 +298,44 @@ def test_retry_waits_for_same_pending_own_source_instead_of_enqueuing_again(lab,
 
 
 # ---- waiting experiments yield model capacity and retry one background task ---
+def test_new_version_compile_overlaps_old_simulation_and_returns_its_own_receipt(lab):
+    lab.settings = lab.settings.model_copy(update={"lab_simulation_wait_seconds": 0.01})
+    worker_heartbeat(lab)
+    old = fixture_receipt(lab, state="running")
+    source = lab.team_folder("gpt-001") / "project/op_kernel/confusion_mul_grad.h"
+
+    async def exercise():
+        try:
+            existing = await lab.simulator.evaluate("gpt-001", "old-functional")
+            assert existing["pending"] and existing["job_id"] == old["id"]
+            source.write_text(source.read_text() + "// new source fixture\n", encoding="utf-8")
+            digest = lab.candidate("gpt-001")["sha256"]
+            first = await lab.simulator.evaluate(
+                "gpt-001", "new-build", evaluation_mode="compile-only"
+            )
+            assert first["pending"] and first["job_id"] != old["id"]
+            assert first["source_sha256"] == digest
+            request = json.loads(
+                (lab.simulator.spool / "jobs" / first["job_id"] / "request.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            assert request["evaluation_mode"] == "compile-only"
+            retry = await lab.simulator.evaluate(
+                "gpt-001", "same-build", evaluation_mode="compile-only"
+            )
+            assert retry["job_id"] == first["job_id"]
+            blocked = await lab.simulator.evaluate("gpt-001", "new-functional")
+            assert blocked["pending"] and blocked["job_id"] == old["id"]
+            assert blocked["source_sha256"] == old["source_sha256"]
+            assert len(list(lab.simulator.spool.glob("jobs/*/request.json"))) == 2
+            assert lab.simulator.evidence("gpt-001", digest) is None
+        finally:
+            await lab.simulator.close()
+
+    asyncio.run(exercise())
+
+
 def test_new_request_freezes_explicit_execution_budgets(lab):
     lab.settings = lab.settings.model_copy(
         update={

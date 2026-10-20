@@ -50,6 +50,7 @@ class Simulator:
         self.pending = set()
         self.team_locks = {}
         self.team_tasks = {}
+        self.team_sources = {}
         self.observer = None
         self._request_cache = {}
         self._receipt_cache = {}
@@ -344,8 +345,10 @@ class Simulator:
         return sorted(rows, key=lambda row: row["created_at"], reverse=True)
 
     # ---- a build receipt is never a functional pass --------------------------
-    def build_evidence(self, team, digest, case_hash=None):
+    def build_evidence(self, team, digest, case_hash=None, job_id=None):
         for row in self.jobs(team, summary=True):
+            if job_id is not None and row["id"] != job_id:
+                continue
             if not (
                 row.get("schema") == "justkernel.simulation.v1"
                 and row.get("source") == "cann-simulator"
@@ -370,12 +373,26 @@ class Simulator:
                 return row
         return None
 
-    def evidence(self, team, digest, case_hash=None, require_coverage=False):
+    def evidence(self, team, digest, case_hash=None, require_coverage=False, job_id=None):
         if case_hash is None:
             case_hash = hashlib.sha256(
                 (self.service.root / "challenge/cases.json").read_bytes()
             ).hexdigest()
-        for row in self.jobs(team):
+        for index in self.jobs(team, summary=True):
+            if job_id is not None and index["id"] != job_id:
+                continue
+            if (
+                index.get("state") != "completed"
+                or index.get("functional_pass") is not True
+                or index.get("source_sha256") != digest
+                or index.get("case_pack_sha256") != case_hash
+                or index.get("worker_sha256") != self.identity()
+            ):
+                continue
+            # Historical profiler dumps can be huge. Load the full receipt only
+            # for matching candidates, then verify its raw fields and request bytes.
+            path = self.spool / "jobs" / index["id"] / "result.json"
+            row = self.cached_json(path, self._receipt_cache)
             if (
                 row.get("schema") == "justkernel.simulation.v1"
                 and row.get("source") == "cann-simulator"
@@ -627,14 +644,16 @@ class Simulator:
             return result
         lock = self.team_locks.setdefault(team, asyncio.Lock())
         async with lock:
-            task = self.team_tasks.get(team)
+            lane = (team, evaluation_mode == "compile-only")
+            task = self.team_tasks.get(lane)
             if task is None or task.done():
+                self.team_sources[lane] = self.service.candidate(team)["sha256"]
                 task = asyncio.create_task(
                     self._experiment(
                         team, run_id, hypothesis, case_ids, learned_from, evaluation_mode
                     )
                 )
-                self.team_tasks[team] = task
+                self.team_tasks[lane] = task
                 self.pending.add(task)
                 task.add_done_callback(self.background_finished)
             done, _ = await asyncio.wait(
@@ -642,7 +661,15 @@ class Simulator:
             )
             if done:
                 return task.result()
-            row = self.current_experiments(self.jobs(team)).get(team, {})
+            # A previous version's long simulation can coexist with a new build.
+            # Return this lane's actual receipt, never the old running job's ID.
+            rows = [
+                r
+                for r in self.jobs(team)
+                if r["source_sha256"] == self.team_sources[lane]
+                and (r.get("evaluation_mode") == "compile-only") == lane[1]
+            ]
+            row = self.current_experiments(rows).get(team, {})
             return {
                 "state": row.get("state", "pending"),
                 "pending": True,
@@ -698,7 +725,17 @@ class Simulator:
             request = SimulationRequest.model_validate_json((folder / "request.json").read_bytes())
         else:
             prior_pending = next(
-                (r for r in self.jobs(team) if r["state"] in {"queued", "running"}), None
+                (
+                    r
+                    for r in self.jobs(team)
+                    if r["state"] in {"queued", "running"}
+                    and not (
+                        evaluation_mode == "compile-only"
+                        and r["source_sha256"] != candidate["sha256"]
+                        and r.get("evaluation_mode") != "compile-only"
+                    )
+                ),
+                None,
             )
             if prior_pending:
                 return {

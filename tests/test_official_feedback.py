@@ -92,6 +92,111 @@ def test_build_binding_rejects_request_and_source_drift(lab):
     assert lab.simulator.build_evidence("gpt-001", row["source_sha256"]) is None
 
 
+# ---- an approved diagnostic cannot disappear behind a permanent deferral ----
+def test_frozen_candidate_keeps_its_exact_build_when_a_later_probe_exists(lab):
+    first = build_fixture(lab)
+    auto = lab.judger.automation
+    asyncio.run(auto.configure(False, None, "gpt-api", diagnostic_mode=True))
+    row = lab.judger.stage("gpt-001")
+    auto.review_frozen(row["id"], row["source_sha256"], True, "Fixture immutable build review.")
+    row = lab.judger.read("queue.json", [])[0]
+    later = build_fixture(lab)
+    assert later["id"] != first["id"]
+    assert auto.validation_evidence(row)["id"] == first["id"]
+    assert auto.readiness(row)[0]
+    request = lab.simulator.spool / "jobs" / first["id"] / "request.json"
+    request.write_text(request.read_text(encoding="utf-8") + " ", encoding="utf-8")
+    assert not auto.readiness(row)[0]  # A newer valid build cannot repair tampered evidence.
+
+
+def test_iteration_reconciles_its_attached_build_not_a_newer_same_source_probe(lab):
+    official_fixture(lab)
+    source = lab.team_folder("gpt-001") / "project/op_kernel/confusion_mul_grad.h"
+    source.write_text(source.read_text() + "// fixture repair\n", encoding="utf-8")
+    auto = lab.judger.automation
+    asyncio.run(auto.configure(False, None, "gpt-api", diagnostic_mode=True))
+    lab.iterations.sync("gpt-001")
+    lab.iterations.plan(
+        "gpt-001",
+        ExperimentPlan(
+            evidence="Fixture official precision feedback; no real execution.",
+            hypothesis="Fixture build/probe receipt identity remains stable.",
+            change="No source edit; diagnostic protocol only.",
+            validation="Bind the attached build even if another experiment is newer.",
+            case_ids=lab.simulator.default_cases(),
+            kind="diagnostic",
+        ),
+    )
+    first = build_fixture(lab)
+    later = build_fixture(lab)
+    lab.iterations.attach("gpt-001", {"job_id": first["id"]})
+    task = lab.iterations.read("gpt-001")
+    assert task["phase"] == "awaiting-official"
+    assert task["plan"]["jobs"] == [first["id"]]
+    assert task["last_result"]["id"] != later["id"]
+
+
+def test_deferred_reviewed_baseline_resumes_without_another_model_call(lab):
+    build_fixture(lab)
+    auto = lab.judger.automation
+    asyncio.run(auto.configure(False, None, "gpt-api", diagnostic_mode=True))
+    row = lab.judger.stage("gpt-001")
+    auto.review_frozen(
+        row["id"],
+        row["source_sha256"],
+        True,
+        "Fixture independent source review; compilation is not correctness.",
+    )
+    selector = auto.selector
+    lab.judger.write(
+        "selection.json",
+        {
+            "phase": "deferred",
+            "fingerprint": selector.fingerprint(),
+            "nomination": None,
+            "next_at": time.time() + 3600,
+        },
+    )
+    selector.schedule()
+    assert selector.nomination()["candidate_id"] == row["id"]
+    assert selector.task is None
+    assert not lab.judger.read("queue.json", [])[0].get("official_submission_id")
+    assert lab.judger.champion() is None
+
+
+@pytest.mark.parametrize("change", ["unreviewed", "rejected", "different-source", "tampered-build"])
+def test_deferred_baseline_rechecks_source_review_and_compile_binding(lab, change):
+    proof = build_fixture(lab)
+    auto = lab.judger.automation
+    asyncio.run(auto.configure(False, None, "gpt-api", diagnostic_mode=True))
+    row = lab.judger.stage("gpt-001")
+    if change != "unreviewed":
+        auto.review_frozen(
+            row["id"],
+            row["source_sha256"],
+            change != "rejected",
+            "Fixture review for testing source-bound admission, not a real kernel.",
+        )
+    if change == "different-source":
+        source = lab.team_folder("gpt-001") / "project/op_kernel/confusion_mul_grad.h"
+        source.write_text(source.read_text() + "// changed fixture\n", encoding="utf-8")
+    if change == "tampered-build":
+        path = lab.simulator.spool / "jobs" / proof["id"] / "request.json"
+        path.write_text(path.read_text() + " ", encoding="utf-8")
+    selector = auto.selector
+    lab.judger.write(
+        "selection.json",
+        {
+            "phase": "deferred",
+            "fingerprint": selector.fingerprint(),
+            "nomination": None,
+        },
+    )
+    selector.schedule()
+    assert selector.nomination() is None
+    assert selector.task is None
+
+
 # ---- obsolete histories and compile-only receipts do not trigger N² deep scans --
 def test_peer_learning_skips_old_workers_and_build_only_receipts(lab, monkeypatch):
     lab.settings = lab.settings.model_copy(update={"lab_require_simulation": True})

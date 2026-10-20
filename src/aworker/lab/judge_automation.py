@@ -160,10 +160,17 @@ class JudgeAutomation:
     def validation_evidence(self, row):
         if row.get("validation_mode") == "official-feedback":
             return self.service.simulator.build_evidence(
-                row["team"], row["source_sha256"], row["case_pack_sha256"]
+                row["team"],
+                row["source_sha256"],
+                row["case_pack_sha256"],
+                job_id=row.get("simulation_job_id"),
             )
         return self.service.simulator.evidence(
-            row["team"], row["source_sha256"], row["case_pack_sha256"], require_coverage=True
+            row["team"],
+            row["source_sha256"],
+            row["case_pack_sha256"],
+            require_coverage=True,
+            job_id=row.get("simulation_job_id"),
         )
 
     def readiness(self, row, require_review=True):

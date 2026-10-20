@@ -344,7 +344,7 @@ class IterationController:
                 task["last_result"] = self.service.simulator.dashboard_receipt(row)
                 if self.service.judger.automation.configuration()["diagnostic_mode"]:
                     build = self.service.simulator.build_evidence(
-                        team, source, row.get("case_pack_sha256")
+                        team, source, row.get("case_pack_sha256"), job_id=row["id"]
                     )
                     if build and build["id"] == row["id"] and row["source_sha256"] == source:
                         tested = any(
@@ -374,13 +374,17 @@ class IterationController:
                         self.emit(task, "updated")
                         return task
                 passed = self.service.simulator.evidence(
-                    team, row["source_sha256"], row.get("case_pack_sha256")
+                    team, row["source_sha256"], row.get("case_pack_sha256"), job_id=row["id"]
                 )
                 # Evidence() searches by source, so it must also match this experiment ID.
                 passed = passed if passed and passed["id"] == row["id"] else None
                 if passed and source == row["source_sha256"]:
                     full = self.service.simulator.evidence(
-                        team, source, row.get("case_pack_sha256"), require_coverage=True
+                        team,
+                        source,
+                        row.get("case_pack_sha256"),
+                        require_coverage=True,
+                        job_id=row["id"],
                     )
                     if full and full["id"] == row["id"]:
                         tested = any(
