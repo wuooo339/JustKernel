@@ -1,7 +1,7 @@
 {
   "schema": "justkernel.verified-solution.v1",
   "operator": "ConfusionMulGrad",
-  "source_sha256": "b95c3c2a826ddb2dcaab12381710ada751810e794767daa4f489cafd7ca7cdf1",
+  "source_sha256": "5dbf4d858ee9c523973d012e191727ba429abf7f26528b6d2c935add2a6bffc7",
   "controller_assisted": true,
   "template_sha256": "372c4bc22ac4cdc6afb822cbeb53c3d8be62585136d46ced7070650514232489",
   "template_files": {
@@ -43,21 +43,21 @@
   "overlays": {
     "op_host/confusion_mul_grad_infershape.cpp": "d2aa63c996b34f359b8f2c135dd062662fc05ce61b03273a65d66810c33dcd02",
     "op_host/confusion_mul_grad_tiling.cpp": "32d5067f0c3f0952de4aebd05975e381919045705b2f487dca08f214e6ed5421",
-    "op_kernel/confusion_mul_grad.h": "9f5ea4dc4b5a4ffabb65dd186c17b0c2cee9a5e65f405e1e19e7c310e66f84c3",
+    "op_kernel/confusion_mul_grad.h": "6f480d328771581b3135168bff4081a7ddb43afee5cf872725e2e8af349d3da0",
     "op_kernel/confusion_mul_grad_tiling_data.h": "409f8a1c348b5f2a1d8934aa490ec9da9748566f9e40a3d19de15b547dd17045"
   },
   "official": {
     "problem_url": "https://cannjudge.cn/public/ladder_october/confusionmulgrad",
-    "submission_id": "6ad75e27193e507d8ed8fc9e",
-    "submission_number": 911656,
+    "submission_id": "6ad77212193e507d8ee4b166",
+    "submission_number": 912109,
     "status": "Pass",
-    "score": 33.95,
-    "rank_at_capture": 11,
+    "score": 36.69,
+    "rank_at_capture": 10,
     "captured_date": "2026-10-20",
     "cases": [
       {
         "testcase_id": "6acef021e769892927127ff9",
-        "time": 6.27,
+        "time": 6.03,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -66,7 +66,7 @@
       },
       {
         "testcase_id": "6acef021e769892927127ffe",
-        "time": 6.06,
+        "time": 5.81,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -75,7 +75,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128005",
-        "time": 25.6,
+        "time": 25.72,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -84,7 +84,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712800b",
-        "time": 7.3,
+        "time": 7.26,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -93,7 +93,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712800f",
-        "time": 10.2,
+        "time": 6.6,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -102,7 +102,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128013",
-        "time": 20.91,
+        "time": 20.71,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -111,7 +111,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128017",
-        "time": 37.32,
+        "time": 36.85,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -120,7 +120,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712801b",
-        "time": 1608.72,
+        "time": 1607.29,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -129,7 +129,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712801f",
-        "time": 545.64,
+        "time": 542.69,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -138,7 +138,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128025",
-        "time": 3390.71,
+        "time": 3394.83,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -147,7 +147,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712802a",
-        "time": 13090.74,
+        "time": 13322.46,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -156,7 +156,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128030",
-        "time": 2422.21,
+        "time": 2408.64,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -165,7 +165,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712803a",
-        "time": 1029.17,
+        "time": 267.49,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -174,7 +174,7 @@
       },
       {
         "testcase_id": "6acef021e769892927128044",
-        "time": 4329.39,
+        "time": 4304.54,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -183,7 +183,7 @@
       },
       {
         "testcase_id": "6acef021e76989292712804c",
-        "time": 1970.23,
+        "time": 1972.18,
         "precision_ratio": 1,
         "testcase_status": "Pass",
         "score": 0,
@@ -192,10 +192,20 @@
       }
     ]
   },
+  "previous_baseline": {
+    "source_sha256": "b95c3c2a826ddb2dcaab12381710ada751810e794767daa4f489cafd7ca7cdf1",
+    "submission_id": "6ad75e27193e507d8ed8fc9e",
+    "submission_number": 911656,
+    "status": "Pass",
+    "score": 33.95,
+    "change": "General FP16 short-row batched DMA and reduction with explicit padding initialization.",
+    "point_13_time_us_before": 1029.17,
+    "point_13_time_us_after": 267.49
+  },
   "limitations": [
     "Official hidden shapes/values remain unknown.",
     "Canonical local AVX2 numerical probes are not all passing; reduction order differs.",
-    "This is an initial passing baseline with known performance bottlenecks, not a global SOTA claim.",
+    "This is a controller-assisted passing baseline with measured improvement, not a global SOTA claim.",
     "Official template and CANN SDK retain their upstream terms; only solution overlays are included."
   ]
 }

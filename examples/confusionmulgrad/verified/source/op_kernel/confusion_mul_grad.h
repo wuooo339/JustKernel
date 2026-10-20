@@ -67,6 +67,7 @@ private:
     // 把 bufRed_[0] cast 成输入 dtype 后写回 output1 的一个元素
     __aicore__ inline void StoreScalar(int64_t gmOffset);
     __aicore__ inline void ProcessRow();
+    __aicore__ inline void ProcessHalfRows(int64_t rowBegin, int64_t rowEnd);
     __aicore__ inline void ProcessFloatRow(int64_t offset);
     __aicore__ inline void ProcessCol();
     __aicore__ inline LocalTensor<float> TailBank(int64_t bank);
@@ -512,6 +513,75 @@ __aicore__ inline void ConfusionMulGrad<T>::ProcessFloatRow(int64_t offset)
     }
 }
 
+// Independent short rows are batched only by dtype, capacity and alignment.
+// All padding is explicitly initialized; input1 is DMA-loaded once and reused.
+template <typename T>
+__aicore__ inline void ConfusionMulGrad<T>::ProcessHalfRows(int64_t rowBegin, int64_t rowEnd)
+{
+    const int64_t pitch = laneLen_;
+    const int64_t cap = tileLen_ / pitch;
+    const int64_t packed = (cols_ + 15) / 16 * 16;
+    for (int64_t first = rowBegin; first < rowEnd; first += cap) {
+        int64_t count = rowEnd - first;
+        if (count > cap) count = cap;
+        const int64_t length = count * pitch;
+        LocalTensor<T> a = inQueA_.AllocTensor<T>();
+        LocalTensor<T> b = inQueB_.AllocTensor<T>();
+        LocalTensor<T> c = inQueC_.AllocTensor<T>();
+        Duplicate(a, static_cast<T>(0), static_cast<int32_t>(length));
+        Duplicate(b, static_cast<T>(0), static_cast<int32_t>(length));
+        Duplicate(c, static_cast<T>(0), static_cast<int32_t>(length));
+        PipeBarrier<PIPE_ALL>();
+        DataCopyExtParams load{};
+        load.blockCount = static_cast<uint16_t>(count);
+        load.blockLen = static_cast<uint32_t>(cols_ * sizeof(T));
+        load.srcStride = 0;
+        load.dstStride = static_cast<uint32_t>((pitch - packed) / 16);
+        DataCopyPadExtParams<T> padding{};
+        padding.isPad = true;
+        padding.rightPadding = static_cast<uint8_t>(packed - cols_);
+        padding.paddingValue = static_cast<T>(0);
+        DataCopyPad(a, input0Gm_[first * cols_], load, padding);
+        DataCopyPad(b, input1Gm_[first * cols_], load, padding);
+        DataCopyPad(c, input2Gm_[first * cols_], load, padding);
+        inQueA_.EnQue(a); inQueB_.EnQue(b); inQueC_.EnQue(c);
+        a = inQueA_.DeQue<T>(); b = inQueB_.DeQue<T>(); c = inQueC_.DeQue<T>();
+        LocalTensor<float> fa = bufFA_.Get<float>();
+        LocalTensor<float> fb = bufFB_.Get<float>();
+        LocalTensor<float> fc = bufFC_.Get<float>();
+        LocalTensor<float> fo = bufFO_.Get<float>();
+        LocalTensor<float> product = bufP_.Get<float>();
+        CastToFp32(fa, a, length); CastToFp32(fb, b, length); CastToFp32(fc, c, length);
+        Mul(fo, fa, fb, static_cast<int32_t>(length));
+        Mul(product, fb, fc, static_cast<int32_t>(length));
+        LocalTensor<T> out = outQue_.AllocTensor<T>();
+        CastFromFp32(out, fo, length);
+        outQue_.EnQue(out); out = outQue_.DeQue<T>();
+        DataCopyExtParams store = load;
+        store.srcStride = load.dstStride;
+        store.dstStride = 0;
+        DataCopyPad(output0Gm_[first * cols_], out, store);
+        outQue_.FreeTensor(out);
+        inQueA_.FreeTensor(a); inQueB_.FreeTensor(b); inQueC_.FreeTensor(c);
+        // Same per-row halving tree as the unbatched FP16 baseline.
+        for (int64_t span = pitch / 2; span >= 64; span /= 2)
+            for (int64_t row = 0; row < count; ++row)
+                Add(product[row * pitch], product[row * pitch], product[row * pitch + span],
+                    static_cast<int32_t>(span));
+        LocalTensor<float> sums = bufWork_.Get<float>();
+        WholeReduceSum(sums, product, static_cast<uint64_t>(64), static_cast<int32_t>(count),
+                       1, 1, static_cast<int32_t>(pitch / 8));
+        out = outQue_.AllocTensor<T>();
+        CastFromFp32(out, sums, count);
+        outQue_.EnQue(out); out = outQue_.DeQue<T>();
+        DataCopyExtParams scalarStore{};
+        scalarStore.blockCount = 1;
+        scalarStore.blockLen = static_cast<uint32_t>(count * sizeof(T));
+        DataCopyPad(output1Gm_[first], out, scalarStore);
+        outQue_.FreeTensor(out);
+    }
+}
+
 template <typename T>
 __aicore__ inline void ConfusionMulGrad<T>::ProcessRow()
 {
@@ -520,6 +590,12 @@ __aicore__ inline void ConfusionMulGrad<T>::ProcessRow()
     int64_t rowEnd = rows_ * (blockIdx_ + 1) / coreNum_;
     if (rowBegin >= rowEnd) {
         return;
+    }
+    if constexpr (sizeof(T) == 2) {
+        if (cols_ <= MAX_LANE_LEN && cols_ <= tileLen_) {
+            ProcessHalfRows(rowBegin, rowEnd);
+            return;
+        }
     }
     LocalTensor<float> acc = bufAcc_.Get<float>();
     for (int64_t row = rowBegin; row < rowEnd; ++row) {

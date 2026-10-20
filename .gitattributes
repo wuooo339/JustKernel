@@ -4,4 +4,4 @@
 *.gif binary
 *.png binary
 # Verified source hashes identify submitted bytes, including original line endings.
-examples/confusionmulgrad/verified/source/** -text
+examples/confusionmulgrad/verified/source/** -text whitespace=cr-at-eol
