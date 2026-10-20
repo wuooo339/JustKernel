@@ -515,11 +515,23 @@ class JudgeMonitor:
                 if match is None:
                     continue
                 # Public rank can change; immutable, already received failure details need no poll.
-                match = {**row["official"], "rank": match.get("rank")}
+                ranking = match
+                match = {**row["official"], "rank": ranking.get("rank")}
+                score = ranking.get("score")
+                if (
+                    str(match.get("status", "")).lower() == "pass"
+                    and str(ranking.get("status", "")).lower() == "pass"
+                    and isinstance(score, (int, float))
+                    and not isinstance(score, bool)
+                    and math.isfinite(score)
+                ):
+                    # The authenticated receipt may finish before the ranking assigns a score.
+                    match["score"] = score
             elif match is None or (
                 row.get("binding") == "browser-session" and self.browser.status()["connected"]
             ):
                 try:
+                    ranking = match
                     rank = match.get("rank") if match else None
                     if row.get("binding") == "browser-session":
                         submission = await self.browser.call("receipt", submission_id)
@@ -539,6 +551,16 @@ class JudgeMonitor:
                         raise ValueError("submission does not match this operator")
                     match = {k: submission.get(k) for k in ("status", "score", "result")}
                     match["rank"] = rank
+                    if (
+                        match.get("score") is None
+                        and ranking
+                        and str(match.get("status", "")).lower() == "pass"
+                        and str(ranking.get("status", "")).lower() == "pass"
+                        and isinstance(ranking.get("score"), (int, float))
+                        and not isinstance(ranking["score"], bool)
+                        and math.isfinite(ranking["score"])
+                    ):
+                        match["score"] = ranking["score"]
                 except Exception as exc:
                     row["tracking_error"] = self.service.redact(str(exc))[:500]
                     updates[row["id"]] = row

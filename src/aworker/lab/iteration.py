@@ -321,6 +321,21 @@ class IterationController:
             return None
         source = self.service.candidate(team)["sha256"]
         changed = source != task["current_source"]
+        pending_official = any(
+            row["source_sha256"] == source
+            and row.get("official_submission_id")
+            and not self.service.judger.terminal(row.get("official", {}).get("status"))
+            for row in self.service.judger.read("queue.json", [])
+        )
+        if not changed and pending_official:
+            if task["phase"] != "awaiting-official":
+                task.update(
+                    phase="awaiting-official",
+                    next_action="当前冻结源码已提交；等待官方最终回执，不用旧反馈重新派发修正。",
+                )
+                self.write(task)
+                self.emit(task, "updated")
+            return task
         if changed:
             task["current_source"] = source
             if task["phase"] in {"blocked", "awaiting-official"}:
@@ -348,7 +363,9 @@ class IterationController:
                     )
                     if build and build["id"] == row["id"] and row["source_sha256"] == source:
                         tested = any(
-                            r["source_sha256"] == source and r.get("official_submission_id")
+                            r["source_sha256"] == source
+                            and r.get("official_submission_id")
+                            and self.service.judger.terminal(r.get("official", {}).get("status"))
                             for r in self.service.judger.read("queue.json", [])
                         )
                         if tested:
@@ -388,7 +405,9 @@ class IterationController:
                     )
                     if full and full["id"] == row["id"]:
                         tested = any(
-                            r["source_sha256"] == source and r.get("official_submission_id")
+                            r["source_sha256"] == source
+                            and r.get("official_submission_id")
+                            and self.service.judger.terminal(r.get("official", {}).get("status"))
                             for r in self.service.judger.read("queue.json", [])
                         )
                         if tested:

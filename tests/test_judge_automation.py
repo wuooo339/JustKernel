@@ -739,6 +739,51 @@ def test_official_lane_skips_old_terminal_receipts_but_accepts_rank_updates(lab)
 
 
 # ---- agent views keep exact own failure cases without repeatedly loading all archived notes ----
+def test_delayed_public_score_promotes_verified_pass_without_repolling_details(lab):
+    browser, row = connected_lab(lab)
+    cases = [{"testcase_status": "Pass", "time": 12, "precision_ratio": 1}]
+    lab.judger.automation.update(
+        row["id"],
+        official_submission_id="a" * 24,
+        binding="browser-session",
+        official={"status": "Pass", "score": None, "rank": None, "result": cases},
+    )
+    assert lab.judger.champion() is None
+    asyncio.run(
+        lab.judger.refresh_tracked(
+            [
+                {"submission_id": "a" * 24, "status": "Pass", "rank": 10, "score": 33.95},
+            ],
+            include_terminal=False,
+        )
+    )
+    updated = lab.judger.read("queue.json", [])[0]
+    assert updated["official"]["score"] == 33.95
+    assert updated["official"]["result"] == cases
+    assert lab.judger.champion()["id"] == row["id"]
+    assert not browser.calls
+
+
+@pytest.mark.parametrize("score", [None, True, float("nan"), float("inf")])
+def test_unavailable_or_invalid_public_scores_cannot_promote_a_pass(lab, score):
+    _, row = connected_lab(lab)
+    lab.judger.automation.update(
+        row["id"],
+        official_submission_id="a" * 24,
+        binding="browser-session",
+        official={"status": "Pass", "score": None, "result": []},
+    )
+    asyncio.run(
+        lab.judger.refresh_tracked(
+            [
+                {"submission_id": "a" * 24, "status": "Pass", "rank": 10, "score": score},
+            ],
+            include_terminal=False,
+        )
+    )
+    assert lab.judger.champion() is None
+
+
 def test_model_judge_status_preserves_own_cases_with_bounded_history(lab):
     cases = [
         {

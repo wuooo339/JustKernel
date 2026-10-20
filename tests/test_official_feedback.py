@@ -93,6 +93,29 @@ def test_build_binding_rejects_request_and_source_drift(lab):
 
 
 # ---- an approved diagnostic cannot disappear behind a permanent deferral ----
+def test_submitted_current_source_waits_for_final_receipt_before_new_repair(lab):
+    previous = official_fixture(lab)
+    source = lab.team_folder("gpt-001") / "project/op_kernel/confusion_mul_grad.h"
+    source.write_text(source.read_text() + "// fixture new version\n", encoding="utf-8")
+    auto = lab.judger.automation
+    asyncio.run(auto.configure(False, None, "gpt-api", diagnostic_mode=True))
+    task = lab.iterations.sync("gpt-001")
+    assert task["phase"] == "needs-plan"
+    proof = build_fixture(lab)
+    current = lab.judger.stage("gpt-001")
+    auto.update(current["id"], official_submission_id="c" * 24, official={"status": "Running"})
+    task = lab.iterations.reconcile("gpt-001")
+    assert task["phase"] == "awaiting-official"
+    assert task["evidence"]["official_submission_id"] == previous["official_submission_id"]
+    with pytest.raises(ValueError, match="等待"):
+        lab.iterations.require_plan("gpt-001")
+    assert lab.simulator.build_evidence("gpt-001", proof["source_sha256"])
+    auto.update(current["id"], official={"status": "Wrong Answer", "result": []})
+    task = lab.iterations.sync("gpt-001")
+    assert task["phase"] == "needs-plan"
+    assert task["evidence"]["official_submission_id"] == "c" * 24
+
+
 def test_frozen_candidate_keeps_its_exact_build_when_a_later_probe_exists(lab):
     first = build_fixture(lab)
     auto = lab.judger.automation
