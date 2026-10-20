@@ -3,3 +3,5 @@
 *.ps1 text eol=crlf
 *.gif binary
 *.png binary
+# Verified source hashes identify submitted bytes, including original line endings.
+examples/confusionmulgrad/verified/source/** -text
