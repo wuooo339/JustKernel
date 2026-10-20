@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import shutil
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
@@ -718,6 +719,28 @@ def test_no_qualified_candidate_is_explicitly_waiting_not_selecting(lab):
 
 
 # ---- a new challenger must not wait behind repeated reads of old terminal failures ----
+def test_extra_probe_for_identical_source_cannot_displace_reviewed_or_nominated_snapshot(lab):
+    _, row = connected_lab(lab)
+    auto = lab.judger.automation
+    auto.review_frozen(row["id"], row["source_sha256"], True, "Fixture independent source review.")
+    newer = {**row, "id": "b" * 32, "case_pack_sha256": "different-probe-fixture"}
+    shutil.copyfile(
+        lab.judger.package(row["id"]), lab.judger.folder / "packages" / (newer["id"] + ".zip")
+    )
+    queue = lab.judger.read("queue.json", [])
+    lab.judger.write("queue.json", [*queue, newer])
+    selector = auto.selector
+    assert [r["id"] for r in selector.pool()] == [row["id"]]
+    selector.nominate(
+        row["id"], row["source_sha256"], "Fixture source selection; no performance claim."
+    )
+    auto.review_frozen(
+        newer["id"], newer["source_sha256"], True, "Fixture later same-source review."
+    )
+    assert selector.nomination()["candidate_id"] == row["id"]
+    assert selector.pool()[0]["id"] == row["id"]
+
+
 def test_official_lane_skips_old_terminal_receipts_but_accepts_rank_updates(lab):
     browser, row = connected_lab(lab)
     auto = lab.judger.automation

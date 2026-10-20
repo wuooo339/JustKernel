@@ -1,0 +1,201 @@
+{
+  "schema": "justkernel.verified-solution.v1",
+  "operator": "ConfusionMulGrad",
+  "source_sha256": "b95c3c2a826ddb2dcaab12381710ada751810e794767daa4f489cafd7ca7cdf1",
+  "controller_assisted": true,
+  "template_sha256": "372c4bc22ac4cdc6afb822cbeb53c3d8be62585136d46ced7070650514232489",
+  "template_files": {
+    "build.sh": "f6cd88e5f34233e8c6c23c7ac796bfff22f2fee6dc254132b6cd4d9363ee4e9a",
+    "CMakeLists.txt": "0eb81aa17f30da59162bfd93340b22c17923675c5c8a979e61ba383ffbba176a",
+    "examples/CMakeLists.txt": "580f173c02afc30cd7a961e6c4316b13486d4d1fab552fe595521b47e239df59",
+    "examples/run.sh": "b540b53c08e61fe2a9e6ca47e07b939225eb82c6bd13200a7583779d36c604f0",
+    "examples/test_aclnn_confusion_mul_grad.cpp": "55a13a328f4b6f88c79a9837cefa99e538870036284419227ad6f67c28b77a8a",
+    "op_host/CMakeLists.txt": "ea0a63ec374339cbef38570b5666cc5b6ab592ea9ba5560ceb80f19dc8e86a53",
+    "op_host/confusion_mul_grad_def.cpp": "010cfa6443b68abf2a1b5700d518252f6466cf19d1a0fc2eb1f1e4dadecf77cc",
+    "op_host/confusion_mul_grad_infershape.cpp": "62958925a24c50d3e47071a6d3a24fd6b257296febd93e7713e5263e9321d41c",
+    "op_host/confusion_mul_grad_tiling.cpp": "7e7f1e3363dcd77ba8d28a029d71027a7bc2d03decb21b0e01dac979e0f07933",
+    "op_kernel/CMakeLists.txt": "803fb189cb5bb83c1003e43e7df99db42fc838fa53ea8f0fce9dc6ccd3561d6b",
+    "op_kernel/confusion_mul_grad.cpp": "02d54192dc308dac74c432f87fc022d1dea11734c2e473b4de7cca6615a6c084",
+    "op_kernel/confusion_mul_grad.h": "5320f48bed9b69a612287352ccc5d9b29b286279c7f8f53be588235425caf1c4",
+    "op_kernel/confusion_mul_grad_tiling_data.h": "612883f93cacbbc8d801c29acd24267fb965eaa2e4f4d1eb1a2602bda290d21e",
+    "op_kernel/confusion_mul_grad_tiling_key.h": "b38cbc64cbb143ea77f4a3f75ae3f4141cce617dab387cc359f680a3b8a6411f",
+    "tests/ut/cmake/BuildGoogleTest.cmake": "eb7540a97ce57197cec5c1fcf6c90686beb8a2cf8411682539bc9d6c2dbe46b0",
+    "tests/ut/CMakeLists.txt": "3528efc9a12ea65a5845ba1843a8096fd24c41db90bf50470fcca035c5fa3f25",
+    "tests/ut/common/any_value.h": "fd37a6a75fc49ffb6dde10267e95674d3c0d3d720eb6d8a24c15419d17af3482",
+    "tests/ut/common/infershape_case_executor.cpp": "172366324b825f2d08ea6a7cc4a91cefdd0c9444d8f709ce1edf98d5cd858af9",
+    "tests/ut/common/infershape_case_executor.h": "6f82b554d0af69714ec41f94c13c80838ce119bde11424fbe7c041d34289017e",
+    "tests/ut/common/infershape_context_faker.cpp": "fa2ee2cdc652adeb9e38cf15b661ffdade693237080c17739c851d309c2495f3",
+    "tests/ut/common/infershape_context_faker.h": "bfed57bf7f11ba0aaf4fe1b456043d6469f8b73d2548f2573ba5edb74cd4d79c",
+    "tests/ut/common/tiling_case_executor.cpp": "c648e9a5b04606bdb041c0a5aa7a7583aea285dfc0f48e1b1e78acbaf366ea78",
+    "tests/ut/common/tiling_case_executor.h": "a061a5d1f271d1069b4b7257e0a9bc1efa6d34cd387cddbc6801a1a08f5d0bf7",
+    "tests/ut/common/tiling_context_faker.cpp": "8c26f88355f12f46255a2f69d0da355844d5cc9387b75f5daefabd94f46bb4a2",
+    "tests/ut/common/tiling_context_faker.h": "506633595884cd2e3af30496a462164ae1021228c9dfe839a3aad4df4e88e630",
+    "tests/ut/op_host/CMakeLists.txt": "ebdb4fe7181821b478ad88762838a2b182461779772995dffdbde7700b8ba1a4",
+    "tests/ut/op_host/test_confusion_mul_grad_tiling.cpp": "4d31a70949ce5b4183c6d9cd1103cfbfa1e9a1af88ebb90c00debb5bec624996",
+    "tests/ut/op_host/test_op_host_main.cpp": "32ff47a2778c76bbe2464010a500a47a79bc4153bca8533b4a62799e32260d71",
+    "tests/ut/op_kernel/CMakeLists.txt": "2793c2933e1b9d17f42b407929c8007ad5f9ab2efc3617c6fad482e93b36cfee",
+    "tests/ut/op_kernel/confusion_mul_grad_data/compare_data.py": "451d7663b72ea2f08550712dff28827bbc0414a58705afdf590e81f94fd713a9",
+    "tests/ut/op_kernel/confusion_mul_grad_data/gen_data.py": "b79bb4c05d17e43ae8febaf276b6e2812755470e623fea59944d559611bcb3c2",
+    "tests/ut/op_kernel/confusion_mul_grad_tiling.h": "2e0a3c16797bcc7e94995ba45181804e60b5026d761fd0ab74bf9ce216c6f2f3",
+    "tests/ut/op_kernel/test_confusion_mul_grad.cpp": "8b0e3607520947943de12520a7a7262962a7ff58dc0f5ec2aa889e8776625ca0",
+    "tests/ut/run.sh": "5c18395fe95ceadc140453597dfa91c6d1ebf97519c2462d63a8f367bb1972fb"
+  },
+  "overlays": {
+    "op_host/confusion_mul_grad_infershape.cpp": "d2aa63c996b34f359b8f2c135dd062662fc05ce61b03273a65d66810c33dcd02",
+    "op_host/confusion_mul_grad_tiling.cpp": "32d5067f0c3f0952de4aebd05975e381919045705b2f487dca08f214e6ed5421",
+    "op_kernel/confusion_mul_grad.h": "9f5ea4dc4b5a4ffabb65dd186c17b0c2cee9a5e65f405e1e19e7c310e66f84c3",
+    "op_kernel/confusion_mul_grad_tiling_data.h": "409f8a1c348b5f2a1d8934aa490ec9da9748566f9e40a3d19de15b547dd17045"
+  },
+  "official": {
+    "problem_url": "https://cannjudge.cn/public/ladder_october/confusionmulgrad",
+    "submission_id": "6ad75e27193e507d8ed8fc9e",
+    "submission_number": 911656,
+    "status": "Pass",
+    "score": 33.95,
+    "rank_at_capture": 11,
+    "captured_date": "2026-10-20",
+    "cases": [
+      {
+        "testcase_id": "6acef021e769892927127ff9",
+        "time": 6.27,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 3.94
+      },
+      {
+        "testcase_id": "6acef021e769892927127ffe",
+        "time": 6.06,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 3.44
+      },
+      {
+        "testcase_id": "6acef021e769892927128005",
+        "time": 25.6,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 4.98
+      },
+      {
+        "testcase_id": "6acef021e76989292712800b",
+        "time": 7.3,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 6.96
+      },
+      {
+        "testcase_id": "6acef021e76989292712800f",
+        "time": 10.2,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 5.1
+      },
+      {
+        "testcase_id": "6acef021e769892927128013",
+        "time": 20.91,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 8.48
+      },
+      {
+        "testcase_id": "6acef021e769892927128017",
+        "time": 37.32,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 25.4
+      },
+      {
+        "testcase_id": "6acef021e76989292712801b",
+        "time": 1608.72,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 78.48
+      },
+      {
+        "testcase_id": "6acef021e76989292712801f",
+        "time": 545.64,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 146.08
+      },
+      {
+        "testcase_id": "6acef021e769892927128025",
+        "time": 3390.71,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 188.18
+      },
+      {
+        "testcase_id": "6acef021e76989292712802a",
+        "time": 13090.74,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 1486.45
+      },
+      {
+        "testcase_id": "6acef021e769892927128030",
+        "time": 2422.21,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 733
+      },
+      {
+        "testcase_id": "6acef021e76989292712803a",
+        "time": 1029.17,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 74.05
+      },
+      {
+        "testcase_id": "6acef021e769892927128044",
+        "time": 4329.39,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 1654.15
+      },
+      {
+        "testcase_id": "6acef021e76989292712804c",
+        "time": 1970.23,
+        "precision_ratio": 1,
+        "testcase_status": "Pass",
+        "score": 0,
+        "type": "default",
+        "best_time": 1515.31
+      }
+    ]
+  },
+  "limitations": [
+    "Official hidden shapes/values remain unknown.",
+    "Canonical local AVX2 numerical probes are not all passing; reduction order differs.",
+    "This is an initial passing baseline with known performance bottlenecks, not a global SOTA claim.",
+    "Official template and CANN SDK retain their upstream terms; only solution overlays are included."
+  ]
+}

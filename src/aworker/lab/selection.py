@@ -55,6 +55,15 @@ class CandidateSelector:
             in {"submitting", "submission-uncertain", "submission-rejected", "blocked-template"}
         }
         unique = {}
+        nominated = (self.state().get("nomination") or {}).get("candidate_id")
+
+        def priority(row):
+            review = row.get("review", {})
+            return (
+                row["id"] == nominated,
+                review.get("ready") is True and review.get("source_sha256") == row["source_sha256"],
+            )
+
         for row in reversed(queue):
             if row["source_sha256"] in tested or row.get("review", {}).get("ready") is False:
                 continue
@@ -63,7 +72,9 @@ class CandidateSelector:
             except (ValueError, OSError):
                 continue
             if ready:
-                unique.setdefault(row["source_sha256"], row)
+                previous = unique.get(row["source_sha256"])
+                if previous is None or priority(row) > priority(previous):
+                    unique[row["source_sha256"]] = row
         return list(unique.values())[:200]
 
     def fingerprint(self):
@@ -332,6 +343,10 @@ This mode intentionally does NOT require provisional local cases to pass, a perf
 gain, or a complete CPU simulation. Candidates include real compile evidence; compilation
 alone is NOT a correctness result. Local numerical failures and missing local coverage
 must be disclosed, but do not alone bar an informative official diagnostic submission.
+Read the verified champion's source when comparing a repair. Do not attribute a defect
+to unchanged code. A local CPU mismatch is not a newly introduced regression unless
+the same inputs also distinguish the candidate from the passing baseline. Consider
+source-bound actual baseline comparison evidence separately from canonical local pass.
 Reject empty implementations, confirmed mathematical/ABI/memory defects and forbidden
 Host calculations, test matching, cached outputs or timing manipulation. Never weaken
 constraints. Review source then nominate ONE informative new untested hash. Do not keep

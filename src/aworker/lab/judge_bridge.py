@@ -111,6 +111,13 @@ class BrowserBridge:
                     self.busy = True
                     try:
                         await self.browser._open(initial_url)
+                    except Exception as error:
+                        # A transient window/navigation failure must not kill the
+                        # transport. The panel can retry opening this owned browser.
+                        print(
+                            "官测窗口启动失败，连接服务保留，可从面板重试：" + type(error).__name__,
+                            flush=True,
+                        )
                     finally:
                         self.busy = False
                 while True:

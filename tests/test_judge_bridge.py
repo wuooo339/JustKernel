@@ -7,6 +7,8 @@ import time
 from types import SimpleNamespace
 from uuid import uuid4
 
+import pytest
+
 from aworker.lab.judge_bridge import BrowserBridge
 
 
@@ -84,6 +86,34 @@ def test_expired_browser_request_is_rejected_before_any_submission(tmp_path):
 
 
 # ---- a duplicate invocation never touches the live browser or its heartbeat --
+def test_initial_window_failure_keeps_bridge_available_for_panel_retry(tmp_path, monkeypatch):
+    bridge = BrowserBridge(tmp_path / "private", tmp_path / "spool")
+    calls = []
+
+    class FailedWindow(BrowserFixture):
+        async def _open(self, url):
+            calls.append("open-failed")
+            raise ValueError("Fixture-only transient startup failure")
+
+        async def _disconnect(self):
+            calls.append("disconnect")
+
+    bridge.browser = FailedWindow()
+    fixture_request(bridge, method="check")
+    monkeypatch.setitem(
+        sys.modules, "fcntl", SimpleNamespace(LOCK_EX=2, LOCK_NB=4, flock=lambda *a: None)
+    )
+
+    async def received(path):
+        calls.append("panel-request-received")
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(bridge, "process", received)
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(bridge.serve("https://cannjudge.cn/"))
+    assert calls == ["open-failed", "panel-request-received", "disconnect"]
+
+
 def test_duplicate_worker_exits_cleanly_and_preserves_the_existing_session(
     tmp_path, monkeypatch, capsys
 ):

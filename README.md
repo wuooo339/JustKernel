@@ -20,7 +20,7 @@ An observable multi-agent lab for Ascend kernel engineering.
 
 JustKernel 将 **Deep Agents / LangGraph、A2A 通信、独立 CANN 仿真和精选官方评测**连接为持续优化闭环。每队维护自己的代码、技能、计划与检查点；先独立实验，再学习公开候选和反馈。搜索与官测同时推进，团队无需等待整个批次结束。
 
-这是一个可运行的**研究预览版**。当前工程样例为 **ConfusionMulGrad**，从官方空工程导入开始，不附带私人的历史优化代码、模型凭据或官方隐藏输入。当前尚未取得该算子的官方全点通过成绩，不能将本项目视为已经完成比赛优化的成品。
+这是一个可运行的**研究预览版**。ConfusionMulGrad 已取得一份 **官方 15/15 Pass**：2026-10-20 提交 `911656`（`6ad75e27193e507d8ed8fc9e`），**33.95 分，首次通过时官榜第 10 名**；排名会变化。这是控制器辅助实现的正确性基线，仍有明显性能瓶颈，不能据此宣称整个系统已实现完全自主优化或全局 SOTA。仓库提供通过版本的实现覆盖文件和完整公开回执，不包含私人运行历史、模型凭据或官方隐藏输入。
 
 ## 快速启动
 
@@ -52,6 +52,16 @@ uv run justkernel serve --open --supervise
 ```sh
 uv run python tools/import_official_template.py --zip /path/to/official-template.zip
 ```
+
+### 导出已通过的算子工程
+
+导入官方模板后，可在 Windows、macOS、Linux 导出相同的通过版本：
+
+```sh
+uv run python tools/export_verified_baseline.py ./ConfusionMulGrad-baseline
+```
+
+工具校验官方模板和实现覆盖文件，重建 34 个工程文件并核对完整源码 SHA256；目标目录必须不存在，原模板保持不变。导出不需要模型 Key 或 NPU，实际编译运行仍需匹配的 Linux/CANN 环境。源码、完整 15 点官测回执及限制见 [verified baseline](examples/confusionmulgrad/verified/baseline.json)。本机 AVX2 参考与官方归约数值顺序并不完全一致，样例的通过依据是该次真实官测，不伪称本地全点通过。官方模板与 SDK 保留上游授权条款。
 
 `cp` 在 PowerShell、macOS 和 Linux shell 均可使用；复制 `.env` 时不要覆盖自己的现有配置。
 
