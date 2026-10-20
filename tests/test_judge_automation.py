@@ -584,6 +584,75 @@ def test_real_deep_agent_selector_graph_reviews_and_nominates_one_snapshot(lab, 
     )
 
 
+# ---- nomination depends on review even when a model batches the tools --------
+@pytest.mark.parametrize("approved", [True, False])
+def test_batched_nomination_waits_for_review_and_never_bypasses_rejection(
+    lab, monkeypatch, approved
+):
+    from langchain_core.messages import AIMessage
+    from test_unified_lab import ScriptedModel
+
+    _, row = connected_lab(lab)
+    auto = lab.judger.automation
+    selector = auto.selector
+    model = ScriptedModel(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "id": "read-fixture",
+                        "name": "read_candidate",
+                        "args": {"candidate_id": row["id"]},
+                    }
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "id": "nominate-fixture",
+                        "name": "nominate_candidate",
+                        "args": {
+                            "candidate_id": row["id"],
+                            "source_sha256": row["source_sha256"],
+                            "reason": "Fixture nomination, subject to independent review.",
+                        },
+                    },
+                    {
+                        "id": "review-fixture",
+                        "name": "review_candidate",
+                        "args": {
+                            "candidate_id": row["id"],
+                            "source_sha256": row["source_sha256"],
+                            "ready": approved,
+                            "notes": "Fixture independent source review only.",
+                        },
+                    },
+                ],
+            ),
+            AIMessage(content="Fixture nomination intent recorded, awaiting gates."),
+        ]
+    )
+    monkeypatch.setattr(lab.registry, "build", lambda _: model)
+    original = auto.review_frozen
+
+    def delayed_review(*args):
+        time.sleep(0.05)  # Reproduce a nomination tool finishing before review.
+        return original(*args)
+
+    monkeypatch.setattr(auto, "review_frozen", delayed_review)
+    asyncio.run(selector.run("gpt-api", selector.fingerprint()))
+    nomination = selector.nomination()
+    if approved:
+        assert nomination and nomination["candidate_id"] == row["id"]
+        assert selector.state()["phase"] == "nominated"
+    else:
+        assert nomination is None
+        assert selector.state()["phase"] == "error"
+    assert not lab.judger.read("queue.json", [])[0].get("official_submission_id")
+
+
 def test_feedback_arriving_mid_turn_is_visible_at_next_model_step(lab, monkeypatch):
     from langchain_core.messages import AIMessage, HumanMessage
     from test_unified_lab import ScriptedModel

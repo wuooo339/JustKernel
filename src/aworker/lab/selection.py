@@ -196,6 +196,7 @@ class CandidateSelector:
     async def run(self, profile, fingerprint):
         root = self.service.root
         original_champion = (self.monitor.champion() or {}).get("id")
+        nomination_requests = []
         state = self.state()
         state.update(
             phase="selecting",
@@ -311,10 +312,21 @@ class CandidateSelector:
                 raise ValueError("冠军或算子已经改变，需要重新比较。")
             if (candidate_id, source_sha256) not in read:
                 raise ValueError("先读取要提名的源码。")
-            if self.state().get("nomination"):
+            if self.state().get("nomination") or nomination_requests:
                 raise ValueError("本次已提名一个候选。")
+            if len(reason.strip()) < 20:
+                raise ValueError("需说明相对已验证冠军的具体改动、依据和不确定性。")
+            # ToolNode may execute review and nomination in parallel. Record the
+            # explicit intent now; check every gate after all tool calls finish.
+            nomination_requests.append((candidate_id, source_sha256, reason))
             return json.dumps(
-                self.nominate(candidate_id, source_sha256, reason), ensure_ascii=False
+                {
+                    "state": "awaiting-review-completion",
+                    "candidate_id": candidate_id,
+                    "source_sha256": source_sha256,
+                    "message": "提名意图已记录；本轮工具完成后核验全部门槛，尚未提交。",
+                },
+                ensure_ascii=False,
             )
 
         def recover(exc, request):
@@ -419,6 +431,10 @@ public decision and review_candidate/nominate_candidate calls for the exact froz
                                     "controller", "judge.selector.message", text=text[:6000]
                                 )
             if root == self.service.root:
+                if nomination_requests:
+                    if original_champion != (self.monitor.champion() or {}).get("id"):
+                        raise ValueError("冠军已经改变，需要重新比较。")
+                    self.nominate(*nomination_requests[0])
                 state = self.state()
                 state["phase"] = "nominated" if state.get("nomination") else "deferred"
                 self.monitor.write("selection.json", state)
