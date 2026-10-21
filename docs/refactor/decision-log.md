@@ -218,3 +218,11 @@
 **Why:** Use cases can be tested without SQLite, models, devices, or HTTP, and adapter replacements stay behind ports.
 
 **Cost if wrong:** A port signature change updates its fake and adapter together; fakes are not evidence of real device behavior.
+
+## D-028 Cluster lifecycle service
+
+**Decision:** `ClusterService` is a thin application orchestrator: load via `ClusterRepositoryPort`, call the Cluster aggregate command, then update with the repository's current version. It depends only on ports/domain.
+
+**Why:** Lifecycle rules stay in the aggregate; the service owns persistence/version coordination without duplicating transition logic.
+
+**Cost if wrong:** Concurrent callers can conflict on version and must reload; the service never silently overwrites.
