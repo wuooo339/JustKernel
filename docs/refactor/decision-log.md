@@ -90,3 +90,11 @@
 **Why:** SPEC stores timestamps as integers. Milliseconds give deterministic ordering and lease TTL precision without floating-point timestamps.
 
 **Cost if wrong:** A future integration that speaks seconds must convert at its boundary; changing stored semantics would require a migration.
+
+## D-012 Execution contracts
+
+**Decision:** Startup/task contracts are immutable dataclasses with canonical-JSON digests. Validation failures raise stable domain errors (`operator_spec.incomplete`, `invalid_task_context`, `invalid_policy`), not generic exceptions.
+
+**Why:** OperatorSpec, TaskContext, and policies are compared and persisted by digest; immutable validated objects keep evidence reproducible and make invalid startup input fail before any agent runs.
+
+**Cost if wrong:** Adding a field changes the digest and requires a new contract version/cluster; that is the intended safety property.
