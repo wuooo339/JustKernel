@@ -52,6 +52,10 @@ uv sync
 uv run pytest -q
   -> 18 passed (4 unit + 10 architecture + 4 characterization via ../JustKernel)
 
+# clean-checkout simulation without ../JustKernel
+python -m pytest -q
+  -> 14 passed (characterization modules ignored)
+
 uv run mypy src/justkernel
   -> success, 21 files
 

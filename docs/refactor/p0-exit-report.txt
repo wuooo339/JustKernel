@@ -34,7 +34,9 @@ Commands and results:
    Result: 18 passed in 2.47s; exit 0.
    Note: characterization tests use the sibling legacy tree at ../JustKernel/src.
    In a clean checkout without that tree, tests/characterization/conftest.py
-   ignores those 4 test modules by design.
+   ignores those 4 test modules by design. A copied clean-checkout simulation
+   (src + unit/architecture/characterization + pyproject, no sibling JustKernel)
+   ran 14 passed in 0.04s.
 
 3. uv run mypy src/justkernel
    Result: Success: no issues found in 21 source files; exit 0.

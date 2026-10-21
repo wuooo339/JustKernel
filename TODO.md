@@ -769,7 +769,7 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 
 | 日期 | 任务号/里程碑 | 状态 | 证据（命令/测试/commit） | 阻塞 |
 | --- | --- | --- | --- | --- |
-| 2026-10-21 | P0-01..P0-07 | 完成并迁移到 `Refactor/` | 旧基线 229 passed / 2 skipped；新项目本地 18 passed（含 `../JustKernel` characterization）；relocation `b60e6e4`；mypy success；ruff check/format clean；证据见 `docs/refactor/p0-exit-report.txt`、`docs/refactor/relocation-report.md` | 无 |
+| 2026-10-21 | P0-01..P0-07 | 完成并迁移到 `Refactor/` | 旧基线 229 passed / 2 skipped；新项目本地 18 passed（含 `../JustKernel` characterization）；干净 checkout 模拟 14 passed；relocation `b60e6e4`；mypy success；ruff check/format clean；证据见 `docs/refactor/p0-exit-report.txt`、`docs/refactor/relocation-report.md` | 无 |
 
 ---
 
