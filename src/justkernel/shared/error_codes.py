@@ -32,3 +32,6 @@ class ErrorCode(StrEnum):
     INVALID_EVENT = "invalid_event"
     INVARIANT_VIOLATION = "invariant.violation"
     CONCURRENCY_CONFLICT = "concurrency.conflict"
+    ARTIFACT_INVALID = "artifact.invalid"
+    ARTIFACT_MISSING = "artifact.missing"
+    ARTIFACT_CORRUPT = "artifact.corrupt"

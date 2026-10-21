@@ -170,3 +170,11 @@
 **Why:** Aggregate writes, audit events, and delivery records must fail or commit together. Optimistic versions prevent lost updates without long-lived locks.
 
 **Cost if wrong:** A caller must track the expected version; a stale update must reload and retry, never overwrite silently.
+
+## D-022 Artifact store
+
+**Decision:** Artifacts are stored under `sha256/<ab>/<cd>/<digest>` with atomic temp-file writes, file fsync, `os.replace`, POSIX 0600/0700 permissions, and read-time hash verification. Database rows store only digests/relative refs, never absolute paths.
+
+**Why:** Candidates, TestRecord zips, diffs, and profiles are immutable evidence. Content addressing gives dedupe and lets repositories verify integrity independently of a path.
+
+**Cost if wrong:** Large artifacts are still copied once per digest; deletion requires a reference/GC policy rather than direct file removal.
