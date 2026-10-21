@@ -35,3 +35,4 @@ class ErrorCode(StrEnum):
     ARTIFACT_INVALID = "artifact.invalid"
     ARTIFACT_MISSING = "artifact.missing"
     ARTIFACT_CORRUPT = "artifact.corrupt"
+    PROJECTION_INVALID = "projection.invalid"

@@ -178,3 +178,11 @@
 **Why:** Candidates, TestRecord zips, diffs, and profiles are immutable evidence. Content addressing gives dedupe and lets repositories verify integrity independently of a path.
 
 **Cost if wrong:** Large artifacts are still copied once per digest; deletion requires a reference/GC policy rather than direct file removal.
+
+## D-023 Projections and replay
+
+**Decision:** Read models are rebuilt from committed events with a per-projection cursor in the `projections` table. Live `apply_pending` and full `rebuild` use the same view code; rebuilding does not append events or trigger external effects.
+
+**Why:** The board, cluster graph, candidate graph, and queue must be reproducible and consistent between live mode and replay. Cursor isolation lets each view advance independently.
+
+**Cost if wrong:** A projection schema change requires resetting its cursor and rebuilding; view state is not treated as authoritative evidence.

@@ -45,11 +45,16 @@ class EventStore:
             raise EventError(f"event already exists: {event.id}") from error
 
     def read_after(self, seq: int = 0, limit: int = 100) -> tuple[DomainEvent, ...]:
+        return tuple(event for _, event in self.read_after_with_seq(seq, limit))
+
+    def read_after_with_seq(
+        self, seq: int = 0, limit: int = 100
+    ) -> tuple[tuple[int, DomainEvent], ...]:
         rows = self.connection.execute(
             "SELECT * FROM events WHERE seq > ? ORDER BY seq LIMIT ?",
             (seq, limit),
         ).fetchall()
-        return tuple(self._from_row(row) for row in rows)
+        return tuple((int(row["seq"]), self._from_row(row)) for row in rows)
 
     def _from_row(self, row: sqlite3.Row) -> DomainEvent:
         return DomainEvent(
