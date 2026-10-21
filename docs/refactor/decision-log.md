@@ -114,3 +114,11 @@
 **Why:** The role/mentor boundary is a hard ACL prerequisite; encoding it in the aggregate prevents invalid worker creation before repositories or tools see it.
 
 **Cost if wrong:** A future role needs an explicit worker/non-worker classification and transition table update.
+
+## D-015 Task lifecycle and kind constraints
+
+**Decision:** `Task` enforces kind-specific candidate/skill rules in the aggregate: GENERATE has neither, OPTIMIZE has a candidate only, TEST/PROFILE have both. Terminal states require `finished_at`; SUCCEEDED requires `result_ref`; FAILED/CANCELLED/INTERRUPTED require a reason. Retry always uses a new TaskId.
+
+**Why:** These constraints prevent malformed tasks from reaching workers/tools and keep terminal evidence distinguishable from a running task.
+
+**Cost if wrong:** A future task kind must extend the kind table and its terminal-result contract.
