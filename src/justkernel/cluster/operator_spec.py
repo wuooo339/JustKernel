@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 from justkernel.shared.digest import Digest
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 from justkernel.shared.json import digest_json
 from justkernel.shared.paths import ProjectPath
@@ -15,7 +16,7 @@ from justkernel.testing.policy import EvaluationPolicy
 
 # ---- OperatorSpecError ------------------------------------------------------
 class OperatorSpecError(JustKernelError):
-    code = "operator_spec.incomplete"
+    code = ErrorCode.OPERATOR_SPEC_INCOMPLETE
 
 
 # ---- ReferenceSpec ----------------------------------------------------------

@@ -6,13 +6,14 @@ import math
 from dataclasses import asdict, dataclass
 
 from justkernel.shared.digest import Digest
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 from justkernel.shared.json import digest_json
 
 
 # ---- PolicyError ------------------------------------------------------------
 class PolicyError(JustKernelError):
-    code = "invalid_policy"
+    code = ErrorCode.INVALID_POLICY
 
 
 # ---- _check_non_negative ----------------------------------------------------

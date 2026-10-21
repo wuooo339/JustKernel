@@ -7,6 +7,7 @@ from dataclasses import asdict, dataclass
 
 from justkernel.cluster.operator_spec import OperatorRef
 from justkernel.shared.digest import Digest
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 from justkernel.shared.ids import CandidateId, TaskId, TestRecordId
 from justkernel.shared.json import digest_json
@@ -17,7 +18,7 @@ CONTEXT_LIST_FIELDS = ("feedback", "history", "shared_evidence", "resource_grant
 
 # ---- TaskContextError -------------------------------------------------------
 class TaskContextError(JustKernelError):
-    code = "invalid_task_context"
+    code = ErrorCode.INVALID_TASK_CONTEXT
 
 
 # ---- _require_text ----------------------------------------------------------

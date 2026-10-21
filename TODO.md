@@ -129,7 +129,7 @@ tests/
 | F01-06 | Candidate DAG 与 BestSelection | 04 §4.5、07 §2/§7 | F01-03/05 | `tests/unit/candidate/` 13 passed；全量 91 passed；不可变/无环/PENDING→VALIDATED；commit `494046d` | done |
 | F01-07 | TestRecord、HardwareLease、ExplorationReport 聚合 | 04 §4.6–4.8、07 §3 | F01-05 | `tests/unit/testing/`、`tests/unit/report/` 17 passed；全量 108 passed；commit `c78099c` | done |
 | F01-08 | ACL、能力矩阵、Message 信封与路由 | 04 §2/§6、05 §5、06 §2–3 | F01-04/07 | `tests/unit/comm/` 23 passed；全量 131 passed；worker 无 board 工具；commit `b5b5bc4` | done |
-| F01-09 | 跨聚合不变量、事件、稳定错误码 | 04 §5、06 §11 | F01-03..08 | `test_invariants.py`、`test_events.py`、`test_error_codes.py`、`test_inbox.py` 16 passed；全量 147 passed；commit `8c08d45` | done |
+| F01-09 | 跨聚合不变量、事件、稳定错误码 | 04 §5、06 §11 | F01-03..08 | `test_invariants.py`、`test_events.py`、`test_error_codes.py`、`test_inbox.py` 16 passed；全量 147 passed；commit `8c08d45` + error-code registry follow-up | done |
 
 ### 4.3 P2 持久化、事件、制品与全局服务
 

@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 
 
 # ---- CandidateError ---------------------------------------------------------
 class CandidateError(JustKernelError):
-    code = "invalid_candidate"
+    code = ErrorCode.INVALID_CANDIDATE
 
 
 # ---- BestSelectionError -----------------------------------------------------
 class BestSelectionError(JustKernelError):
-    code = "invalid_best_selection"
+    code = ErrorCode.INVALID_BEST_SELECTION

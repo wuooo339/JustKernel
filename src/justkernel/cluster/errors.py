@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 
 
 # ---- ClusterError -----------------------------------------------------------
 class ClusterError(JustKernelError):
-    code = "invalid_cluster_transition"
+    code = ErrorCode.INVALID_CLUSTER_TRANSITION
 
 
 # ---- DirectionError ---------------------------------------------------------
 class DirectionError(JustKernelError):
-    code = "invalid_direction_transition"
+    code = ErrorCode.INVALID_DIRECTION_TRANSITION

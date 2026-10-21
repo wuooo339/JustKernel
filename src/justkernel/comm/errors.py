@@ -2,19 +2,20 @@
 
 from __future__ import annotations
 
+from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 
 
 # ---- ChannelError -----------------------------------------------------------
 class ChannelError(JustKernelError):
-    code = "invalid_channel"
+    code = ErrorCode.INVALID_CHANNEL
 
 
 # ---- AccessDeniedError ------------------------------------------------------
 class AccessDeniedError(JustKernelError):
-    code = "acl.denied"
+    code = ErrorCode.ACL_DENIED
 
 
 # ---- MessageError -----------------------------------------------------------
 class MessageError(JustKernelError):
-    code = "invalid_message"
+    code = ErrorCode.INVALID_MESSAGE
