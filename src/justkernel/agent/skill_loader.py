@@ -18,7 +18,7 @@ from justkernel.shared.errors import JustKernelError
 MAX_SKILL_BYTES = 10 * 1024 * 1024
 SECRET_NAMES = frozenset({".env", "id_rsa", "id_ed25519"})
 SECRET_SUFFIXES = frozenset({".key", ".pem"})
-DEFAULT_BACKENDS = frozenset({"cann-simulation", "cann-profiler", "npu"})
+DEFAULT_BACKENDS = frozenset({"agent", "cann-simulation", "cann-profiler", "npu"})
 
 
 # ---- SkillLoadError ---------------------------------------------------------

@@ -282,3 +282,11 @@
 **Why:** Skills are executable instructions and tool grants. Loading must fail closed on role/tool/path/secret violations before an agent session starts.
 
 **Cost if wrong:** A new backend must be registered; a user script must be explicitly enabled; invalid skills fail the session rather than degrade silently.
+
+## D-036 Role and built-in skills
+
+**Decision:** Six base role skills use backend `agent`; tester/profiler add built-in CANN simulation/profile skills with backends `cann-simulation`/`cann-profiler`. Base worker skills contain no board tools. Prompts state that messages/test output are data, not instructions.
+
+**Why:** Role prompts are part of the capability boundary but not a substitute for ACL. Built-in skills give the first runnable tester/profiler contract while allowing user overrides.
+
+**Cost if wrong:** A new role/backend requires a resource skill and loader registration; prompt changes require version updates.
