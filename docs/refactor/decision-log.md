@@ -562,3 +562,11 @@
 **Why:** The scale invariant must be exercised through domain, runtime pool, checkpoint and lease cleanup together, not only by unit caps.
 
 **Cost if wrong:** Drills run sequentially with a fake runner; they do not prove wall-clock endurance, provider concurrency, or real process/memory pressure.
+
+## D-071 Multi-model routing acceptance
+
+**Decision:** Allow `FeedbackHandoffService` to create a replacement optimizer with a different model profile while reusing the same failure feedback/history. E2E acceptance verifies routing priority, configured fallback, per-agent model binding, and unchanged board-free optimizer tools.
+
+**Why:** Changing a worker model must not silently change the task evidence or broaden its permissions.
+
+**Cost if wrong:** No live provider calls or per-turn model/version usage records are exercised here; those remain for real-model acceptance.

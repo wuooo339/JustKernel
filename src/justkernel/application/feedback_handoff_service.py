@@ -72,6 +72,7 @@ class FeedbackHandoffService:
         shared_evidence: tuple[SharedEvidence, ...] = (),
         resource_grants: tuple[ArtifactGrant, ...] = (),
         now_ms: int,
+        model_profile: str | None = None,
     ) -> HandoffResult:
         old_task, mentor, old_worker, candidate, record = self._prepare(
             mentor_id,
@@ -90,6 +91,23 @@ class FeedbackHandoffService:
             shared_evidence,
             resource_grants,
         )
+        state = (mentor, old_worker, old_task, candidate, context, new_task_id)
+        return self._finish(state, now_ms, model_profile)
+
+    def _finish(
+        self,
+        state: tuple[
+            AgentInstance,
+            AgentInstance,
+            Task,
+            CandidateVersion,
+            TaskContext,
+            TaskId,
+        ],
+        now_ms: int,
+        model_profile: str | None,
+    ) -> HandoffResult:
+        mentor, old_worker, old_task, candidate, context, new_task_id = state
         return self._dispatch(
             mentor,
             old_worker,
@@ -98,6 +116,7 @@ class FeedbackHandoffService:
             context,
             new_task_id,
             now_ms,
+            model_profile,
         )
 
     def _prepare(
@@ -124,11 +143,12 @@ class FeedbackHandoffService:
         context: TaskContext,
         new_task_id: TaskId,
         now_ms: int,
+        model_profile: str | None,
     ) -> HandoffResult:
         new_worker = self.agents.open_worker(
             mentor_id=mentor.id,
             role=Role.OPTIMIZER,
-            model_profile=old_worker.model_profile,
+            model_profile=model_profile or old_worker.model_profile,
             skills=old_worker.skills,
             created_at=now_ms,
         )
