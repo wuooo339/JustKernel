@@ -538,3 +538,11 @@
 **Why:** A clean package and dependency set are part of the migration contract; accidental `.codegraph`/agent files or old dependencies must fail release checks.
 
 **Cost if wrong:** The checker is not a vulnerability scanner or SBOM/signature verifier. `.gitignore` is still included by Hatch's sdist defaults, which is harmless.
+
+## D-068 Migration acceptance
+
+**Decision:** Treat migration acceptance as an e2e flow through the real CLI: synthetic legacy SQLite -> explicit migrate -> LEGACY journal with no active clusters/candidates/boards -> repeat migration idempotently -> old file hash unchanged. Demo replay through the new package remains synthetic with zero model/device calls.
+
+**Why:** Migration success is a behavior of the shipped entrypoint and journal, not just unit-level importer tests.
+
+**Cost if wrong:** Legacy schema coverage is limited to the synthetic table set; no real old database corpus is checked. Demo remains static replay.
