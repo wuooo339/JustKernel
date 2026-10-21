@@ -250,3 +250,11 @@
 **Why:** Duplicate submissions and duplicate terminal records would corrupt evidence. Request digests distinguish an idempotent retry from a conflicting request.
 
 **Cost if wrong:** A parameter change requires a new Task/Job; old jobs/records remain immutable for audit.
+
+## D-032 Best selection, reports, and budget
+
+**Decision:** Best nomination requires full-PASS evidence for the candidate; final validation requires full-PASS final records and updates the BestSelection only. Reports must reference existing same-cluster candidates/records. Budget uses an idempotent reserve/settle ledger with available-balance checks.
+
+**Why:** Best/report evidence must be reproducible and traceable, while budget reservations prevent overcommitment before calls. Domain errors are converted at the service boundary.
+
+**Cost if wrong:** A failed/incomplete record cannot be used to nominate or validate; budgets must be settled with the same idempotency key.

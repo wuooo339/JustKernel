@@ -8,10 +8,12 @@ from justkernel.agent.agent import AgentInstance
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
 from justkernel.application.ports import IdFactoryPort
+from justkernel.candidate.best import BestSelection
 from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
+from justkernel.report.report import ExplorationReport
 from justkernel.shared.digest import Digest
 from justkernel.shared.ids import (
     AgentId,
@@ -169,17 +171,17 @@ class InMemoryCandidateRepository:
 
 class InMemoryTestRecordRepository:
     def __init__(self) -> None:
-        self._items: dict[str, TestRecord] = {}
-        self._by_task: dict[TaskId, str] = {}
+        self._items: dict[TestRecordId, TestRecord] = {}
+        self._by_task: dict[TaskId, TestRecordId] = {}
 
     def append(self, record: TestRecord) -> None:
-        if record.id.value in self._items:
+        if record.id in self._items:
             raise ValueError(f"record already exists: {record.id}")
-        self._items[record.id.value] = record
+        self._items[record.id] = record
         if record.task_id is not None:
-            self._by_task[record.task_id] = record.id.value
+            self._by_task[record.task_id] = record.id
 
-    def get(self, record_id: str) -> TestRecord:
+    def get(self, record_id: TestRecordId) -> TestRecord:
         return self._items[record_id]
 
     def get_by_task(self, task_id: TaskId) -> TestRecord | None:
@@ -216,6 +218,77 @@ class InMemoryToolJobRepository:
         return self._items[job_id] if job_id is not None else None
 
 
+class InMemoryBestSelectionRepository:
+    def __init__(self) -> None:
+        self._items: dict[BestSelectionId, BestSelection] = {}
+
+    def insert(self, selection: BestSelection) -> None:
+        if selection.id in self._items:
+            raise ValueError(f"selection already exists: {selection.id}")
+        self._items[selection.id] = selection
+
+    def update(self, selection: BestSelection) -> None:
+        if selection.id not in self._items:
+            raise KeyError(selection.id)
+        self._items[selection.id] = selection
+
+    def get(self, selection_id: BestSelectionId) -> BestSelection:
+        return self._items[selection_id]
+
+
+class InMemoryReportRepository:
+    def __init__(self) -> None:
+        self._items: dict[str, ExplorationReport] = {}
+
+    def append(self, report: ExplorationReport) -> None:
+        if report.id in self._items:
+            raise ValueError(f"report already exists: {report.id}")
+        self._items[report.id] = report
+
+    def get(self, report_id: str) -> ExplorationReport:
+        return self._items[report_id]
+
+
+class InMemoryBudgetLedger:
+    def __init__(self, limit: int) -> None:
+        if limit < 0:
+            raise ValueError("budget limit must be non-negative")
+        self.limit = limit
+        self._reservations: dict[str, tuple[ClusterId, int]] = {}
+        self._settled: dict[str, int] = {}
+        self._consumed: dict[ClusterId, int] = {}
+
+    def reserve(self, cluster_id: ClusterId, amount: int, idempotency_key: str) -> bool:
+        if amount < 0 or not idempotency_key or idempotency_key in self._settled:
+            return False
+        existing = self._reservations.get(idempotency_key)
+        if existing is not None:
+            return existing == (cluster_id, amount)
+        if amount > self.available(cluster_id):
+            return False
+        self._reservations[idempotency_key] = (cluster_id, amount)
+        return True
+
+    def settle(self, cluster_id: ClusterId, amount: int, idempotency_key: str) -> bool:
+        if self._settled.get(idempotency_key) == amount:
+            return True
+        reservation = self._reservations.get(idempotency_key)
+        if reservation is None or reservation != (cluster_id, amount):
+            return False
+        del self._reservations[idempotency_key]
+        self._settled[idempotency_key] = amount
+        self._consumed[cluster_id] = self._consumed.get(cluster_id, 0) + amount
+        return True
+
+    def available(self, cluster_id: ClusterId) -> int:
+        reserved = sum(
+            amount
+            for reserved_cluster, amount in self._reservations.values()
+            if reserved_cluster == cluster_id
+        )
+        return self.limit - self._consumed.get(cluster_id, 0) - reserved
+
+
 @dataclass(slots=True)
 class InMemoryRepositories:
     clusters: InMemoryClusterRepository = field(default_factory=InMemoryClusterRepository)
@@ -224,6 +297,10 @@ class InMemoryRepositories:
     candidates: InMemoryCandidateRepository = field(default_factory=InMemoryCandidateRepository)
     records: InMemoryTestRecordRepository = field(default_factory=InMemoryTestRecordRepository)
     jobs: InMemoryToolJobRepository = field(default_factory=InMemoryToolJobRepository)
+    selections: InMemoryBestSelectionRepository = field(
+        default_factory=InMemoryBestSelectionRepository
+    )
+    reports: InMemoryReportRepository = field(default_factory=InMemoryReportRepository)
 
 
 # ---- message bus ------------------------------------------------------------

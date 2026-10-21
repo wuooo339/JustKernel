@@ -7,10 +7,12 @@ from typing import Protocol, runtime_checkable
 from justkernel.agent.agent import AgentInstance
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
+from justkernel.candidate.best import BestSelection
 from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
+from justkernel.report.report import ExplorationReport
 from justkernel.shared.digest import Digest
 from justkernel.shared.ids import (
     AgentId,
@@ -92,6 +94,26 @@ class ToolJobRepositoryPort(Protocol):
     def update(self, job: ToolJob) -> None: ...
     def get(self, job_id: str) -> ToolJob: ...
     def get_by_task(self, task_id: TaskId) -> ToolJob | None: ...
+
+
+@runtime_checkable
+class BestSelectionRepositoryPort(Protocol):
+    def insert(self, selection: BestSelection) -> None: ...
+    def update(self, selection: BestSelection) -> None: ...
+    def get(self, selection_id: BestSelectionId) -> BestSelection: ...
+
+
+@runtime_checkable
+class ReportRepositoryPort(Protocol):
+    def append(self, report: ExplorationReport) -> None: ...
+    def get(self, report_id: str) -> ExplorationReport: ...
+
+
+@runtime_checkable
+class BudgetLedgerPort(Protocol):
+    def reserve(self, cluster_id: ClusterId, amount: int, idempotency_key: str) -> bool: ...
+    def settle(self, cluster_id: ClusterId, amount: int, idempotency_key: str) -> bool: ...
+    def available(self, cluster_id: ClusterId) -> int: ...
 
 
 @runtime_checkable
