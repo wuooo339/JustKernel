@@ -17,6 +17,11 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check src tests tools
       - run: uv run ruff format --check src tests tools
+      - run: uv run mypy src/justkernel
+      - name: New package architecture gates
+        run: uv run pytest -q tests/unit tests/architecture
+      - name: Legacy characterization contracts
+        run: uv run pytest -q tests/characterization
       - name: Preview without official template or CANN
         run: uv run pytest -q tests/test_demo.py
       - run: uv run python tools/import_official_template.py

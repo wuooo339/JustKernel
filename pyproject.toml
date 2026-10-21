@@ -38,6 +38,7 @@ simulator = [
 
 [dependency-groups]
 dev = [
+    "mypy>=1.15",
     "pillow>=13.0.0",
     "pytest>=8.0",
     "ruff>=0.9",
@@ -86,6 +87,12 @@ known-first-party = ["justkernel", "aworker"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--basetemp=.justkernel-test-tmp"
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src/justkernel"]
+strict = true
+warn_unused_ignores = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
