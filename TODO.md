@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P3 已完成；P4 待开始（下一个 feature：F04-01）。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P4 进行中；F04-01 已完成，下一个 feature：F04-02。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -160,7 +160,7 @@ tests/
 
 | ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| F04-01 | ModelProfile、provider 路由、fallback | 05 §7、13 §9 | F03-01 | `tests/adapters/test_model_routing.py` | todo |
+| F04-01 | ModelProfile、provider 路由、fallback | 05 §7、13 §9 | F03-01 | `tests/application/test_model_routing.py` 6 passed；全量 239 passed；commit `704710c` | done |
 | F04-02 | Deep Agents runner、检查点、Agent 池 | 05 §2–3 | F04-01 | `tests/adapters/test_runtime_pool.py`；单 Turn/崩溃恢复 | todo |
 | F04-03 | Skill 加载与安全校验 | 05 §6 | F04-01 | `tests/unit/agent/test_skills.py`；frontmatter/allowed_tools/路径逃逸 | todo |
 | F04-04 | 六角色 skills + 内置 tester/profiler | 05 §6.4 | F04-03 | `tests/unit/agent/test_role_skills.py` | todo |
@@ -294,7 +294,8 @@ tests/
 | 2026-10-21 | F03-04 | done | candidate tests 7 passed；全量 216 passed；mypy/ruff clean；D-030 | `538b247` / `origin/refactor` @ `b371668` |
 | 2026-10-21 | F03-05 | done | testing flow tests 5 passed；全量 221 passed；mypy/ruff clean；D-031 | `cd11af8` / `origin/refactor` @ `f0e33ce` |
 | 2026-10-21 | F03-06 | done | best/report/budget tests 6 passed；全量 227 passed；mypy/ruff clean；D-032 | `de3cf5d` / `origin/refactor` @ `815293c` |
-| 2026-10-21 | F03-07 | done | ACL/ownership/idempotency tests 6 passed；全量 233 passed；mypy/ruff clean | `869f099` / `origin/refactor` |
+| 2026-10-21 | F03-07 | done | ACL/ownership/idempotency tests 6 passed；全量 233 passed；mypy/ruff clean | `869f099` / `origin/refactor` @ `41f14af` |
+| 2026-10-21 | F04-01 | done | model routing tests 6 passed；全量 239 passed；mypy/ruff clean；D-033 | `704710c` / `origin/refactor` |
 
 ---
 
