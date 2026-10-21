@@ -110,8 +110,8 @@ tests/
 
 | ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| F00-01 | 独立工作区边界：清理旧代码/旧测试/旧文档，README 声明独立实现 | 03 §2、12 §1 | — | `test ! -d src/aworker`；`test ! -d tests/characterization`；README 明确不依赖 `../JustKernel` | todo |
-| F00-02 | `pyproject.toml`、依赖基线、`uv.lock` | 03 §2、12 §7 | F00-01 | `uv sync`；`python -c "import justkernel"`；`uv build` 只产出 `justkernel` | todo |
+| F00-01 | 独立工作区边界：清理旧代码/旧测试/旧文档，README 声明独立实现 | 03 §2、12 §1 | — | `test ! -d src/aworker`；`test ! -d tests/characterization`；README 明确不依赖 `../JustKernel`；commit `df324b3` | done |
+| F00-02 | `pyproject.toml`、最小 `justkernel` 包、依赖基线、`uv.lock` | 03 §2、12 §7 | F00-01 | `uv sync --locked`；`python -c "import justkernel"`；`uv build` 只产出 `justkernel` | todo |
 | F00-03 | 包骨架与 CLI scaffold | 03 §2 | F00-02 | `tests/unit/test_cli.py`；`justkernel --version` | todo |
 | F00-04 | 架构门禁：import 边界、文件/函数规模、import 无副作用 | 03 §3、11 §8 | F00-03 | `uv run pytest -q tests/architecture`；`rg "aworker" src tests` 为空 | todo |
 | F00-05 | CI：ruff + mypy + pytest + build | 11 §9 | F00-04 | `.github/workflows/ci.yml` 本地等价命令全绿 | todo |
@@ -265,14 +265,14 @@ tests/
 
 | 日期 | Feature | 状态 | 测试证据 | Commit / Push |
 | --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| 2026-10-21 | F00-01 | done | 无旧 `src`/`tests`；README 声明独立；SPEC/TODO 保留 | `df324b3` / `origin/refactor` @ `df324b3` |
 
 ---
 
 ## 8. 下一步
 
-从 **F00-01 独立工作区边界** 开始：
+从 **F00-02 pyproject、最小包、依赖基线** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f00-01-workspace.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f00-02-project-bootstrap.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
 3. 更新本文件与 `docs/refactor/feature-log.md`。
