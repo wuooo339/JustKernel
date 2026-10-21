@@ -306,3 +306,11 @@
 **Why:** Domain state and runtime sessions can diverge during shutdown. Explicit lifecycle ownership prevents a closed worker from leaving a leased device or an open session behind.
 
 **Cost if wrong:** Callers must use `WorkerLifecycle` instead of `AgentService.close_worker` when leases exist. A crash between lease release and domain close still needs recovery by lease/job inspection.
+
+## D-039 ToolJob state machine
+
+**Decision:** ToolJob owns its immutable state transitions (`start`, `timeout`, `cancel`, `interrupt`, `fail`, `succeed`). Queue timeout is anchored at submission time; execution timeout starts when the job becomes RUNNING. Sealing a TestRecord requires RUNNING. Reads are limited to the Task's own worker and return a `ToolJobView`.
+
+**Why:** Submit must return immediately while the job is queued, and timeout/terminal behavior must be testable without a live backend. Centralizing transitions prevents services from overwriting terminal jobs.
+
+**Cost if wrong:** Queue position is currently a single-job placeholder until the hardware queue adapter exists. A timed-out job does not yet release device resources; that belongs to F05-02.

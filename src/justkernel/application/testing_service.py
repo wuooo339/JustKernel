@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
 from justkernel.application.ports import (
@@ -15,12 +13,12 @@ from justkernel.application.ports import (
     ToolJobRepositoryPort,
 )
 from justkernel.shared.digest import Digest
-from justkernel.shared.ids import CandidateId, TaskId
+from justkernel.shared.ids import AgentId, CandidateId, TaskId
 from justkernel.shared.json import digest_json
 from justkernel.task.state import TaskKind, TaskState
 from justkernel.task.task import Task
 from justkernel.testing.errors import TestRecordError
-from justkernel.testing.job import ToolJob, ToolJobError, ToolJobState
+from justkernel.testing.job import ToolJob, ToolJobError, ToolJobState, ToolJobView
 from justkernel.testing.record import ArtifactRef, Environment, TestRecord
 from justkernel.testing.state import TestCoverage, TestOutcome, TestRecordKind
 
@@ -35,13 +33,18 @@ class TestingService:
         jobs: ToolJobRepositoryPort,
         backend: ToolBackendPort,
         ids: IdFactoryPort,
+        *,
+        queue_timeout_s: int = 600,
     ) -> None:
+        if queue_timeout_s <= 0:
+            raise ToolJobError("queue timeout must be positive")
         self.tasks = tasks
         self.agents = agents
         self.records = records
         self.jobs = jobs
         self.backend = backend
         self.ids = ids
+        self.queue_timeout_s = queue_timeout_s
 
     def submit_test(
         self,
@@ -50,8 +53,17 @@ class TestingService:
         case_selection: tuple[str, ...],
         timeout_s: int,
         device: str | None = None,
+        now_ms: int | None = None,
     ) -> ToolJob:
-        return self._submit(task_id, TaskKind.TEST, Role.TESTER, case_selection, timeout_s, device)
+        return self._submit(
+            task_id,
+            TaskKind.TEST,
+            Role.TESTER,
+            case_selection,
+            timeout_s,
+            device,
+            now_ms,
+        )
 
     def submit_profile(
         self,
@@ -60,9 +72,16 @@ class TestingService:
         case_selection: tuple[str, ...],
         timeout_s: int,
         device: str | None = None,
+        now_ms: int | None = None,
     ) -> ToolJob:
         return self._submit(
-            task_id, TaskKind.PROFILE, Role.PROFILER, case_selection, timeout_s, device
+            task_id,
+            TaskKind.PROFILE,
+            Role.PROFILER,
+            case_selection,
+            timeout_s,
+            device,
+            now_ms,
         )
 
     def seal_record(
@@ -93,7 +112,7 @@ class TestingService:
             summary,
         )
         self.records.append(record)
-        self.jobs.update(replace(job, state=ToolJobState.SUCCEEDED, record_id=record.id.value))
+        self._save_job(job.succeed(record.id.value, created_at))
         return record
 
     def _seal_source(self, task_id: TaskId) -> tuple[Task, ToolJob]:
@@ -105,6 +124,8 @@ class TestingService:
             raise TestRecordError("task has no tool job")
         if self.records.get_by_task(task.id) is not None:
             raise TestRecordError("task already has a terminal record")
+        if job.state is not ToolJobState.RUNNING:
+            raise TestRecordError("tool job is not running")
         return task, job
 
     def _record_inputs(self, task: Task) -> tuple[CandidateId, SkillRef]:
@@ -185,6 +206,7 @@ class TestingService:
         case_selection: tuple[str, ...],
         timeout_s: int,
         device: str | None,
+        now_ms: int | None,
     ) -> ToolJob:
         task = self._submit_task(task_id, expected_kind, expected_role)
         candidate_id, skill_ref = self._submit_inputs(task)
@@ -202,7 +224,44 @@ class TestingService:
             if existing.request_digest == request:
                 return existing
             raise ToolJobError("conflicting tool job request")
-        return self._new_job(task, candidate_id, request, case_selection, timeout_s, device)
+        submitted_at = task.created_at if now_ms is None else now_ms
+        if submitted_at < task.created_at:
+            raise ToolJobError("submission time must not precede task creation")
+        return self._new_job(
+            task,
+            candidate_id,
+            request,
+            case_selection,
+            timeout_s,
+            device,
+            submitted_at,
+        )
+
+    def start_job(self, job_id: str, *, now_ms: int) -> ToolJob:
+        return self._save_job(self.jobs.get(job_id).start(now_ms))
+
+    def timeout_job(self, job_id: str, *, now_ms: int) -> ToolJob:
+        return self._save_job(self.jobs.get(job_id).timeout(now_ms))
+
+    def cancel_job(self, job_id: str, *, reason: str, now_ms: int) -> ToolJob:
+        return self._save_job(self.jobs.get(job_id).cancel(reason, now_ms))
+
+    def interrupt_job(self, job_id: str, *, reason: str, now_ms: int) -> ToolJob:
+        return self._save_job(self.jobs.get(job_id).interrupt(reason, now_ms))
+
+    def fail_job(self, job_id: str, *, error: str, now_ms: int) -> ToolJob:
+        return self._save_job(self.jobs.get(job_id).fail(error, now_ms))
+
+    def read_tool_job(self, job_id: str, *, caller_agent_id: AgentId) -> ToolJobView:
+        job = self.jobs.get(job_id)
+        task = self.tasks.get(job.task_id)
+        if task.worker_id != caller_agent_id:
+            raise ToolJobError("only the task worker can read this job")
+        return ToolJobView.from_job(job)
+
+    def _save_job(self, job: ToolJob) -> ToolJob:
+        self.jobs.update(job)
+        return job
 
     def _submit_task(self, task_id: TaskId, expected_kind: TaskKind, expected_role: Role) -> Task:
         task = self.tasks.get(task_id)
@@ -228,6 +287,7 @@ class TestingService:
         case_selection: tuple[str, ...],
         timeout_s: int,
         device: str | None,
+        submitted_at: int,
     ) -> ToolJob:
         job = ToolJob(
             id=self._backend_job(task, candidate_id, case_selection, timeout_s, device),
@@ -235,7 +295,10 @@ class TestingService:
             candidate_id=candidate_id,
             request_digest=request,
             state=ToolJobState.QUEUED,
-            created_at=task.created_at,
+            created_at=submitted_at,
+            queue_expires_at=submitted_at + self.queue_timeout_s,
+            execution_timeout_s=timeout_s,
+            queue_position=1,
         )
         self.jobs.insert(job)
         return job

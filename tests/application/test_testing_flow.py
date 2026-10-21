@@ -222,6 +222,7 @@ def test_seal_record_and_job_completion() -> None:
         case_selection=("case-1",),
         timeout_s=30,
     )
+    testing.start_job(job.id, now_ms=0)
 
     record = testing.seal_record(
         task_id=task.id,
@@ -285,6 +286,7 @@ def test_profile_job_and_record() -> None:
         case_selection=("case-1",),
         timeout_s=30,
     )
+    testing.start_job(job.id, now_ms=0)
     record = testing.seal_record(
         task_id=task.id,
         outcome=Outcome.PASS,
