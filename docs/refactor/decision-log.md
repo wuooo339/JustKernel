@@ -106,3 +106,11 @@
 **Why:** The SPEC state machines are small but safety-critical; guards keep invalid transitions out of persistence and make event/command tests deterministic.
 
 **Cost if wrong:** A later aggregate split or field addition must update the guard methods and rehydration validation.
+
+## D-014 Agent lifecycle
+
+**Decision:** `AgentInstance` is a mutable aggregate with explicit lifecycle commands. Worker roles require exactly one mentor; non-worker roles reject a mentor. `CLOSED` is terminal and requires `closed_at`. Interrupted agents resume only with a new session id.
+
+**Why:** The role/mentor boundary is a hard ACL prerequisite; encoding it in the aggregate prevents invalid worker creation before repositories or tools see it.
+
+**Cost if wrong:** A future role needs an explicit worker/non-worker classification and transition table update.
