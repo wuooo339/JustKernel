@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P6 进行中；F06-01～F06-09 已完成，下一个 feature：F06-10。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P6 已完成；P7 进行中，下一个 feature：F07-01。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -191,7 +191,7 @@ tests/
 | F06-07 | 预算、plateau、重复候选 | 13 §7 | F06-03 | `tests/application/test_budget.py` 6 passed；最终验证预留；全量 348 passed；commit `89a2861` | done |
 | F06-08 | 收敛、BestSelection、报告 | 07 §7、13 §6 | F06-03/07 | `tests/application/test_convergence.py` 2 passed；失败提名不覆盖旧 best；全量 350 passed；commit `d3e12b5` | done |
 | F06-09 | 暂停/恢复与迟到结果 | 13 §8 | F06-05 | `tests/application/test_resume.py` 5 passed；不自动重跑；全量 355 passed；commit `aedbbe7` | done |
-| F06-10 | fake 闭环验收 | 13 §10 | F06-01..09 | `tests/e2e/test_fake_closed_loop.py`；13 §10 1–9 | todo |
+| F06-10 | fake 闭环验收 | 13 §10 | F06-01..09 | `tests/e2e/test_fake_closed_loop.py` 8 passed；13 §10 1–9；全量 363 passed；commit `5b3e490` | done |
 
 ### 4.8 P7 API、SSE、A2A 与前端
 
@@ -316,13 +316,14 @@ tests/
 | 2026-10-21 | F06-07 | done | budget tests 6 passed；全量 348 passed；mypy/ruff clean；D-051 | `89a2861` / `origin/refactor` |
 | 2026-10-21 | F06-08 | done | convergence tests 2 passed；全量 350 passed；mypy/ruff clean；D-052 | `d3e12b5` / `origin/refactor` |
 | 2026-10-21 | F06-09 | done | resume tests 5 passed；全量 355 passed；mypy/ruff clean；D-053 | `aedbbe7` / `origin/refactor` |
+| 2026-10-21 | F06-10 | done | e2e tests 8 passed；全量 363 passed；mypy/ruff clean；D-054；P6 exit report | `5b3e490` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F06-10 fake 闭环验收** 开始：
+从 **F07-01 API 骨架、DTO、错误码、幂等键** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f06-10-fake-loop.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f07-01-api-contract.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
-3. 完成后写 `docs/refactor/p6-exit-report.md`，再进入 P7。
+3. 更新本文件与 `docs/refactor/feature-log.md`。
