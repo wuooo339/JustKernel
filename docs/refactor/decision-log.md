@@ -370,3 +370,11 @@
 **Why:** The baseline direction and imported root are setup inputs, not evidence. Keeping candidate creation in the same bootstrap path ensures the root candidate has valid provenance and a direction before testing.
 
 **Cost if wrong:** Direction persistence is in-memory until the P7 repository adapter. Re-bootstrap idempotency and baseline establishment remain F06-03.
+
+## D-047 Baseline establishment and bootstrap attempts
+
+**Decision:** `BaselineService` counts each completed bootstrap validation attempt per cluster. A full executed TEST PASS establishes the baseline and moves phase to OPTIMIZING; a failed attempt exhausts `max_bootstrap_attempts` and stops the cluster with `baseline_not_established`. Success at the limit still establishes. Candidate/evidence must belong to the cluster/candidate and be TEST kind.
+
+**Why:** Baseline creation is the transition from generation/import to optimization; it must be evidence-gated and bounded by an explicit bootstrap budget.
+
+**Cost if wrong:** Attempt counts are in-memory per service. Policy-digest/environment binding and failure report generation remain later convergence/report work.

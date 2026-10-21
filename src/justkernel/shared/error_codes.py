@@ -24,6 +24,7 @@ class ErrorCode(StrEnum):
     INVALID_CANDIDATE = "invalid_candidate"
     INVALID_BEST_SELECTION = "invalid_best_selection"
     INVALID_TEST_RECORD = "invalid_test_record"
+    BASELINE_INVALID = "baseline.invalid"
     INVALID_LEASE_TRANSITION = "invalid_lease_transition"
     INVALID_REPORT = "invalid_report"
     INVALID_CHANNEL = "invalid_channel"
