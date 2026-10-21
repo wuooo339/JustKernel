@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P3 进行中；F03-01～F03-06 已完成，下一个 feature：F03-07。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P3 已完成；P4 待开始（下一个 feature：F04-01）。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -154,7 +154,7 @@ tests/
 | F03-04 | Candidate 提交与导入用例 | 04 §4.5、13 §2 | F03-01 | `tests/application/test_candidate_commit.py` 7 passed；全量 216 passed；commit `538b247` | done |
 | F03-05 | ToolJob/TestRecord 封存用例 | 13 §5、08 §6 | F03-01 | `tests/application/test_testing_flow.py` 5 passed；全量 221 passed；commit `cd11af8` | done |
 | F03-06 | BestSelection/报告/预算用例 | 07 §7、13 §6–7 | F03-02/05 | `tests/application/test_best_report.py` 6 passed；全量 227 passed；commit `de3cf5d` | done |
-| F03-07 | 应用层 ACL/归属/幂等测试 | 11 §5 | F03-02..06 | `tests/application/test_object_acl.py` | todo |
+| F03-07 | 应用层 ACL/归属/幂等测试 | 11 §5 | F03-02..06 | `tests/application/test_object_acl.py` 6 passed；全量 233 passed；commit `869f099` | done |
 
 ### 4.5 P4 Agent 运行时、Skills 与工具权限
 
@@ -293,7 +293,8 @@ tests/
 | 2026-10-21 | F03-03 | done | worker lifecycle tests 6 passed；全量 209 passed；mypy/ruff clean；D-029 | `906390d` / `origin/refactor` @ `d2b2652` |
 | 2026-10-21 | F03-04 | done | candidate tests 7 passed；全量 216 passed；mypy/ruff clean；D-030 | `538b247` / `origin/refactor` @ `b371668` |
 | 2026-10-21 | F03-05 | done | testing flow tests 5 passed；全量 221 passed；mypy/ruff clean；D-031 | `cd11af8` / `origin/refactor` @ `f0e33ce` |
-| 2026-10-21 | F03-06 | done | best/report/budget tests 6 passed；全量 227 passed；mypy/ruff clean；D-032 | `de3cf5d` / `origin/refactor` |
+| 2026-10-21 | F03-06 | done | best/report/budget tests 6 passed；全量 227 passed；mypy/ruff clean；D-032 | `de3cf5d` / `origin/refactor` @ `815293c` |
+| 2026-10-21 | F03-07 | done | ACL/ownership/idempotency tests 6 passed；全量 233 passed；mypy/ruff clean | `869f099` / `origin/refactor` |
 
 ---
 
