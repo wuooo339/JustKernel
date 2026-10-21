@@ -60,5 +60,6 @@ class ErrorCode(StrEnum):
     TOOL_BACKEND_INVALID = "tool.backend_invalid"
     REQUEST_INVALID = "request.invalid"
     MIGRATION_ERROR = "migration.error"
+    INVALID_CONFIG = "invalid_config"
     IDEMPOTENCY_CONFLICT = "idempotency.conflict"
     NOT_FOUND = "not_found"

@@ -506,3 +506,11 @@
 **Why:** Legacy evidence must remain viewable without contaminating a new cluster's active state or best selection.
 
 **Cost if wrong:** Imported payloads are stored as JSON and are not yet exposed through a dedicated legacy API/UI. Old schemas beyond the synthetic table set require explicit mapping.
+
+## D-064 CLI modes and configuration
+
+**Decision:** `platform/config.py` alone reads `.env`/environment and produces immutable `AppConfig`/`LimitsConfig` objects. CLI overrides are applied via `replace`; `bootstrap/cli.py` supports cluster/demo/worker/migrate, with migrate explicitly requiring `--legacy-db` and running the read-only importer. No `AWORKER_*` compatibility branch exists.
+
+**Why:** Mode and path selection must be deterministic and testable before runtime/server wiring, while migration remains an explicit human action.
+
+**Cost if wrong:** cluster/demo/worker currently print the resolved configuration rather than launching the HTTP server/runtime. Directory permissions and single-service locking are F08-03.
