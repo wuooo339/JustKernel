@@ -434,3 +434,11 @@
 **Why:** P6 needs an integration proof that the independent services compose without real models/devices while preserving evidence and terminal-state guarantees.
 
 **Cost if wrong:** The loop uses in-memory repositories and a deterministic fake tool backend; profile threshold/regression comparison and HTTP/UI wiring remain future work.
+
+## D-055 HTTP API skeleton
+
+**Decision:** Add a FastAPI adapter under `platform/http`: immutable DTOs, RFC7807 `application/problem+json` errors with stable code/status mapping, an in-memory idempotency store/middleware, and a minimal `/api/v1/system/health` app factory. Successful POST responses are cached by `Idempotency-Key`; reusing a key with a different body returns 409.
+
+**Why:** P7 routes need one contract for read models, errors and retries before any feature endpoints are added. Keeping the adapter outside domain/application preserves dependency boundaries.
+
+**Cost if wrong:** The idempotency store is process-local and unbounded; production persistence/eviction is pending. The app currently exposes only health, with cluster/agent routes in F07-02.

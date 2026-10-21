@@ -58,3 +58,5 @@ class ErrorCode(StrEnum):
     TOOL_DENIED = "tool.denied"
     TOOL_NOT_FOUND = "tool.not_found"
     TOOL_BACKEND_INVALID = "tool.backend_invalid"
+    REQUEST_INVALID = "request.invalid"
+    IDEMPOTENCY_CONFLICT = "idempotency.conflict"
