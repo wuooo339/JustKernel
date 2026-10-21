@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P4 进行中；F04-01/F04-02 已完成，下一个 feature：F04-03。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P4 进行中；F04-01～F04-03 已完成，下一个 feature：F04-04。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -162,7 +162,7 @@ tests/
 | --- | --- | --- | --- | --- | --- |
 | F04-01 | ModelProfile、provider 路由、fallback | 05 §7、13 §9 | F03-01 | `tests/application/test_model_routing.py` 6 passed；全量 239 passed；commit `704710c` | done |
 | F04-02 | Deep Agents runner、检查点、Agent 池 | 05 §2–3 | F04-01 | `tests/adapters/test_runtime_pool.py` 7 passed；全量 246 passed；commit `a5df37f` | done |
-| F04-03 | Skill 加载与安全校验 | 05 §6 | F04-01 | `tests/unit/agent/test_skills.py`；frontmatter/allowed_tools/路径逃逸 | todo |
+| F04-03 | Skill 加载与安全校验 | 05 §6 | F04-01 | `tests/unit/agent/test_skills.py` 7 passed；全量 253 passed；commit `d999243` | done |
 | F04-04 | 六角色 skills + 内置 tester/profiler | 05 §6.4 | F04-03 | `tests/unit/agent/test_role_skills.py` | todo |
 | F04-05 | 工具注册表与对象级 ACL | 05 §5 | F04-03 | `tests/unit/agent/test_tool_matrix.py`；worker 无 board 工具 | todo |
 | F04-06 | 运行时生命周期与 100 agent 上限 | 05 §2–3、11 §8 | F04-02/05 | `tests/integration/test_agent_lifecycle.py`；无孤儿/租约 | todo |
@@ -296,7 +296,8 @@ tests/
 | 2026-10-21 | F03-06 | done | best/report/budget tests 6 passed；全量 227 passed；mypy/ruff clean；D-032 | `de3cf5d` / `origin/refactor` @ `815293c` |
 | 2026-10-21 | F03-07 | done | ACL/ownership/idempotency tests 6 passed；全量 233 passed；mypy/ruff clean | `869f099` / `origin/refactor` @ `41f14af` |
 | 2026-10-21 | F04-01 | done | model routing tests 6 passed；全量 239 passed；mypy/ruff clean；D-033 | `704710c` / `origin/refactor` @ `76220a1` |
-| 2026-10-21 | F04-02 | done | runtime pool tests 7 passed；全量 246 passed；mypy/ruff clean；D-034 | `a5df37f` / `origin/refactor` |
+| 2026-10-21 | F04-02 | done | runtime pool tests 7 passed；全量 246 passed；mypy/ruff clean；D-034 | `a5df37f` / `origin/refactor` @ `e472e90` |
+| 2026-10-21 | F04-03 | done | skill tests 7 passed；全量 253 passed；mypy/ruff clean；D-035 | `d999243` / `origin/refactor` |
 
 ---
 
