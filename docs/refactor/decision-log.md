@@ -554,3 +554,11 @@
 **Why:** The recovery matrix must be exercised against process death and partial I/O, not only normal SQLite transactions.
 
 **Cost if wrong:** The disk-full drill uses a failing connection proxy, not a full filesystem; the kill drill is POSIX-only. Real device disconnect/zip interruption remain simulated.
+
+## D-070 100-agent scale drill
+
+**Decision:** Add a deterministic e2e drill with 100 active agents, three Turn cycles (300 turns), 98 worker tasks, one checkpoint per agent, lease acquisition/worker close and full runtime shutdown. Both domain and pool reject the 101st agent; shutdown leaves zero active sessions and zero tracked leases.
+
+**Why:** The scale invariant must be exercised through domain, runtime pool, checkpoint and lease cleanup together, not only by unit caps.
+
+**Cost if wrong:** Drills run sequentially with a fake runner; they do not prove wall-clock endurance, provider concurrency, or real process/memory pressure.
