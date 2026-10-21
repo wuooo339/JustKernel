@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P6 进行中；F06-01～F06-05 已完成，下一个 feature：F06-06。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P6 进行中；F06-01～F06-06 已完成，下一个 feature：F06-07。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -187,7 +187,7 @@ tests/
 | F06-03 | baseline 建立与 bootstrap 预算 | 13 §2/§7 | F06-02 | `tests/application/test_baseline.py` 6 passed；完整 PASS/预算耗尽；全量 325 passed；commit `5f806a9` | done |
 | F06-04 | 反馈包与换 worker 续接 | 13 §3 | F06-03 | `tests/application/test_feedback_handoff.py` 4 passed；QA-17；全量 329 passed；commit `4e406cb` | done |
 | F06-05 | Inbox/wake/单 Turn/WAIT/debounce | 13 §4 | F06-01 | `tests/application/test_wake_scheduler.py` 7 passed；重复事件/WAIT；全量 336 passed；commit `975ab81` | done |
-| F06-06 | watchdog、停滞与暂停 | 13 §4 | F06-05 | `tests/application/test_watchdog.py`；合法 WAIT 不误报 | todo |
+| F06-06 | watchdog、停滞与暂停 | 13 §4 | F06-05 | `tests/application/test_watchdog.py` 6 passed；合法 WAIT 不误报；全量 342 passed；commit `388ee6d` | done |
 | F06-07 | 预算、plateau、重复候选 | 13 §7 | F06-03 | `tests/application/test_budget.py`；最终验证预留 | todo |
 | F06-08 | 收敛、BestSelection、报告 | 07 §7、13 §6 | F06-03/07 | `tests/application/test_convergence.py`；失败提名不覆盖旧 best | todo |
 | F06-09 | 暂停/恢复与迟到结果 | 13 §8 | F06-05 | `tests/application/test_resume.py`；不自动重跑 | todo |
@@ -312,13 +312,14 @@ tests/
 | 2026-10-21 | F06-03 | done | baseline tests 6 passed；全量 325 passed；mypy/ruff clean；D-047 | `5f806a9` / `origin/refactor` |
 | 2026-10-21 | F06-04 | done | feedback-handoff tests 4 passed；全量 329 passed；mypy/ruff clean；D-048 | `4e406cb` / `origin/refactor` |
 | 2026-10-21 | F06-05 | done | wake-scheduler tests 7 passed；全量 336 passed；mypy/ruff clean；D-049 | `975ab81` / `origin/refactor` |
+| 2026-10-21 | F06-06 | done | watchdog tests 6 passed；全量 342 passed；mypy/ruff clean；D-050 | `388ee6d` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F06-06 watchdog、停滞与暂停** 开始：
+从 **F06-07 预算、plateau、重复候选** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f06-06-watchdog.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f06-07-budget.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
 3. 更新本文件与 `docs/refactor/feature-log.md`。
