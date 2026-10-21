@@ -330,9 +330,15 @@ def test_candidate_record_and_download_routes() -> None:
 
     candidates = client.get(f"/api/v1/clusters/{ids['cluster']}/candidates")
     records = client.get(f"/api/v1/candidates/{ids['candidate']}/records")
-    source = client.get(f"/api/v1/candidates/{ids['candidate']}/source")
+    source = client.get(
+        f"/api/v1/candidates/{ids['candidate']}/source",
+        headers={"X-Human": "true"},
+    )
     record = client.get(f"/api/v1/records/{ids['record']}")
-    download = client.get(f"/api/v1/records/{ids['record']}/download")
+    download = client.get(
+        f"/api/v1/records/{ids['record']}/download",
+        headers={"X-Human": "true"},
+    )
 
     assert candidates.status_code == 200
     assert candidates.json()[0]["record_count"] == 1

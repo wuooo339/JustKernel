@@ -22,6 +22,7 @@ from justkernel.application.ports import (
 from justkernel.application.start_cluster_service import ClusterStartService
 from justkernel.platform.hardware.queue import HardwareQueue
 from justkernel.platform.persistence.events import EventStore
+from justkernel.platform.security.redactor import Redactor, default_redactor
 
 
 def _now_ms() -> int:
@@ -45,4 +46,5 @@ class ApiContext:
     start_cluster: ClusterStartService | None = None
     events: EventStore | None = None
     a2a_deliveries: set[str] = field(default_factory=set)
+    redactor: Redactor = field(default_factory=default_redactor)
     now_ms: Callable[[], int] = field(default=_now_ms)

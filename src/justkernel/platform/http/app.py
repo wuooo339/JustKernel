@@ -27,6 +27,7 @@ from justkernel.platform.http.routes_cluster import (
     register_cluster_read_routes,
 )
 from justkernel.platform.http.routes_events import register_event_routes
+from justkernel.platform.http.routes_export import register_export_routes
 from justkernel.platform.http.routes_misc import (
     register_board_routes,
     register_hardware_routes,
@@ -100,6 +101,7 @@ def _register_api_routes(app: FastAPI, context: ApiContext) -> None:
     register_board_routes(app, context)
     register_message_routes(app, context)
     register_hardware_routes(app, context)
+    register_export_routes(app, context)
     if context.events is not None:
         register_event_routes(app, context)
 

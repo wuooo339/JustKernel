@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 
 from justkernel.platform.http.context import ApiContext
 from justkernel.platform.http.errors import NotFoundError
@@ -12,6 +12,8 @@ from justkernel.platform.http.routes_common import (
     cluster,
     record,
     record_view,
+    require_human,
+    require_record_download,
 )
 
 
@@ -29,12 +31,17 @@ def register_candidate_routes(app: FastAPI, ctx: ApiContext) -> None:
         return candidate_view(ctx, candidate(ctx, candidate_id))
 
     @app.get("/api/v1/candidates/{candidate_id}/source")
-    def get_source(candidate_id: str) -> dict[str, object]:
+    def get_source(candidate_id: str, request: Request) -> dict[str, object]:
+        require_human(request)
         item = candidate(ctx, candidate_id)
         return {
             "source_digest": item.source.digest.value,
             "files": [
-                {"path": path.value, "content": content} for path, content in item.source.files
+                {
+                    "path": path.value,
+                    "content": ctx.redactor.redact_text(content),
+                }
+                for path, content in item.source.files
             ],
         }
 
@@ -52,8 +59,9 @@ def register_record_routes(app: FastAPI, ctx: ApiContext) -> None:
         return record_view(ctx, record(ctx, record_id))
 
     @app.get("/api/v1/records/{record_id}/download")
-    def download_record(record_id: str) -> Response:
+    def download_record(record_id: str, request: Request) -> Response:
         item = record(ctx, record_id)
+        require_record_download(ctx, item, request)
         if ctx.artifacts is None:
             raise NotFoundError("artifact store is not configured")
         data = ctx.artifacts.get_bytes(item.artifact.digest)

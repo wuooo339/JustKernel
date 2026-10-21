@@ -91,6 +91,22 @@ def require_task_reader(task_obj: Task, request: Request) -> AgentId:
     return caller
 
 
+def require_human(request: Request) -> None:
+    if request.headers.get("X-Human", "").lower() not in {"1", "true", "yes"}:
+        raise AccessDeniedError("human request is required")
+
+
+def require_record_download(ctx: ApiContext, record_obj: TestRecord, request: Request) -> None:
+    if request.headers.get("X-Human", "").lower() in {"1", "true", "yes"}:
+        return
+    caller = caller_agent(request)
+    if record_obj.task_id is None:
+        raise AccessDeniedError("record has no task authorization")
+    task_obj = ctx.tasks.get(record_obj.task_id)
+    if caller not in (task_obj.worker_id, task_obj.mentor_id):
+        raise AccessDeniedError("agent cannot download this record")
+
+
 # ---- views ------------------------------------------------------------------
 def cluster_view(ctx: ApiContext, obj: Cluster) -> ClusterView:
     active = sum(1 for item in ctx.agents.list_by_cluster(obj.id) if item.state.value != "CLOSED")

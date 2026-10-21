@@ -466,3 +466,11 @@
 **Why:** External clients need read/limited-write access without an agent identity or private worker-channel access.
 
 **Cost if wrong:** Delivery IDs are process-local; no authentication/trusted-network gate is implemented yet. External messages are archived on the external channel but not automatically converted into board posts.
+
+## D-059 Redaction, export and download ACL
+
+**Decision:** Add a centralized `Redactor` for registered secrets (≥8 chars) and private roots. Apply it recursively to export payloads and source/report text. Exports/report/source require explicit `X-Human`; record downloads allow human or the owning task worker/mentor. Binary zip downloads are ACL-protected but not rewritten.
+
+**Why:** Human-facing exports and text downloads must not leak registered credentials or private absolute paths, while worker artifacts still require object ownership.
+
+**Cost if wrong:** Human status is header-based until authentication exists. Zip content may contain secrets because binary archives are not redacted; later artifact sanitization is required for untrusted skill output.
