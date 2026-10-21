@@ -546,3 +546,11 @@
 **Why:** Migration success is a behavior of the shipped entrypoint and journal, not just unit-level importer tests.
 
 **Cost if wrong:** Legacy schema coverage is limited to the synthetic table set; no real old database corpus is checked. Demo remains static replay.
+
+## D-069 Recovery chaos drills
+
+**Decision:** Add chaos tests that SIGKILL a process holding an open journal, recover missing global device leases into quarantine, and inject a disk-full `OperationalError` during recovery to prove rollback. Recovery interrupts state and never creates replacement tasks.
+
+**Why:** The recovery matrix must be exercised against process death and partial I/O, not only normal SQLite transactions.
+
+**Cost if wrong:** The disk-full drill uses a failing connection proxy, not a full filesystem; the kill drill is POSIX-only. Real device disconnect/zip interruption remain simulated.
