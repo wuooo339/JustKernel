@@ -49,3 +49,4 @@ class ErrorCode(StrEnum):
     RUNTIME_LIMIT = "runtime.limit"
     RUNTIME_STATE = "runtime.state"
     CHECKPOINT_INVALID = "checkpoint.invalid"
+    SKILL_INVALID = "skill.invalid"

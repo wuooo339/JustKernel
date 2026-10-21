@@ -274,3 +274,11 @@
 **Why:** The runtime must separate logical agent scale from OS processes and avoid unsafe automatic replay after crashes. Checkpoints support recovery but are explicitly not evidence.
 
 **Cost if wrong:** A session needing a new model/profile must be created fresh; checkpoint files may be garbage-collected without affecting evidence.
+
+## D-035 Skill loading and security
+
+**Decision:** Skills load in base → builtin → user order; later same-name definitions win. Frontmatter role/backend/allowed_tools are validated against the role matrix; user scripts require an explicit flag; paths must stay under their skills root; secret files are rejected.
+
+**Why:** Skills are executable instructions and tool grants. Loading must fail closed on role/tool/path/secret violations before an agent session starts.
+
+**Cost if wrong:** A new backend must be registered; a user script must be explicitly enabled; invalid skills fail the session rather than degrade silently.

@@ -5,7 +5,9 @@ description = "JustKernel v2 independent implementation."
 readme = "README.md"
 requires-python = ">=3.13"
 license = "MIT"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 justkernel = "justkernel.bootstrap.cli:main"
@@ -15,6 +17,7 @@ dev = [
     "mypy>=1.15",
     "pytest>=8.0",
     "ruff>=0.9",
+    "types-pyyaml>=6.0",
 ]
 
 [build-system]
