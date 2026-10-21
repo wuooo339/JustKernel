@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from justkernel import __version__
+from justkernel.platform.data_root import ServiceLock, initialize_data_root
 from justkernel.platform.config import (
     AppConfig,
     ConfigError,
@@ -69,13 +70,14 @@ def _run_mode(config: AppConfig, legacy_db: Path | None) -> int:
 def _migrate(config: AppConfig, legacy_db: Path | None) -> int:
     if legacy_db is None:
         raise ConfigError("migrate requires --legacy-db")
-    config.data_root.mkdir(parents=True, exist_ok=True)
-    connection = connect(str(config.data_root / "journal.db"))
-    try:
-        apply_migrations(connection)
-        report = LegacyImporter(connection, legacy_db).import_data()
-    finally:
-        connection.close()
+    layout = initialize_data_root(config)
+    with ServiceLock(layout.service_lock):
+        connection = connect(str(config.data_root / "journal.db"))
+        try:
+            apply_migrations(connection)
+            report = LegacyImporter(connection, legacy_db).import_data()
+        finally:
+            connection.close()
     print(
         f"mode=migrate imported={report.records_imported} "
         f"idempotent={str(report.already_imported).lower()} "

@@ -514,3 +514,11 @@
 **Why:** Mode and path selection must be deterministic and testable before runtime/server wiring, while migration remains an explicit human action.
 
 **Cost if wrong:** cluster/demo/worker currently print the resolved configuration rather than launching the HTTP server/runtime. Directory permissions and single-service locking are F08-03.
+
+## D-065 Data root and service lock
+
+**Decision:** `initialize_data_root()` explicitly creates the registry/hardware databases, clusters/private directories and service lock with 0700 directories/0600 files, tightening existing modes. `ServiceLock` uses POSIX `flock` or Windows `msvcrt` and is exclusive per data root. CLI migrate initializes the layout and holds the lock during import.
+
+**Why:** Local state, secrets and singleton control-plane ownership need one deterministic, permission-safe initialization path.
+
+**Cost if wrong:** The lock is filesystem-local and advisory; cluster/demo/worker do not acquire it until server startup wiring. Network filesystems may not provide reliable `flock`.

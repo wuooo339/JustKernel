@@ -61,5 +61,6 @@ class ErrorCode(StrEnum):
     REQUEST_INVALID = "request.invalid"
     MIGRATION_ERROR = "migration.error"
     INVALID_CONFIG = "invalid_config"
+    DATA_ROOT_ERROR = "data_root.error"
     IDEMPOTENCY_CONFLICT = "idempotency.conflict"
     NOT_FOUND = "not_found"
