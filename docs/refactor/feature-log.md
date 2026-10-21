@@ -78,3 +78,9 @@ A feature is `done` only after its tests pass, it is committed, and the commit i
 | F09-01 | 2026-10-21 | `2d6415e` | chaos tests 3 passed; full 410 passed; mypy/ruff clean; D-069 | `origin/refactor` @ `68cc8cd` |
 | F09-02 | 2026-10-21 | `296b13f` | scale e2e 1 passed; full 411 passed; mypy/ruff clean; D-070 | `origin/refactor` @ `d211072` |
 | F09-03 | 2026-10-21 | `4e35951` | model-routing e2e 2 passed; full 413 passed; mypy/ruff clean; D-071 | `origin/refactor` (with F09-03 docs commit) |
+
+## Blocked
+
+| Feature | Date | Reason | Evidence |
+| --- | --- | --- | --- |
+| F09-04 Real CANN/model acceptance | 2026-10-21 | No CANN/NPU tooling or real model credentials in workspace | `tests/e2e/test_real_acceptance.py` skips without `JUSTKERNEL_REAL_ACCEPTANCE_DIR`; no fake PASS |

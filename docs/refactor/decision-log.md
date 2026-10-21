@@ -570,3 +570,11 @@
 **Why:** Changing a worker model must not silently change the task evidence or broaden its permissions.
 
 **Cost if wrong:** No live provider calls or per-turn model/version usage records are exercised here; those remain for real-model acceptance.
+
+## D-072 Real acceptance gate is fail-closed
+
+**Decision:** Real CANN/model acceptance requires an externally produced evidence bundle and `JUSTKERNEL_REAL_ACCEPTANCE_DIR`. The gate rejects `cann-simulation`, fake providers, missing versions/devices, bad digests, non-executed/full/PASS records and absent reports. No bundle means skip, not fake success.
+
+**Why:** The final acceptance cannot be established by synthetic fakes; absent hardware/credentials must remain visibly blocked.
+
+**Cost if wrong:** The gate validates evidence but does not execute the real run. F09-04 remains blocked until an operator supplies a real bundle.
