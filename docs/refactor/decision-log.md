@@ -314,3 +314,11 @@
 **Why:** Submit must return immediately while the job is queued, and timeout/terminal behavior must be testable without a live backend. Centralizing transitions prevents services from overwriting terminal jobs.
 
 **Cost if wrong:** Queue position is currently a single-job placeholder until the hardware queue adapter exists. A timed-out job does not yet release device resources; that belongs to F05-02.
+
+## D-040 Hardware queue adapter
+
+**Decision:** `HardwareQueue` selects queued rows by priority/FIFO and acquires the ledger lease before marking the row LEASED. Release marks DONE; expiry marks EXPIRED and quarantines only when execution was active; `confirm_stopped` clears the lease's execution flag and quarantine. Queue ordering and lease exclusivity remain SQLite-backed.
+
+**Why:** The ledger enforces one lease per device, but without a queue claim path, queued jobs could never be dispatched or safely recovered.
+
+**Cost if wrong:** A crash between lease acquisition and queue-row update can leave a LEASED row; recovery must reconcile by job/lease. Queue state is not yet wired into ToolJob completion (F05-06).
