@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from justkernel.agent.agent import AgentInstance
+from justkernel.agent.model_profile import ModelProfile
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
 from justkernel.application.ports import IdFactoryPort
@@ -149,6 +150,22 @@ class InMemoryTaskRepository:
 
     def version(self, task_id: TaskId) -> int:
         return self._versions[task_id]
+
+
+class InMemoryModelProfileRegistry:
+    def __init__(self) -> None:
+        self._profiles: dict[str, ModelProfile] = {}
+
+    def add(self, profile: ModelProfile) -> None:
+        if profile.name in self._profiles:
+            raise ValueError(f"model profile already exists: {profile.name}")
+        self._profiles[profile.name] = profile
+
+    def get(self, profile_name: str) -> ModelProfile:
+        return self._profiles[profile_name]
+
+    def list(self) -> tuple[ModelProfile, ...]:
+        return tuple(self._profiles.values())
 
 
 class InMemoryCandidateRepository:

@@ -258,3 +258,11 @@
 **Why:** Best/report evidence must be reproducible and traceable, while budget reservations prevent overcommitment before calls. Domain errors are converted at the service boundary.
 
 **Cost if wrong:** A failed/incomplete record cannot be used to nominate or validate; budgets must be settled with the same idempotency key.
+
+## D-033 Model profiles and routing
+
+**Decision:** Model profiles are immutable; routing priority is instance > task > direction > role > system. A resolved profile must exist and support tool calling. Fallback only iterates configured `allowed_fallbacks`; provider concurrency comes from routing, not hardcoded.
+
+**Why:** Model choice must be reproducible/auditable and cannot silently change an Agent's ACL or tool capability. Restricting fallback prevents unconfigured models from joining a run.
+
+**Cost if wrong:** A new fallback must be configured in routing and registered as a profile; a missing/incapable profile fails closed.

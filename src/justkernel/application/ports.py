@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from justkernel.agent.agent import AgentInstance
+from justkernel.agent.model_profile import ModelProfile
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
 from justkernel.candidate.best import BestSelection
@@ -94,6 +95,12 @@ class ToolJobRepositoryPort(Protocol):
     def update(self, job: ToolJob) -> None: ...
     def get(self, job_id: str) -> ToolJob: ...
     def get_by_task(self, task_id: TaskId) -> ToolJob | None: ...
+
+
+@runtime_checkable
+class ModelProfileRegistryPort(Protocol):
+    def get(self, profile_name: str) -> ModelProfile: ...
+    def list(self) -> tuple[ModelProfile, ...]: ...
 
 
 @runtime_checkable
