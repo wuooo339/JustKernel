@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P4 进行中；F04-01～F04-05 已完成，下一个 feature：F04-06。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P4 已完成；P5 进行中，下一个 feature：F05-01。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -165,7 +165,7 @@ tests/
 | F04-03 | Skill 加载与安全校验 | 05 §6 | F04-01 | `tests/unit/agent/test_skills.py` 7 passed；全量 253 passed；commit `d999243` | done |
 | F04-04 | 六角色 skills + 内置 tester/profiler | 05 §6.4 | F04-03 | `tests/unit/agent/test_role_skills.py` 3 passed；全量 256 passed；commit `0c30d71` | done |
 | F04-05 | 工具注册表与对象级 ACL | 05 §5 | F04-03 | `tests/unit/agent/test_tool_matrix.py` 6 passed；全量 262 passed；commit `a2c50f4` | done |
-| F04-06 | 运行时生命周期与 100 agent 上限 | 05 §2–3、11 §8 | F04-02/05 | `tests/integration/test_agent_lifecycle.py`；无孤儿/租约 | todo |
+| F04-06 | 运行时生命周期与 100 agent 上限 | 05 §2–3、11 §8 | F04-02/05 | `tests/integration/test_agent_lifecycle.py` 3 passed；无孤儿/租约；全量 265 passed；commit `4f002c7` | done |
 
 ### 4.6 P5 证据链：候选、TestRecord、ToolJob、硬件队列
 
@@ -300,13 +300,14 @@ tests/
 | 2026-10-21 | F04-03 | done | skill tests 7 passed；全量 253 passed；mypy/ruff clean；D-035 | `d999243` / `origin/refactor` @ `19c64c6` |
 | 2026-10-21 | F04-04 | done | role-skills tests 3 passed；全量 256 passed；mypy/ruff clean；D-036 | `0c30d71` / `origin/refactor` @ `053f1d1` |
 | 2026-10-21 | F04-05 | done | tool-registry tests 6 passed；全量 262 passed；mypy/ruff clean；D-037 | `a2c50f4` / `origin/refactor` |
+| 2026-10-21 | F04-06 | done | lifecycle tests 3 passed；全量 265 passed；mypy/ruff clean；D-038；P4 exit report | `4f002c7` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F04-06 运行时生命周期与 100 agent 上限** 开始：
+从 **F05-01 异步 ToolJob 服务** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f04-06-runtime-lifecycle.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f05-01-tool-job.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
-3. 完成后写 `docs/refactor/p4-exit-report.md`，再进入 P5。
+3. 更新本文件与 `docs/refactor/feature-log.md`。
