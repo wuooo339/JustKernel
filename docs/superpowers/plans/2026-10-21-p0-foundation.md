@@ -260,6 +260,10 @@ Create `tests/unit/test_cli_scaffold.py`:
 ```python
 from __future__ import annotations
 
+import sys
+import tomllib
+from pathlib import Path
+
 from justkernel.bootstrap.cli import main
 
 
@@ -271,6 +275,23 @@ def test_cli_reports_version(capsys) -> None:
 def test_cli_default_message(capsys) -> None:
     assert main([]) == 0
     assert capsys.readouterr().out == "justkernel: P0 scaffold\n"
+
+
+def test_cli_reads_process_arguments(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(sys, "argv", ["justkernel", "--version"])
+
+    assert main() == 0
+    assert capsys.readouterr().out == "justkernel 0.1.0\n"
+
+
+def test_transitional_entry_points_preserve_legacy_justkernel() -> None:
+    pyproject = tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["justkernel"] == "aworker.lab.cli:main"
+    assert scripts["justkernel-next"] == "justkernel.bootstrap.cli:main"
 ```
 
 - [x] **Step 2: Run the tests and verify RED**
@@ -278,7 +299,7 @@ def test_cli_default_message(capsys) -> None:
 Run:
 
 ```bash
-uv run pytest -q tests/architecture
+uv run pytest -q tests/unit tests/architecture
 ```
 
 Expected: FAIL because `src/justkernel` / `justkernel.bootstrap.cli` does not exist. Record the failure text.
@@ -343,7 +364,8 @@ Make these exact changes:
 
 ```toml
 [project.scripts]
-justkernel = "justkernel.bootstrap.cli:main"
+justkernel = "aworker.lab.cli:main"
+justkernel-next = "justkernel.bootstrap.cli:main"
 aworker = "aworker.cli:main"
 aworker-lab = "aworker.lab.cli:main"
 
@@ -361,9 +383,9 @@ Do not rename the distribution yet; P8 performs the final rename and removes `aw
 Run:
 
 ```bash
-uv run pytest -q tests/architecture
-uv run ruff check src/justkernel tests/architecture
-uv run ruff format --check src/justkernel tests/architecture
+uv run pytest -q tests/unit tests/architecture
+uv run ruff check src/justkernel tests/unit tests/architecture
+uv run ruff format --check src/justkernel tests/unit tests/architecture
 ```
 
 Expected: all architecture tests pass; ruff clean.
@@ -784,13 +806,15 @@ Note: `Refactor/TODO.md` is outside the `JustKernel` git repository; if `git add
 ## Execution Record
 
 - Task 1: complete (commits `2fa044f..a1a4a22`; baseline 229 passed, 2 skipped).
-- Task 2: complete (commits `a1a4a22..87ce206`; `uv run pytest -q tests/unit tests/architecture` → 12 passed). Ruling: CLI scaffold tests live in `tests/unit` instead of `tests/architecture`.
+- Task 2: complete (commits `a1a4a22..87ce206`; current `uv run pytest -q tests/unit tests/architecture` → 14 passed after the final-review gate fixes). Ruling: CLI scaffold tests live in `tests/unit` instead of `tests/architecture`.
 - Task 3: complete (commits `87ce206..bccff05`; `uv run pytest -q tests/characterization` → 4 passed).
-- Task 4: complete (commits `bccff05..519ed67`; `uv run pytest -q tests/unit tests/architecture tests/characterization` → 16 passed).
-- Task 5: complete (commits `519ed67..66524f9`; `uv run pytest -q tests/unit tests/architecture tests/characterization` → 16 passed; mypy success).
-- Task 6: complete (closeout commit; `uv run pytest -q` → 245 passed, 2 skipped; mypy success; ruff check/format clean).
+- Task 4: complete (commits `bccff05..519ed67`; current `uv run pytest -q tests/unit tests/architecture tests/characterization` → 18 passed).
+- Task 5: complete (commits `519ed67..66524f9`; current `uv run pytest -q tests/unit tests/architecture tests/characterization` → 18 passed; mypy success).
+- Task 6: complete (closeout commit plus final-review fix commit; `uv run pytest -q` → 247 passed, 2 skipped; mypy success; ruff check/format clean).
 
 Rulings:
 - Branch in the existing checkout, no separate worktree: the TODO allowed branch or worktree and the legacy tree is frozen. Cost if wrong: the checkout stays on `refactor/justkernel-v2`.
 - CLI scaffold tests in `tests/unit`: keeps the P0 CI unit path non-empty and matches the test's unit scope. Cost if wrong: one path differs from the original plan text.
+- `justkernel` keeps the legacy CLI until P8; `justkernel-next` is the new scaffold: reassigning `justkernel` in P0 would break the README/start scripts. Cost if wrong: two CLI names temporarily, and P8 must complete the switch.
+- Architecture gate rejects cross-package relative imports (`level >= 2`), not only absolute `justkernel.platform` imports: prevents bypassing the dependency rule. Cost if wrong: a legitimate cross-package relative import must be written as an absolute import.
 - P0 exit evidence stored in `docs/refactor/p0-exit-report.txt`: durable verification record. Cost if wrong: one extra documentation file.

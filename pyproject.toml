@@ -26,7 +26,8 @@ dependencies = [
 ]
 
 [project.scripts]
-justkernel = "justkernel.bootstrap.cli:main"
+justkernel = "aworker.lab.cli:main"
+justkernel-next = "justkernel.bootstrap.cli:main"
 aworker = "aworker.cli:main"
 aworker-lab = "aworker.lab.cli:main"
 

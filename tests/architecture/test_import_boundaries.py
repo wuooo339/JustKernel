@@ -33,8 +33,11 @@ def _imported_modules(path: Path) -> set[str]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            modules.add(node.module)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level >= 2:
+                modules.add(f"__relative_level_{node.level}__")
+            if node.module:
+                modules.add(node.module)
     return modules
 
 
@@ -55,3 +58,11 @@ def test_domain_packages_do_not_import_adapters_or_io() -> None:
             for name in _imported_modules(path):
                 assert name not in FORBIDDEN_DOMAIN_IMPORTS, (path, name)
                 assert not name.startswith("justkernel.platform"), (path, name)
+                assert not name.startswith("__relative_level_"), (path, name)
+
+
+def test_import_scanner_flags_cross_package_relative_imports(tmp_path: Path) -> None:
+    path = tmp_path / "module.py"
+    path.write_text("from ..platform import http\n", encoding="utf-8")
+
+    assert "__relative_level_2__" in _imported_modules(path)

@@ -45,11 +45,11 @@
 
 ## D-006 CLI naming
 
-**Decision:** `justkernel` is the only future CLI. `aworker` and `aworker-lab` remain transitional aliases in `pyproject.toml` until P8.
+**Decision:** `justkernel` stays mapped to the working legacy CLI until P8. The new scaffold is exposed as `justkernel-next`; `aworker` and `aworker-lab` remain transitional aliases. At P8, `justkernel` switches to `justkernel.bootstrap.cli:main` and all old aliases are removed.
 
-**Why:** SPEC 03/12 require one package and one CLI. Keeping aliases temporarily avoids breaking the legacy app while the new entry point is scaffolded.
+**Why:** README and start scripts already invoke `uv run justkernel demo/serve`. Reassigning `justkernel` to a P0 placeholder would break the documented legacy app during P0–P7. A temporary `justkernel-next` gives the new CLI a real entry point without a backward-compatibility break.
 
-**Cost if wrong:** Users may keep invoking aliases; P8 must remove them and update README/scripts/CI in the same cutover.
+**Cost if wrong:** Two CLI names exist temporarily and P8 must update README/scripts/CI in one cutover; if P8 misses it, `justkernel` would launch the legacy app after the old package is deleted.
 
 ## D-007 Type checking
 

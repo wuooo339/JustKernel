@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import sys
+import tomllib
+from pathlib import Path
+
 from justkernel.bootstrap.cli import main
 
 
@@ -15,9 +19,17 @@ def test_cli_default_message(capsys) -> None:
 
 
 def test_cli_reads_process_arguments(monkeypatch, capsys) -> None:
-    import sys
-
     monkeypatch.setattr(sys, "argv", ["justkernel", "--version"])
 
     assert main() == 0
     assert capsys.readouterr().out == "justkernel 0.1.0\n"
+
+
+def test_transitional_entry_points_preserve_legacy_justkernel() -> None:
+    pyproject = tomllib.loads(
+        (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    scripts = pyproject["project"]["scripts"]
+
+    assert scripts["justkernel"] == "aworker.lab.cli:main"
+    assert scripts["justkernel-next"] == "justkernel.bootstrap.cli:main"

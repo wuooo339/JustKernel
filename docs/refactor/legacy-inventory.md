@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | `src/aworker/__init__.py` | Package marker and Settings re-export | `delete` | `src/justkernel/__init__.py` | import smoke |
 | `src/aworker/__main__.py` | `python -m aworker` entry point | `delete` | `justkernel.bootstrap.cli` | CLI scaffold test |
-| `src/aworker/cli.py` | Compatibility entry point | `delete` | `justkernel.bootstrap.cli:main` | CLI scaffold test |
+| `src/aworker/cli.py` | Compatibility entry point | `delete` | `justkernel` remains this legacy CLI until P8; new scaffold is `justkernel-next` | CLI scaffold test |
 | `src/aworker/config.py` | `AWORKER_*` settings, model/browser/SSH fields | `adapt` | `justkernel.platform.config` with `JUSTKERNEL_*` | P1/P8 config tests |
 | `src/aworker/messages.py` | LangChain message text helpers | `adapt` | runtime message normalization | P4 runtime tests |
 | `src/aworker/models.py` | LangChain model construction from client credentials | `adapt` | `justkernel.platform.models` | P4 model routing tests |
