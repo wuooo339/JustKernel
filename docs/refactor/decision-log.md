@@ -410,3 +410,11 @@
 **Why:** Final validation must not be starved by exploration, and plateau decisions must not treat tool failures as performance plateaus. Duplicate candidates retain provenance while allowing the mentor/supervisor to avoid automatic re-experimentation.
 
 **Cost if wrong:** Round/failure counters and duplicate decisions are not persisted; the caller must honor `can_explore`/duplicate results. Budget ledger atomicity between reserve calls remains the adapter's responsibility.
+
+## D-052 Convergence and completion
+
+**Decision:** `ConvergenceService` validates the pending best selection with final full-PASS evidence before any cluster mutation, writes the exploration report, then converges the cluster, applies the best candidate and report, and completes it. A failed final validation leaves cluster state, best, report and selection pending. `ClusterService` exposes explicit set-best/attach-report/complete commands.
+
+**Why:** COMPLETED must only be reachable through validated evidence plus a linked report; a failed final check must not overwrite the last valid best.
+
+**Cost if wrong:** Performance-target profile gating is not yet enforced here. A report write failure after selection validation can leave a VALIDATED selection without cluster completion.

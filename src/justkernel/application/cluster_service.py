@@ -68,6 +68,21 @@ class ClusterService:
         cluster.converge()
         return self._update(cluster)
 
+    def set_best_candidate(self, cluster_id: ClusterId, candidate_id: CandidateId) -> Cluster:
+        cluster = self.get(cluster_id)
+        cluster.set_best_candidate(candidate_id)
+        return self._update(cluster)
+
+    def attach_report(self, cluster_id: ClusterId, report_id: str) -> Cluster:
+        cluster = self.get(cluster_id)
+        cluster.attach_report(report_id)
+        return self._update(cluster)
+
+    def complete_cluster(self, cluster_id: ClusterId, now_ms: int) -> Cluster:
+        cluster = self.get(cluster_id)
+        cluster.complete(now_ms)
+        return self._update(cluster)
+
     def stop_cluster(self, cluster_id: ClusterId, reason: str, now_ms: int) -> Cluster:
         cluster = self.get(cluster_id)
         cluster.stop(reason, now_ms)
