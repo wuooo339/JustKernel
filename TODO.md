@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P1 进行中；F01-01～F01-06 已完成，下一个 feature：F01-07。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P1 进行中；F01-01～F01-07 已完成，下一个 feature：F01-08。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -127,7 +127,7 @@ tests/
 | F01-04 | Agent/Role 聚合与生命周期 | 04 §4.2、05 §2 | F01-02 | `tests/unit/agent/` 10 passed；全量 68 passed；worker mentor/终态/恢复；commit `8854571` | done |
 | F01-05 | Task 聚合与四种 kind | 04 §4.4、06 §7 | F01-03/04 | `tests/unit/task/` 10 passed；全量 78 passed；kind 约束/终态结果；commit `daed2a1` | done |
 | F01-06 | Candidate DAG 与 BestSelection | 04 §4.5、07 §2/§7 | F01-03/05 | `tests/unit/candidate/` 13 passed；全量 91 passed；不可变/无环/PENDING→VALIDATED；commit `494046d` | done |
-| F01-07 | TestRecord、HardwareLease、ExplorationReport 聚合 | 04 §4.6–4.8、07 §3 | F01-05 | `tests/unit/testing/`、`tests/unit/report/`；PASS/coverage/审计记录 | todo |
+| F01-07 | TestRecord、HardwareLease、ExplorationReport 聚合 | 04 §4.6–4.8、07 §3 | F01-05 | `tests/unit/testing/`、`tests/unit/report/` 17 passed；全量 108 passed；commit `c78099c` | done |
 | F01-08 | ACL、能力矩阵、Message 信封与路由 | 04 §2/§6、05 §5、06 §2–3 | F01-04/07 | `tests/unit/comm/test_acl_matrix.py` 表驱动全角色×资源 | todo |
 | F01-09 | 跨聚合不变量、事件、稳定错误码 | 04 §5、06 §11 | F01-03..08 | `tests/unit/test_invariants.py`、`test_qa_matrix.py` | todo |
 
@@ -276,7 +276,8 @@ tests/
 | 2026-10-21 | F01-03 | done | cluster tests 11 passed；全量 58 passed；mypy/ruff clean；D-013 | `fa78426` / `origin/refactor` @ `0f190c4` |
 | 2026-10-21 | F01-04 | done | agent tests 10 passed；全量 68 passed；mypy/ruff clean；D-014 | `8854571` / `origin/refactor` @ `4a9486f` |
 | 2026-10-21 | F01-05 | done | task tests 10 passed；全量 78 passed；mypy/ruff clean；D-015 | `daed2a1` / `origin/refactor` @ `e492c94` |
-| 2026-10-21 | F01-06 | done | candidate tests 13 passed；全量 91 passed；mypy/ruff clean；D-016 | `494046d` / `origin/refactor` |
+| 2026-10-21 | F01-06 | done | candidate tests 13 passed；全量 91 passed；mypy/ruff clean；D-016 | `494046d` / `origin/refactor` @ `96f3bbb` |
+| 2026-10-21 | F01-07 | done | record/lease/report tests 17 passed；全量 108 passed；mypy/ruff clean；D-017 | `c78099c` / `origin/refactor` |
 
 ---
 
