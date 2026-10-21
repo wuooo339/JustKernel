@@ -19,3 +19,5 @@ not `done` in `TODO.md` until the push column names the remote commit.
 ```
 
 Push note: `origin/refactor` is writable by GitHub account `gresces`; the helper switches to it for the push and restores the active account `secserg` afterward.
+
+Workflow setup commits after the P0 feature push: `049add8` (push log) and `802bbd4` (authenticated push script).
