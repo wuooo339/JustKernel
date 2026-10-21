@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P5 进行中；F05-01～F05-03 已完成，下一个 feature：F05-04。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P5 进行中；F05-01～F05-04 已完成，下一个 feature：F05-05。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -174,7 +174,7 @@ tests/
 | F05-01 | 异步 ToolJob 服务 | 13 §5 | F03-05、F04-05 | `tests/application/test_tool_job.py` 7 passed；幂等/冲突/超时；全量 272 passed；commit `92c8768` | done |
 | F05-02 | 硬件队列、租约、TTL、fencing | 07 §6、08 §11 | F02-06、F05-01 | `tests/adapters/test_hardware_queue.py` 6 passed；独占/TTL/隔离；全量 278 passed；commit `dff7b7e` | done |
 | F05-03 | TestRecord zip 构建/校验/审计记录 | 07 §3 | F05-01 | `tests/unit/testing/test_record_zip.py` 12 passed；缺文件/哈希/未执行；全量 290 passed；commit `dca59d4` | done |
-| F05-04 | CANN simulation backend + fake | 07 §4、13 §5 | F05-01 | `tests/adapters/test_cann_backend.py`；合同测试/环境指纹 | todo |
+| F05-04 | CANN simulation backend + fake | 07 §4、13 §5 | F05-01 | `tests/adapters/test_cann_backend.py` 7 passed；合同/环境指纹；全量 297 passed；commit `cdbe123` | done |
 | F05-05 | TaskContext 与只读 artifact grants | 13 §3 | F05-01 | `tests/application/test_task_context.py`；越权/过期 | todo |
 | F05-06 | 证据链测试：候选→job→zip→记录 | 07 §3、11 §3 | F05-01..05 | `tests/application/test_evidence_chain.py`；无 fake PASS | todo |
 
@@ -304,13 +304,14 @@ tests/
 | 2026-10-21 | F05-01 | done | tool-job tests 7 passed；全量 272 passed；mypy/ruff clean；D-039 | `92c8768` / `origin/refactor` |
 | 2026-10-21 | F05-02 | done | hardware-queue tests 6 passed；全量 278 passed；mypy/ruff clean；D-040 | `dff7b7e` / `origin/refactor` |
 | 2026-10-21 | F05-03 | done | record-zip tests 12 passed；全量 290 passed；mypy/ruff clean；D-041 | `dca59d4` / `origin/refactor` |
+| 2026-10-21 | F05-04 | done | cann backend tests 7 passed；全量 297 passed；mypy/ruff clean；D-042 | `cdbe123` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F05-04 CANN simulation backend + fake** 开始：
+从 **F05-05 TaskContext 与只读 artifact grants** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f05-04-cann-backend.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f05-05-task-context.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
 3. 更新本文件与 `docs/refactor/feature-log.md`。
