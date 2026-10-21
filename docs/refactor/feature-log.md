@@ -16,4 +16,5 @@ A feature is `done` only after its tests pass, it is committed, and the commit i
 | F00-05 | 2026-10-21 | `5998bf2` | CI workflow; local ruff/mypy/pytest 15 passed/build green | `origin/refactor` @ `5f1d2db` |
 | F00-06 | 2026-10-21 | `2888b3d` | decision log D-001..D-010; feature log; P0 exit report; full 15 passed | `origin/refactor` @ `ac4605f` |
 | F01-01 | 2026-10-21 | `7c6986c` | shared 19 passed; full 34 passed; mypy/ruff clean; D-011 clock unit | `origin/refactor` @ `8b9f0f0` |
-| F01-02 | 2026-10-21 | `07549d4` | contract tests 13 passed; full 47 passed; mypy/ruff clean; D-012 | `origin/refactor` (with F01-02 docs commit) |
+| F01-02 | 2026-10-21 | `07549d4` | contract tests 13 passed; full 47 passed; mypy/ruff clean; D-012 | `origin/refactor` @ `2d0ed14` |
+| F01-03 | 2026-10-21 | `fa78426` | cluster tests 11 passed; full 58 passed; mypy/ruff clean; D-013 | `origin/refactor` (with F01-03 docs commit) |
