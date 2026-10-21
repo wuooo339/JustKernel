@@ -45,3 +45,7 @@ class ErrorCode(StrEnum):
     INVALID_TOOL_JOB = "invalid_tool_job"
     MODEL_PROFILE_INVALID = "model.profile_invalid"
     MODEL_FALLBACK_UNAVAILABLE = "model.fallback_unavailable"
+    RUNTIME_ERROR = "runtime.error"
+    RUNTIME_LIMIT = "runtime.limit"
+    RUNTIME_STATE = "runtime.state"
+    CHECKPOINT_INVALID = "checkpoint.invalid"

@@ -266,3 +266,11 @@
 **Why:** Model choice must be reproducible/auditable and cannot silently change an Agent's ACL or tool capability. Restricting fallback prevents unconfigured models from joining a run.
 
 **Cost if wrong:** A new fallback must be configured in routing and registered as a profile; a missing/incapable profile fails closed.
+
+## D-034 Runtime pool and checkpoints
+
+**Decision:** Logical agents are tracked as sessions assigned to a bounded runtime process pool. One RUNNING turn per agent, a global model-concurrency counter, and JSON checkpoints keyed by cluster/agent/session. Crash/interrupt marks RUNNING sessions INTERRUPTED; resume uses a new session and never replays a turn.
+
+**Why:** The runtime must separate logical agent scale from OS processes and avoid unsafe automatic replay after crashes. Checkpoints support recovery but are explicitly not evidence.
+
+**Cost if wrong:** A session needing a new model/profile must be created fresh; checkpoint files may be garbage-collected without affecting evidence.
