@@ -2,15 +2,15 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 目标：把旧“多队 lab + Judge/官测”实现替换为“单算子、单 supervisor、约 100 个动态角色的 Agent 集群”。  
-> 状态：`P0` 待开始。所有任务只有在有测试/命令证据后才能勾选。  
-> 维护规则：每完成一项，在文末“进度记录”登记日期、任务号、证据（命令输出、测试名、PR/commit）。
+> 状态：`P0` 已完成；`P1` 待开始（下一个 feature：F01-01）。  
+> 维护规则：按第 3 节 feature 流程执行；每个 feature 先测试、再提交、再推送到 `origin/refactor`，并在文末进度表登记证据。
 
 ---
 
 ## 0. 总体策略
 
-1. **新包并行，不做旧代码渐进改造**  
-   新建 `src/justkernel/`，旧 `src/aworker/` 冻结。新代码禁止 import 旧包；P8 删除旧包并把发行物切换到 `justkernel`。
+1. **新项目独立，旧实现只读**  
+   新项目位于 `Refactor/`，旧实现留在同级 `../JustKernel/`（`main`，只读参考）。新代码禁止 import `aworker`；每个 feature 完成后推送到 `origin/refactor`。
 2. **只复用适配器和资源**  
    CANN simulator、模型 provider、A2A、skills/templates 先写 characterization tests 锁定行为，再复制/适配到新包。`LabService`、`ContinuousSwarm`、`IterationController`、`JudgeMonitor` 不迁移。
 3. **先垂直闭环，再扩规模**  
@@ -19,15 +19,15 @@
    领域/应用测试不启动模型、设备、HTTP；fake 通过不算验收。P9 必须跑真实模型 + 实际 CANN。
 5. **证据链先冻结**  
    候选、TestRecord zip、TaskContext、BestSelection、wake/budget 的契约先定，避免后期回填。
-6. **每个里程碑单独写可执行 TDD plan**  
-   本文件是路线图和检查清单；开始某个里程碑前，在 `docs/superpowers/plans/` 写该里程碑的详细 plan（文件级任务、失败测试、实现、验证、提交）。
+6. **每个 feature 单独写可执行 TDD plan**  
+   本文件是 feature 路线图；开始 feature 前在 `docs/superpowers/plans/` 写详细 plan，按第 3.1 节 RED→GREEN→REFACTOR→验证→commit→push 执行。
 
 ---
 
 ## 1. 全局约束（每个任务都适用）
 
 - Python `3.13+`；使用 `uv` 管理依赖；测试用 `pytest`；lint/format 用 `ruff`。
-- 最终发行包和 CLI 只暴露 `justkernel`；不创建 `aworker` 模块。P0–P7 为过渡期，允许旧包暂时存在，但新包不得依赖旧包；P8 必须删除。
+- 新项目只暴露 `justkernel`；不创建 `aworker` 模块。旧实现只在 `../JustKernel/` 只读保留，新代码不得依赖它。
 - 一个 Cluster 恰好一个 Operator、一个 supervisor；活动 agent 总数 ≤ `max_agents`（默认 100）。
 - 角色固定：`SUPERVISOR` / `CONSULTANT` / `MENTOR` / `OPTIMIZER` / `TESTER` / `PROFILER`。
 - ACL 必须同时在**工具层**和**应用层**强制；不能只靠 prompt。worker 工具集中不得存在任何 board 工具。
@@ -97,6 +97,168 @@ uv run pytest tests/web -q
 uv run pytest tests/e2e -q
 uv run pytest -q
 ```
+
+---
+
+
+## 3. Feature 路线图与推送工作流
+
+### 3.1 每个 feature 的固定流程
+
+1. 从下表选择依赖已全部 `done` 的 `todo` feature，将状态改为 `in_progress`。
+2. 若该 feature 还没有可执行 plan，在 `docs/superpowers/plans/` 写一份（参考 P0 plan 的粒度）。
+3. **RED**：先写失败测试，运行并确认失败原因是功能缺失，而不是拼写/导入错误。
+4. **GREEN**：写最小实现，只让该测试通过。
+5. **REFACTOR**：保持测试绿，清理重复与命名；不扩大行为范围。
+6. **验证**：运行该 feature 的目标测试、`uv run pytest -q`、`uv run mypy src/justkernel`、`uv run ruff check src tests`、`uv run ruff format --check src tests`。
+7. **提交**：`feat(<feature-id>): <summary>`；同一提交把 TODO 状态改为 `done`，并写明测试命令/结果。
+8. **推送**：`git push origin HEAD:refactor`，然后用 `git ls-remote origin refs/heads/refactor` 确认远端 commit。
+9. 在 `docs/refactor/feature-log.md` 追加 feature、commit、测试结果、推送时间；该记录可随下一个 feature 提交。
+
+### 3.2 状态
+
+- `todo`：尚未开始。
+- `in_progress`：正在实现；同一时间只允许一个 feature 处于此状态。
+- `done`：测试通过、已提交、已推送到 `origin/refactor`。
+- `blocked`：依赖/环境阻塞；必须在进度表写原因。
+
+### 3.3 Feature 清单
+
+#### P0 基线与工程骨架
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F00-01 | 旧基线、分支/tag、基线报告 | 12 §1–3 | — | `docs/refactor/baseline-test-report.txt`；旧套件 229 passed / 2 skipped | done |
+| F00-02 | 旧实现清单与数据映射 | 12 §1–5 | F00-01 | `docs/refactor/legacy-inventory.md` 覆盖旧模块与数据 | done |
+| F00-03 | 旧行为 characterization contracts | 12 §2 | F00-02 | `uv run pytest -q tests/characterization`（本地 4 passed） | done |
+| F00-04 | `justkernel` 包骨架与 CLI scaffold | 03 §2 | F00-02 | `tests/unit/test_cli_scaffold.py`；`justkernel --version` | done |
+| F00-05 | 架构门禁：依赖/规模/无副作用 | 03 §3、11 §8 | F00-04 | `uv run pytest -q tests/architecture`（10 passed） | done |
+| F00-06 | CI、mypy、pytest、build 门禁 | 11 §9 | F00-05 | `.github/workflows/ci.yml`；`uv run mypy src/justkernel` | done |
+| F00-07 | 决策日志与 P0 出口证据 | 03、12 | F00-06 | `docs/refactor/decision-log.md`、`p0-exit-report.txt` | done |
+
+#### P1 领域模型与执行契约
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F01-01 | Shared primitives：ID/Digest/Clock/规范 JSON/错误/Principal/ProjectPath | 04 §3、13 §1 | F00-05 | `tests/unit/shared/` 覆盖非法 ID/摘要/路径/JSON | todo |
+| F01-02 | 执行契约类型：OperatorSpec、TaskContext、Budget/Evaluation/Wake/ModelRouting | 13 §1–3 | F01-01 | `tests/unit/test_contracts.py`；缺字段/无硬上限/预留校验 | todo |
+| F01-03 | Cluster 与 Direction 聚合、phase/state | 04 §4.1、§4.3 | F01-02 | `tests/unit/cluster/`；唯一 supervisor/operator、状态机 | todo |
+| F01-04 | Agent/Role 聚合与生命周期 | 04 §4.2、05 §2 | F01-02 | `tests/unit/agent/`；worker 必有 mentor、关闭后不接任务、上限 | todo |
+| F01-05 | Task 聚合与四种 kind | 04 §4.4、06 §7 | F01-03/04 | `tests/unit/task/`；GENERATE/OPTIMIZE/TEST/PROFILE 约束 | todo |
+| F01-06 | Candidate 版本 DAG 与 BestSelection | 04 §4.5、07 §2/§7 | F01-03/05 | `tests/unit/candidate/`；不可变、无环、PENDING→VALIDATED | todo |
+| F01-07 | TestRecord、HardwareLease、ExplorationReport 聚合 | 04 §4.6–4.8、07 §3 | F01-05 | `tests/unit/testing/`、`tests/unit/report/`；PASS/coverage/审计记录 | todo |
+| F01-08 | ACL、能力矩阵、Message 信封与路由 | 04 §2/§6、05 §5、06 §2–3 | F01-04/07 | `tests/unit/comm/test_acl_matrix.py` 表驱动全角色×资源 | todo |
+| F01-09 | 跨聚合不变量、事件、稳定错误码 | 04 §5、06 §11 | F01-03..08 | `tests/unit/test_invariants.py`、`test_qa_matrix.py` | todo |
+
+#### P2 持久化、事件、制品与全局服务
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F02-01 | journal schema、迁移器、部分唯一索引、事件触发器 | 08 §3/§12 | F01-09 | `tests/adapters/test_schema.py`；重复迁移幂等 | todo |
+| F02-02 | 仓储、UnitOfWork、事件 append、outbox | 08 §3/§6 | F02-01 | `tests/adapters/test_uow_events.py`；回滚/版本冲突/幂等 | todo |
+| F02-03 | 内容寻址制品库 | 08 §4 | F02-01 | `tests/adapters/test_artifact_store.py`；哈希/路径/权限/去重 | todo |
+| F02-04 | 投影与回放 | 08 §5 | F02-02 | `tests/adapters/test_projections.py`；live/replay 一致 | todo |
+| F02-05 | 全局 operator registry | 08 §11 | F02-01 | `tests/adapters/test_registry.py`；同算子活动集群唯一 | todo |
+| F02-06 | 全局设备账本与 fencing | 08 §11 | F02-01 | `tests/adapters/test_hardware_ledger.py`；跨集群租约唯一/旧 token 拒绝 | todo |
+| F02-07 | 启动恢复矩阵 | 08 §7 | F02-02..06 | `tests/adapters/test_recovery.py`；Agent/Task/Lease/Cluster/Report | todo |
+| F02-08 | SQLite/全局服务适配器套件 | 11 §6 | F02-01..07 | `uv run pytest -q tests/adapters` | todo |
+
+#### P3 应用用例、端口与 Fakes
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F03-01 | 端口定义与确定性 fakes | 03 §3.1、11 §5 | F02-08 | `tests/application/fakes/`；端口协议一致 | todo |
+| F03-02 | Cluster 生命周期用例 | 04 §4.1、06 §5/§8 | F03-01 | `tests/application/test_cluster_lifecycle.py` | todo |
+| F03-03 | Agent/worker 生命周期与任务派发 | 04 §4.2、06 §6–7 | F03-01 | `tests/application/test_worker_lifecycle.py`；越权/上限/关闭 | todo |
+| F03-04 | Candidate 提交与导入用例 | 04 §4.5、13 §2 | F03-01 | `tests/application/test_candidate_commit.py` | todo |
+| F03-05 | ToolJob/TestRecord 封存用例 | 13 §5、08 §6 | F03-01 | `tests/application/test_testing_flow.py`；一 Task 一 job | todo |
+| F03-06 | BestSelection/报告/预算用例 | 07 §7、13 §6–7 | F03-02/05 | `tests/application/test_best_report.py`；无证据拒绝 | todo |
+| F03-07 | 应用层 ACL/归属/幂等测试 | 11 §5 | F03-02..06 | `tests/application/test_object_acl.py` | todo |
+
+#### P4 Agent 运行时、Skills 与工具权限
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F04-01 | ModelProfile、provider 路由、fallback | 05 §7、13 §9 | F03-01 | `tests/adapters/test_model_routing.py` | todo |
+| F04-02 | Deep Agents runner、检查点、Agent 池 | 05 §2–3 | F04-01 | `tests/adapters/test_runtime_pool.py`；单 Turn/崩溃恢复 | todo |
+| F04-03 | Skill 加载与安全校验 | 05 §6 | F04-01 | `tests/unit/agent/test_skills.py`；frontmatter/allowed_tools/路径逃逸 | todo |
+| F04-04 | 六角色 skills + 内置 tester/profiler | 05 §6.4 | F04-03 | `tests/unit/agent/test_role_skills.py` | todo |
+| F04-05 | 工具注册表与对象级 ACL | 05 §5 | F04-03 | `tests/unit/agent/test_tool_matrix.py`；worker 无 board 工具 | todo |
+| F04-06 | 运行时生命周期与 100 agent 上限 | 05 §2–3、11 §8 | F04-02/05 | `tests/integration/test_agent_lifecycle.py`；无孤儿/租约 | todo |
+
+#### P5 证据链：候选、TestRecord、ToolJob、硬件队列
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F05-01 | 异步 ToolJob 服务 | 13 §5 | F03-05、F04-05 | `tests/application/test_tool_job.py`；幂等/冲突/超时 | todo |
+| F05-02 | 硬件队列、租约、TTL、fencing | 07 §6、08 §11 | F02-06、F05-01 | `tests/adapters/test_hardware_queue.py`；独占/隔离 | todo |
+| F05-03 | TestRecord zip 构建/校验/审计记录 | 07 §3 | F05-01 | `tests/unit/testing/test_record_zip.py`；缺文件/哈希/未执行 | todo |
+| F05-04 | CANN simulation backend + fake | 07 §4、13 §5 | F05-01 | `tests/adapters/test_cann_backend.py`；合同测试/环境指纹 | todo |
+| F05-05 | TaskContext 与只读 artifact grants | 13 §3 | F05-01 | `tests/application/test_task_context.py`；越权/过期 | todo |
+| F05-06 | 证据链测试：候选→job→zip→记录 | 07 §3、11 §3 | F05-01..05 | `tests/application/test_evidence_chain.py`；无 fake PASS | todo |
+
+#### P6 生成/导入、反馈与闭环编排
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F06-01 | OperatorSpec 启动校验与集群启动 | 13 §1、06 §5 | F05-06 | `tests/application/test_start_cluster.py`；422/409 | todo |
+| F06-02 | GENERATE/IMPORT 与根候选 | 13 §2 | F06-01 | `tests/application/test_bootstrap_modes.py` | todo |
+| F06-03 | baseline 建立与 bootstrap 预算 | 13 §2/§7 | F06-02 | `tests/application/test_baseline.py`；完整 PASS 才建基线 | todo |
+| F06-04 | 反馈包与换 worker 续接 | 13 §3 | F06-03 | `tests/application/test_feedback_handoff.py`；QA-17 | todo |
+| F06-05 | Inbox/wake/单 Turn/WAIT/debounce | 13 §4 | F06-01 | `tests/application/test_wake_scheduler.py`；重复事件/无增量 | todo |
+| F06-06 | watchdog、停滞与暂停 | 13 §4 | F06-05 | `tests/application/test_watchdog.py`；合法 WAIT 不误报 | todo |
+| F06-07 | 预算、plateau、重复候选 | 13 §7 | F06-03 | `tests/application/test_budget.py`；最终验证预留 | todo |
+| F06-08 | 收敛、BestSelection、报告 | 07 §7、13 §6 | F06-03/07 | `tests/application/test_convergence.py`；失败提名不覆盖旧 best | todo |
+| F06-09 | 暂停/恢复与迟到结果 | 13 §8 | F06-05 | `tests/application/test_resume.py`；不自动重跑 | todo |
+| F06-10 | fake 闭环验收 | 13 §10 | F06-01..09 | `tests/e2e/test_fake_closed_loop.py`；13 §10 1–9 | todo |
+
+#### P7 API、SSE、A2A 与前端
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F07-01 | API 骨架、DTO、错误码、幂等键 | 09 §1/§4 | F06-10 | `tests/integration/test_api_contract.py` | todo |
+| F07-02 | Cluster/Agent/Board/Task/Candidate/Record/Hardware/Report 路由 | 09 §2 | F07-01 | `tests/integration/test_routes.py`；对象级 ACL | todo |
+| F07-03 | SSE 与回放 | 09 §5 | F07-01 | `tests/integration/test_sse.py`；Last-Event-ID | todo |
+| F07-04 | A2A cluster gateway | 09 §3 | F07-01 | `tests/integration/test_a2a.py`；不能写 worker channel | todo |
+| F07-05 | 脱敏、导出、下载 ACL | 10 §2、09 §9 | F07-02 | `tests/integration/test_redaction.py` | todo |
+| F07-06 | Web state/reducer/selectors | 09 §6/§7 | F07-01 | `tests/web/reducer.test.js`、`selectors.test.js` | todo |
+| F07-07 | Web 视图与可访问性 | 09 §6 | F07-06 | `tests/web/views.test.js`；best/PENDING/失败可见 | todo |
+| F07-08 | Demo/replay fixture | 09 §6 | F07-06 | `tests/e2e/test_demo_mode.py`；无模型/设备 | todo |
+
+#### P8 迁移、切换与清理
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F08-01 | 旧数据只读导入与 LEGACY 标记 | 08 §9、12 §1 | F02-08 | `tests/adapters/test_legacy_import.py`；幂等/不参与 best | todo |
+| F08-02 | CLI 模式与配置 | 10 §1、12 §5 | F07-08 | `tests/integration/test_cli_modes.py` | todo |
+| F08-03 | 数据目录、权限、单服务锁 | 08 §2、10 §2 | F02-03 | `tests/adapters/test_data_root.py` | todo |
+| F08-04 | 删除旧引用/旧 CLI/旧环境变量 | 12 §5 | F08-01..03 | `tests/architecture/test_no_legacy.py`；构建产物检查 | todo |
+| F08-05 | 打包、依赖、供应链检查 | 12 §5、11 §9 | F08-04 | `uv build`；wheel/sdist 只含 justkernel | todo |
+| F08-06 | 迁移/兼容验收 | 12 §4 | F08-01..05 | `tests/e2e/test_migration.py` | todo |
+
+#### P9 加固、规模与真实验收
+
+| ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
+| --- | --- | --- | --- | --- | --- |
+| F09-01 | 混沌/恢复演练 | 11 §7 | F08-06 | `tests/chaos/`；kill -9/设备断开/磁盘满 | todo |
+| F09-02 | 约 100 agent 规模与长跑 | 01 §3、12 §4 | F08-06 | `tests/e2e/test_scale_100.py`；无孤儿/租约泄漏 | todo |
+| F09-03 | 多模型路由验收 | 13 §9 | F08-06 | `tests/e2e/test_model_routing.py`；换模不丢反馈 | todo |
+| F09-04 | 真实 CANN + 真实模型闭环 | 13 §10 | F09-01..03 | `tests/e2e/test_real_acceptance.py`；证据 zip | todo |
+| F09-05 | 安全、可观测性、运行手册 | 10 §3–5 | F09-04 | 审计/脱敏/指标/手册检查 | todo |
+| F09-06 | 最终验收报告 | 12 §4、13 §10 | F09-01..05 | `docs/refactor/final-acceptance.md`；15 场景 + 10 闭环 | todo |
+
+### 3.4 推送约定
+
+- 远端：`origin` = `https://github.com/wuooo339/JustKernel.git`
+- 目标分支：`refactor`
+- 当前本地分支：`refactor/justkernel-v2`（`Refactor/` worktree）
+- 每次 feature 完成后：
+  ```bash
+  git push origin HEAD:refactor
+  git ls-remote origin refs/heads/refactor
+  ```
+- 推送前必须满足：目标测试通过、全量 `pytest` 通过、`mypy`/`ruff` 干净。
+- 推送失败时不得把 TODO 标为 `done`；在进度表记录失败原因并重试。
 
 ---
 
@@ -665,7 +827,7 @@ uv run pytest -q
 
 ---
 
-## 3. 关键路径与并行
+## 4. 关键路径与并行
 
 ```text
 P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
@@ -679,7 +841,7 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 
 ---
 
-## 4. 里程碑门禁
+## 5. 里程碑门禁
 
 | 门禁 | 时点 | 必须证明 |
 | --- | --- | --- |
@@ -692,9 +854,9 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 
 ---
 
-## 5. 验收场景映射
+## 6. 验收场景映射
 
-### 5.1 SPEC 12 §4 的 15 个验收场景
+### 6.1 SPEC 12 §4 的 15 个验收场景
 
 | # | 场景 | 主要覆盖 |
 | --- | --- | --- |
@@ -714,7 +876,7 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 | 14 | 无性能目标不强制 PROFILE；性能目标按冻结策略；子集/未执行不可 best | P5/P6 |
 | 15 | 跨目录同算子注册冲突、跨集群同设备争抢被拦截；预算不足正确停止 | P2/P6/P9 |
 
-### 5.2 SPEC 13 §10 的 10 条闭环验收
+### 6.2 SPEC 13 §10 的 10 条闭环验收
 
 | # | 验收 | 主要覆盖 |
 | --- | --- | --- |
@@ -729,7 +891,7 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 | 9 | bootstrap 预算耗尽输出无 best 失败报告；最终验证预算独立 | P6 |
 | 10 | 不同角色/实例不同模型；路由可追踪；换模不丢反馈 | P4/P9 |
 
-### 5.3 SPEC 11 §3 的 12 个高风险失败模式
+### 6.3 SPEC 11 §3 的 12 个高风险失败模式
 
 | # | 失败模式 | 主要测试 |
 | --- | --- | --- |
@@ -748,7 +910,7 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 
 ---
 
-## 6. 风险与既定决策
+## 7. 风险与既定决策
 
 | 风险/决策 | 处理 |
 | --- | --- |
@@ -765,14 +927,14 @@ P0 → P1 → P2 → P3 → P5 → P6 → P7 → P8 → P9
 
 ---
 
-## 7. 进度记录
+## 8. 进度记录
 
 | 日期 | 任务号/里程碑 | 状态 | 证据（命令/测试/commit） | 阻塞 |
 | --- | --- | --- | --- | --- |
-| 2026-10-21 | P0-01..P0-07 | 完成并迁移到 `Refactor/` | 旧基线 229 passed / 2 skipped；新项目本地 18 passed（含 `../JustKernel` characterization）；干净 checkout 模拟 14 passed；relocation `b60e6e4`；mypy success；ruff check/format clean；证据见 `docs/refactor/p0-exit-report.txt`、`docs/refactor/relocation-report.md` | 无 |
+| 2026-10-21 | P0-01..P0-07 | 完成并迁移到 `Refactor/` | 旧基线 229 passed / 2 skipped；新项目本地 18 passed（含 `../JustKernel` characterization）；干净 checkout 模拟 14 passed；relocation `b60e6e4`；mypy success；ruff check/format clean；证据见 `docs/refactor/p0-exit-report.txt`、`docs/refactor/relocation-report.md`、`docs/refactor/feature-log.md` | 无 |
 
 ---
 
-## 8. 下一步
+## 9. 下一步
 
-P0 已完成。下一步：写 `plan-01-foundation`（P1 的详细 TDD plan），然后进入 P1 领域模型与执行契约。
+P0 已完成并推送。下一步：从 **F01-01 Shared primitives** 开始；先写 `docs/superpowers/plans/2026-10-21-f01-01-shared-primitives.md`，按第 3.1 节完成 RED→GREEN→验证→commit→push。
