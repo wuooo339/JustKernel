@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.scripts]
-justkernel = "aworker.lab.cli:main"
+justkernel = "justkernel.bootstrap.cli:main"
 aworker = "aworker.cli:main"
 aworker-lab = "aworker.lab.cli:main"
 
@@ -53,7 +53,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/aworker"]
+packages = ["src/justkernel", "src/aworker"]
 
 [tool.hatch.build]
 exclude = [
@@ -81,7 +81,7 @@ extend-exclude = ["src/aworker/lab/resources/confusion_mul_grad/project"]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["aworker"]
+known-first-party = ["justkernel", "aworker"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
