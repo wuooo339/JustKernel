@@ -80,6 +80,23 @@ class CandidateRepositoryPort(Protocol):
     def list_by_cluster(self, cluster_id: ClusterId) -> tuple[CandidateVersion, ...]: ...
 
 
+# ---- operator registry ------------------------------------------------------
+@runtime_checkable
+class OperatorRegistryPort(Protocol):
+    def reserve(
+        self,
+        *,
+        operator_id: str,
+        cluster_id: str,
+        journal_ref: str,
+        reservation_key: str,
+        now_ms: int,
+        state: str = "INITIALIZING",
+    ) -> object: ...
+
+    def release(self, cluster_id: str, state: str) -> bool: ...
+
+
 # ---- messaging --------------------------------------------------------------
 @runtime_checkable
 class TestRecordRepositoryPort(Protocol):

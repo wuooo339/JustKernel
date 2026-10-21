@@ -354,3 +354,11 @@
 **Why:** A record object alone is not evidence. The gate closes the gap between a PASS-typed record and a real, executed, checksummed archive.
 
 **Cost if wrong:** Payload construction remains the caller's responsibility; the chain does not yet synthesize task/context/skill payloads from services. A crash after artifact store success but before record seal can leave an unreferenced artifact.
+
+## D-045 Validated cluster startup
+
+**Decision:** `ClusterStartService` validates the full startup request before reserving the operator: start-mode source rules, tester/profiler skills, backend allow-list, role counts, capacity, and timestamps. It preallocates the cluster id, reserves the global registry, creates the supervisor/initial roles, then transitions to RUNNING. Failures close created agents, fail an initializing cluster, and release the reservation.
+
+**Why:** Startup spans several aggregates and a global reservation; validating first avoids orphaned reservations, while role creation must not exceed `max_agents`.
+
+**Cost if wrong:** Initial role skills are currently empty; role skill loading and IMPORT baseline candidate creation remain F06-02+ work. A process crash between reservation and cleanup still requires recovery.

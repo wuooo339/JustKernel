@@ -25,9 +25,10 @@ class ClusterService:
         max_agents: int = 100,
         created_at: int,
         continued_from_cluster_id: ClusterId | None = None,
+        cluster_id: ClusterId | None = None,
     ) -> Cluster:
         cluster = Cluster(
-            id=self.ids.cluster_id(),
+            id=cluster_id or self.ids.cluster_id(),
             operator_id=operator_id,
             supervisor_id=supervisor_id,
             operator_spec_ref=operator_spec_ref,
