@@ -130,3 +130,11 @@
 **Why:** Candidate source is evidence, not mutable workspace state. Keeping best selection independent prevents a passing test from silently changing the candidate entity or an unvalidated nomination from becoming best.
 
 **Cost if wrong:** Re-importing or re-submitting the same source must use a new CandidateId; best validation needs final task/record IDs.
+
+## D-017 TestRecord, lease, and report boundaries
+
+**Decision:** TestRecord is immutable and rejects contradictory executed/audit fields. HardwareLease is a mutable QUEUED→LEASED→RELEASED/EXPIRED machine with timestamp consistency. ExplorationReport is frozen, revisioned, and requires best (when present) to be one of its candidates.
+
+**Why:** TestRecord is evidence, not scratch state; audit records must never look like executed PASS. Lease transitions are safety-critical, and report references must stay internally consistent.
+
+**Cost if wrong:** Re-testing creates a new record; a lease recovery path must use a new lease or an explicit expired-state transition.
