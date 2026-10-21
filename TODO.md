@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P2 进行中；F02-01/F02-02 已完成，下一个 feature：F02-03。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P2 进行中；F02-01～F02-03 已完成，下一个 feature：F02-04。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -137,7 +137,7 @@ tests/
 | --- | --- | --- | --- | --- | --- |
 | F02-01 | journal schema、迁移器、部分唯一索引、事件触发器 | 08 §3/§12 | F01-09 | `tests/adapters/test_schema.py` 8 passed；全量 155 passed；commit `5ddaf51` | done |
 | F02-02 | 仓储、UnitOfWork、事件 append、outbox | 08 §3/§6 | F02-01 | `tests/adapters/test_uow_events.py` 5 passed；全量 160 passed；commit `baeb079` | done |
-| F02-03 | 内容寻址制品库 | 08 §4 | F02-01 | `tests/adapters/test_artifact_store.py`；哈希/路径/权限/去重 | todo |
+| F02-03 | 内容寻址制品库 | 08 §4 | F02-01 | `tests/adapters/test_artifact_store.py` 7 passed；全量 168 passed；commit `fe99061` | done |
 | F02-04 | 投影与回放 | 08 §5 | F02-02 | `tests/adapters/test_projections.py`；live/replay 一致 | todo |
 | F02-05 | 全局 operator registry | 08 §11 | F02-01 | `tests/adapters/test_registry.py`；同算子活动集群唯一 | todo |
 | F02-06 | 全局设备账本与 fencing | 08 §11 | F02-01 | `tests/adapters/test_hardware_ledger.py`；跨集群租约唯一/旧 token 拒绝 | todo |
@@ -281,7 +281,8 @@ tests/
 | 2026-10-21 | F01-08 | done | comm tests 23 passed；全量 131 passed；mypy/ruff clean；D-018 | `b5b5bc4` / `origin/refactor` @ `468f3e5` |
 | 2026-10-21 | F01-09 | done | invariants/events/error-codes/inbox 16 passed；全量 147 passed；mypy/ruff clean；D-019 | `8c08d45` (+ registry fix) / `origin/refactor` @ `b09ae4f` |
 | 2026-10-21 | F02-01 | done | schema tests 8 passed；全量 155 passed；mypy/ruff clean；D-020 | `5ddaf51` / `origin/refactor` @ `6d75319` |
-| 2026-10-21 | F02-02 | done | UoW/event/outbox tests 5 passed；全量 160 passed；mypy/ruff clean；D-021 | `baeb079` / `origin/refactor` |
+| 2026-10-21 | F02-02 | done | UoW/event/outbox tests 5 passed；全量 160 passed；mypy/ruff clean；D-021 | `baeb079` / `origin/refactor` @ `7c91cf9` |
+| 2026-10-21 | F02-03 | done | artifact tests 7 passed + error test 1；全量 168 passed；mypy/ruff clean；D-022 | `fe99061` / `origin/refactor` |
 
 ---
 
