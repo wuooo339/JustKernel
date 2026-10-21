@@ -52,3 +52,4 @@ class ErrorCode(StrEnum):
     SKILL_INVALID = "skill.invalid"
     TOOL_DENIED = "tool.denied"
     TOOL_NOT_FOUND = "tool.not_found"
+    TOOL_BACKEND_INVALID = "tool.backend_invalid"

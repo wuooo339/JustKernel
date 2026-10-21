@@ -330,3 +330,11 @@
 **Why:** A TestRecord is only evidence if its archive is complete and tamper-evident. Separating format/readers, builder, and validator keeps each domain module under 300 lines.
 
 **Cost if wrong:** Payloads are still supplied by the backend/service; F05-06 must ensure real source/log/results replace placeholders. Profile/trace external references are not yet represented.
+
+## D-042 CANN simulation backend
+
+**Decision:** `CannSimulationBackend` implements `ToolBackendPort` with immutable request capture, deterministic job IDs/execution caching, and explicit `CannEnvironment` values. `FakeCannRunner` produces PASS/FAIL/ERROR evidence without subprocesses or devices. Environment fingerprints are canonical JSON digests including the selected device.
+
+**Why:** The first tester/profiler flow needs a realistic, testable backend contract without requiring CANN hardware. Unknown toolchain values are rejected rather than inferred.
+
+**Cost if wrong:** The fake runner is not a compiler/device; real CANN command execution and artifact packaging remain future adapter work. The backend does not yet persist results or release leases.
