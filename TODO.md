@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P3 进行中；F03-01/F03-02 已完成，下一个 feature：F03-03。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P3 进行中；F03-01～F03-03 已完成，下一个 feature：F03-04。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -150,7 +150,7 @@ tests/
 | --- | --- | --- | --- | --- | --- |
 | F03-01 | 端口定义与确定性 fakes | 03 §3.1、11 §5 | F02-08 | `tests/application/test_ports_fakes.py` 7 passed；全量 198 passed；commit `8ac9def` | done |
 | F03-02 | Cluster 生命周期用例 | 04 §4.1、06 §5/§8 | F03-01 | `tests/application/test_cluster_lifecycle.py` 5 passed；全量 203 passed；commit `f7a04a0` | done |
-| F03-03 | Agent/worker 生命周期与任务派发 | 04 §4.2、06 §6–7 | F03-01 | `tests/application/test_worker_lifecycle.py`；越权/上限/关闭 | todo |
+| F03-03 | Agent/worker 生命周期与任务派发 | 04 §4.2、06 §6–7 | F03-01 | `tests/application/test_worker_lifecycle.py` 6 passed；全量 209 passed；commit `906390d` | done |
 | F03-04 | Candidate 提交与导入用例 | 04 §4.5、13 §2 | F03-01 | `tests/application/test_candidate_commit.py` | todo |
 | F03-05 | ToolJob/TestRecord 封存用例 | 13 §5、08 §6 | F03-01 | `tests/application/test_testing_flow.py`；一 Task 一 job | todo |
 | F03-06 | BestSelection/报告/预算用例 | 07 §7、13 §6–7 | F03-02/05 | `tests/application/test_best_report.py`；无证据拒绝 | todo |
@@ -289,7 +289,8 @@ tests/
 | 2026-10-21 | F02-07 | done | recovery tests 2 passed；全量 190 passed；mypy/ruff clean；D-026 | `cc558e1` / `origin/refactor` @ `8a065f9` |
 | 2026-10-21 | F02-08 | done | adapters 43 passed；全量 191 passed；mypy/ruff clean；跨适配器 suite | `4c2818b` / `origin/refactor` @ `08a382d` |
 | 2026-10-21 | F03-01 | done | ports/fakes tests 7 passed；全量 198 passed；mypy/ruff clean；D-027 | `8ac9def` / `origin/refactor` @ `d576d36` |
-| 2026-10-21 | F03-02 | done | cluster lifecycle tests 5 passed；全量 203 passed；mypy/ruff clean；D-028 | `f7a04a0` / `origin/refactor` |
+| 2026-10-21 | F03-02 | done | cluster lifecycle tests 5 passed；全量 203 passed；mypy/ruff clean；D-028 | `f7a04a0` / `origin/refactor` @ `bcc5acf` |
+| 2026-10-21 | F03-03 | done | worker lifecycle tests 6 passed；全量 209 passed；mypy/ruff clean；D-029 | `906390d` / `origin/refactor` |
 
 ---
 
