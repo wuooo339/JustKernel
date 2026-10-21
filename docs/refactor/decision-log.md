@@ -338,3 +338,11 @@
 **Why:** The first tester/profiler flow needs a realistic, testable backend contract without requiring CANN hardware. Unknown toolchain values are rejected rather than inferred.
 
 **Cost if wrong:** The fake runner is not a compiler/device; real CANN command execution and artifact packaging remain future adapter work. The backend does not yet persist results or release leases.
+
+## D-043 TaskContext authorization
+
+**Decision:** `TaskContextService` creates immutable context snapshots only for the task's mentor, requires non-GENERATE base refs to match the task candidate/source digest/cluster, rejects already-expired grants, and authorizes artifact reads against task worker/mentor, digest, read-only scope prefix, and expiry. Artifact bytes are returned only after authorization.
+
+**Why:** Context and feedback are the optimizer's entire input boundary; enforcing binding and grant checks prevents a task from reading another task's private artifacts.
+
+**Cost if wrong:** Contexts are not yet persisted by a repository, and feedback record/skill/environment digests are not cross-validated here. F05-06 must persist the context ref/digest and package real evidence.
