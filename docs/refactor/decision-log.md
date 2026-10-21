@@ -202,3 +202,11 @@
 **Why:** Device arbitration must be global and safe across clusters/processes. Fencing prevents an old/stale executor from starting or overwriting a newer execution.
 
 **Cost if wrong:** A device can remain blocked after a crash until the service confirms the old process stopped; that is intentional over unsafe reassignment.
+
+## D-026 Startup recovery matrix
+
+**Decision:** Startup recovery interrupts RUNNING agents/tasks, pauses RUNNING/CONVERGING clusters while preserving phase, reports pending outbox rows, and reconciles journal leases with the global hardware ledger. Missing/unknown global leases quarantine the device; recovery never reruns a turn/task/test and is idempotent.
+
+**Why:** A crash must leave an auditable paused state, not an automatic replay. Device safety wins over availability when the old execution cannot be confirmed stopped.
+
+**Cost if wrong:** Operators must explicitly resume/re-dispatch after reviewing the recovery report; a device may remain quarantined until cleared.
