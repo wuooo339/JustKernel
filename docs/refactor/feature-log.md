@@ -34,4 +34,5 @@ A feature is `done` only after its tests pass, it is committed, and the commit i
 | F02-08 | 2026-10-21 | `4c2818b` | adapters 43 passed; full 191 passed; mypy/ruff clean; cross-adapter suite | `origin/refactor` @ `08a382d` |
 | F03-01 | 2026-10-21 | `8ac9def` | ports/fakes tests 7 passed; full 198 passed; mypy/ruff clean; D-027 | `origin/refactor` @ `d576d36` |
 | F03-02 | 2026-10-21 | `f7a04a0` | cluster lifecycle tests 5 passed; full 203 passed; mypy/ruff clean; D-028 | `origin/refactor` @ `bcc5acf` |
-| F03-03 | 2026-10-21 | `906390d` | worker lifecycle tests 6 passed; full 209 passed; mypy/ruff clean; D-029 | `origin/refactor` (with F03-03 docs commit) |
+| F03-03 | 2026-10-21 | `906390d` | worker lifecycle tests 6 passed; full 209 passed; mypy/ruff clean; D-029 | `origin/refactor` @ `d2b2652` |
+| F03-04 | 2026-10-21 | `538b247` | candidate tests 7 passed; full 216 passed; mypy/ruff clean; D-030 | `origin/refactor` (with F03-04 docs commit) |
