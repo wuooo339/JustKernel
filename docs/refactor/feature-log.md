@@ -48,4 +48,5 @@ A feature is `done` only after its tests pass, it is committed, and the commit i
 | F05-01 | 2026-10-21 | `92c8768` | tool-job tests 7 passed; full 272 passed; mypy/ruff clean; D-039 | `origin/refactor` @ `8959bd7` |
 | F05-02 | 2026-10-21 | `dff7b7e` | hardware-queue tests 6 passed; full 278 passed; mypy/ruff clean; D-040 | `origin/refactor` @ `f69b8d7` |
 | F05-03 | 2026-10-21 | `dca59d4` | record-zip tests 12 passed; full 290 passed; mypy/ruff clean; D-041 | `origin/refactor` @ `4b3a3b2` |
-| F05-04 | 2026-10-21 | `cdbe123` | cann backend tests 7 passed; full 297 passed; mypy/ruff clean; D-042 | `origin/refactor` (with F05-04 docs commit) |
+| F05-04 | 2026-10-21 | `cdbe123` | cann backend tests 7 passed; full 297 passed; mypy/ruff clean; D-042 | `origin/refactor` @ `9dd98a9` |
+| F05-05 | 2026-10-21 | `9c83732` | task-context tests 7 passed; full 304 passed; mypy/ruff clean; D-043 | `origin/refactor` (with F05-05 docs commit) |
