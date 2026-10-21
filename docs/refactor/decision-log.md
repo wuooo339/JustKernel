@@ -210,3 +210,11 @@
 **Why:** A crash must leave an auditable paused state, not an automatic replay. Device safety wins over availability when the old execution cannot be confirmed stopped.
 
 **Cost if wrong:** Operators must explicitly resume/re-dispatch after reviewing the recovery report; a device may remain quarantined until cleared.
+
+## D-027 Application ports and deterministic fakes
+
+**Decision:** Application services depend on structural `Protocol` ports in `application/ports.py`, never on platform adapters. Deterministic in-memory fakes live in `application/fakes.py`; fakes use `FakeIds`/explicit time and never perform I/O.
+
+**Why:** Use cases can be tested without SQLite, models, devices, or HTTP, and adapter replacements stay behind ports.
+
+**Cost if wrong:** A port signature change updates its fake and adapter together; fakes are not evidence of real device behavior.

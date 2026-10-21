@@ -1,0 +1,131 @@
+"""Application ports (dependency inversion boundaries)."""
+
+from __future__ import annotations
+
+from typing import Protocol, runtime_checkable
+
+from justkernel.agent.agent import AgentInstance
+from justkernel.agent.skills import SkillRef
+from justkernel.agent.state import Role
+from justkernel.cluster.cluster import Cluster
+from justkernel.comm.channels import Channel
+from justkernel.comm.message import Message
+from justkernel.shared.digest import Digest
+from justkernel.shared.ids import (
+    AgentId,
+    BestSelectionId,
+    CandidateId,
+    ClusterId,
+    DirectionId,
+    EventId,
+    LeaseId,
+    MessageId,
+    TaskId,
+    TestRecordId,
+)
+from justkernel.task.task import Task
+
+
+# ---- IdFactoryPort ----------------------------------------------------------
+@runtime_checkable
+class IdFactoryPort(Protocol):
+    def cluster_id(self) -> ClusterId: ...
+    def agent_id(self) -> AgentId: ...
+    def direction_id(self) -> DirectionId: ...
+    def task_id(self) -> TaskId: ...
+    def candidate_id(self) -> CandidateId: ...
+    def test_record_id(self) -> TestRecordId: ...
+    def message_id(self) -> MessageId: ...
+    def lease_id(self) -> LeaseId: ...
+    def best_selection_id(self) -> BestSelectionId: ...
+    def event_id(self) -> EventId: ...
+
+
+# ---- repositories -----------------------------------------------------------
+@runtime_checkable
+class ClusterRepositoryPort(Protocol):
+    def insert(self, cluster: Cluster) -> None: ...
+    def update(self, cluster: Cluster, expected_version: int) -> int: ...
+    def get(self, cluster_id: ClusterId) -> Cluster: ...
+    def version(self, cluster_id: ClusterId) -> int: ...
+
+
+@runtime_checkable
+class AgentRepositoryPort(Protocol):
+    def insert(self, agent: AgentInstance) -> None: ...
+    def update(self, agent: AgentInstance, expected_version: int) -> int: ...
+    def get(self, agent_id: AgentId) -> AgentInstance: ...
+    def version(self, agent_id: AgentId) -> int: ...
+
+
+@runtime_checkable
+class TaskRepositoryPort(Protocol):
+    def insert(self, task: Task) -> None: ...
+    def update(self, task: Task, expected_version: int) -> int: ...
+    def get(self, task_id: TaskId) -> Task: ...
+    def version(self, task_id: TaskId) -> int: ...
+
+
+# ---- messaging --------------------------------------------------------------
+@runtime_checkable
+class MessageBusPort(Protocol):
+    def publish(self, message: Message) -> bool: ...
+    def messages(self, channel: Channel | None = None) -> tuple[Message, ...]: ...
+
+
+# ---- runtime / tools / hardware --------------------------------------------
+@runtime_checkable
+class AgentRuntimePort(Protocol):
+    def create_agent(
+        self,
+        role: Role,
+        model_profile: str,
+        skills: tuple[SkillRef, ...],
+        mentor_id: AgentId | None = None,
+    ) -> AgentId: ...
+
+    def start_turn(self, agent_id: AgentId, input: str) -> str: ...
+    def send_message(self, agent_id: AgentId, message: str) -> None: ...
+    def close_agent(self, agent_id: AgentId) -> None: ...
+    def cancel_turn(self, turn_id: str) -> None: ...
+
+
+@runtime_checkable
+class ToolBackendPort(Protocol):
+    def submit_test(
+        self,
+        *,
+        task_id: TaskId,
+        candidate_id: CandidateId,
+        skill_ref: SkillRef,
+        case_selection: tuple[str, ...],
+        timeout_s: int,
+        device: str | None = None,
+    ) -> str: ...
+
+    def submit_profile(
+        self,
+        *,
+        task_id: TaskId,
+        candidate_id: CandidateId,
+        skill_ref: SkillRef,
+        case_selection: tuple[str, ...],
+        timeout_s: int,
+        device: str | None = None,
+    ) -> str: ...
+
+
+@runtime_checkable
+class HardwareQueuePort(Protocol):
+    def acquire(self, task_id: TaskId, device: str, ttl_ms: int, now_ms: int) -> LeaseId: ...
+    def release(self, lease_id: LeaseId, now_ms: int) -> None: ...
+    def status(self, device: str | None = None) -> tuple[LeaseId, ...]: ...
+
+
+# ---- artifacts --------------------------------------------------------------
+@runtime_checkable
+class ArtifactStorePort(Protocol):
+    def put_bytes(self, data: bytes) -> Digest: ...
+    def get_bytes(self, digest: Digest) -> bytes: ...
+    def verify(self, digest: Digest) -> bool: ...
+    def ref_for(self, digest: Digest) -> str: ...
