@@ -64,5 +64,9 @@ class MessageId(Identifier):
     """Identifier of an idempotent message."""
 
 
+class EventId(Identifier):
+    """Identifier of a domain event."""
+
+
 class LeaseId(Identifier):
     """Identifier of a hardware lease."""

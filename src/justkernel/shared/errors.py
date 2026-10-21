@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from justkernel.shared.error_codes import ErrorCode
+
 
 # ---- JustKernelError --------------------------------------------------------
 class JustKernelError(Exception):
     """Base error with a stable machine-readable code."""
 
-    code = "justkernel_error"
+    code = ErrorCode.JUSTKERNEL_ERROR
 
     def __init__(self, message: str) -> None:
         self.message = message
@@ -16,24 +18,24 @@ class JustKernelError(Exception):
 
 # ---- validation errors ------------------------------------------------------
 class InvalidIdError(JustKernelError):
-    code = "invalid_id"
+    code = ErrorCode.INVALID_ID
 
 
 class InvalidDigestError(JustKernelError):
-    code = "invalid_digest"
+    code = ErrorCode.INVALID_DIGEST
 
 
 class InvalidJsonError(JustKernelError):
-    code = "invalid_json"
+    code = ErrorCode.INVALID_JSON
 
 
 class InvalidClockError(JustKernelError):
-    code = "invalid_clock"
+    code = ErrorCode.INVALID_CLOCK
 
 
 class InvalidPrincipalError(JustKernelError):
-    code = "invalid_principal"
+    code = ErrorCode.INVALID_PRINCIPAL
 
 
 class InvalidProjectPathError(JustKernelError):
-    code = "invalid_project_path"
+    code = ErrorCode.INVALID_PROJECT_PATH

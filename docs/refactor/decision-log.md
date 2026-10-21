@@ -146,3 +146,11 @@
 **Why:** Prompt-level restrictions are not an ACL boundary. Centralizing access and message/channel consistency keeps worker isolation testable and prevents routing mistakes before persistence.
 
 **Cost if wrong:** A new channel/message type must be added to both the channel table and ACL matrix, with a test for each role.
+
+## D-019 Stable codes, events, and invariants
+
+**Decision:** All error classes use the `ErrorCode` registry. Domain events use one immutable envelope with typed event names. Cross-aggregate invariants are pure validators in `cluster/invariants.py`; MessageId deduplication is a stateful inbox.
+
+**Why:** Stable codes make API/error handling testable; one event envelope keeps replay/serialization consistent; pure validators can be reused by application services before persistence.
+
+**Cost if wrong:** Adding a code/event/invariant requires updating the registry and its table-driven test.
