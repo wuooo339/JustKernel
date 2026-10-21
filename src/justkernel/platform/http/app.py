@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from justkernel import __version__
+from justkernel.platform.http.context import ApiContext
 from justkernel.platform.http.errors import (
     ApiError,
     ProblemDetail,
@@ -15,6 +16,22 @@ from justkernel.platform.http.errors import (
     request_id_for,
 )
 from justkernel.platform.http.idempotency import IdempotencyMiddleware, IdempotencyStore
+from justkernel.platform.http.routes_agents import register_agent_routes
+from justkernel.platform.http.routes_candidates import (
+    register_candidate_routes,
+    register_record_routes,
+)
+from justkernel.platform.http.routes_cluster import (
+    register_cluster_command_routes,
+    register_cluster_read_routes,
+)
+from justkernel.platform.http.routes_misc import (
+    register_board_routes,
+    register_hardware_routes,
+    register_message_routes,
+    register_report_routes,
+)
+from justkernel.platform.http.routes_tasks import register_task_routes
 from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import JustKernelError
 
@@ -69,13 +86,32 @@ def _install_handlers(app: FastAPI) -> None:
 
 
 # ---- create_app -------------------------------------------------------------
-def create_app(*, idempotency: IdempotencyStore | None = None) -> FastAPI:
+def _register_api_routes(app: FastAPI, context: ApiContext) -> None:
+    register_cluster_read_routes(app, context)
+    register_cluster_command_routes(app, context)
+    register_agent_routes(app, context)
+    register_task_routes(app, context)
+    register_candidate_routes(app, context)
+    register_record_routes(app, context)
+    register_report_routes(app, context)
+    register_board_routes(app, context)
+    register_message_routes(app, context)
+    register_hardware_routes(app, context)
+
+
+def create_app(
+    *,
+    idempotency: IdempotencyStore | None = None,
+    context: ApiContext | None = None,
+) -> FastAPI:
     app = FastAPI(title="JustKernel", version=__version__)
     app.add_middleware(
         IdempotencyMiddleware,
         store=idempotency or IdempotencyStore(),
     )
     _install_handlers(app)
+    if context is not None:
+        _register_api_routes(app, context)
 
     @app.get("/api/v1/system/health")
     def health() -> dict[str, str]:

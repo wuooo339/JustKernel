@@ -179,6 +179,9 @@ class InMemoryTaskRepository:
     def version(self, task_id: TaskId) -> int:
         return self._versions[task_id]
 
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[Task, ...]:
+        return tuple(task for task in self._items.values() if task.cluster_id == cluster_id)
+
 
 class InMemoryModelProfileRegistry:
     def __init__(self) -> None:

@@ -93,3 +93,68 @@ class QueueView:
     devices: tuple[dict[str, object], ...]
     queued: tuple[dict[str, object], ...]
     leased: tuple[dict[str, object], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class DirectionView:
+    id: str
+    mentor_id: str
+    objective: str
+    constraints: tuple[str, ...]
+    state: str
+    summary: str | None
+    created_at: int
+    closed_at: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class TaskView:
+    id: str
+    cluster_id: str
+    mentor_id: str
+    worker_id: str
+    kind: str
+    direction_id: str
+    candidate_id: str | None
+    state: str
+    objective: str
+    result_ref: str | None
+    retry_of_task_id: str | None
+    created_at: int
+    finished_at: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class ToolJobReadView:
+    job_id: str
+    task_id: str
+    state: str
+    record_id: str | None
+    error: str | None
+    queue_position: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class MessageView:
+    id: str
+    seq: int
+    channel: str
+    type: str
+    sender: str
+    recipient: str | None
+    payload: dict[str, object]
+    created_at: int
+
+
+@dataclass(frozen=True, slots=True)
+class ReportView:
+    id: str
+    cluster_id: str
+    best_candidate_id: str | None
+    revision: int
+    directions: tuple[dict[str, object], ...]
+    candidates: tuple[str, ...]
+    records: tuple[str, ...]
+    failures: tuple[str, ...]
+    decision: str
+    created_at: int

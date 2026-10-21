@@ -442,3 +442,11 @@
 **Why:** P7 routes need one contract for read models, errors and retries before any feature endpoints are added. Keeping the adapter outside domain/application preserves dependency boundaries.
 
 **Cost if wrong:** The idempotency store is process-local and unbounded; production persistence/eviction is pending. The app currently exposes only health, with cluster/agent routes in F07-02.
+
+## D-056 HTTP read and lifecycle routes
+
+**Decision:** Add route groups for cluster read/actions/create, agents/directions, tasks/tool-jobs, candidates/records/download, report/board/messages/hardware. `ApiContext` injects repos/services; `X-Agent-Id` enforces task-context/tool-job object ACL. `POST /clusters` maps a validated HTTP body into `StartClusterRequest`; all cluster actions use the existing idempotency middleware.
+
+**Why:** The UI/API needs DTO-only reads and auditable commands before SSE/A2A can be layered on. Keeping route groups separate respects file-size gates.
+
+**Cost if wrong:** Task cancellation, agent close, human message posting and full event pagination remain for later features. Task context returns its authorized snapshot metadata, not the full resource because contexts are not yet persisted; hardware device inventory is empty until a device config adapter exists.

@@ -21,6 +21,10 @@ class IdempotencyConflictError(JustKernelError):
     code = ErrorCode.IDEMPOTENCY_CONFLICT
 
 
+class NotFoundError(JustKernelError):
+    code = ErrorCode.NOT_FOUND
+
+
 # ---- ProblemDetail ----------------------------------------------------------
 @dataclass(frozen=True, slots=True)
 class ProblemDetail:
@@ -51,6 +55,7 @@ class ProblemDetail:
 _STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.ACL_DENIED: 403,
     ErrorCode.ARTIFACT_MISSING: 404,
+    ErrorCode.NOT_FOUND: 404,
     ErrorCode.REGISTRY_CONFLICT: 409,
     ErrorCode.REGISTRY_OPERATOR_ACTIVE: 409,
     ErrorCode.CONCURRENCY_CONFLICT: 409,
