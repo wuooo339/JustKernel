@@ -9,9 +9,9 @@
 # secserg. It never prints a token.
 #
 # GitHub connectivity is intermittent on this network. By default the script
-# tries normal DNS and then several known GitHub edge IPs with a short connect
-# timeout. Set GITHUB_RESOLVE_IP to force one address; set it to an empty
-# string to use normal DNS only.
+# tries normal DNS and then several known GitHub edge IPs with short timeouts.
+# Set GITHUB_RESOLVE_IP to force one address; set it to an empty string to use
+# normal DNS only.
 set -euo pipefail
 
 remote="${REMOTE:-origin}"
@@ -35,22 +35,38 @@ trap restore EXIT
 
 gh auth switch --user gresces >/dev/null
 
-push_once() {
+git_args_for() {
   local ip="$1"
-  local args=(-c "http.connectTimeout=15")
+  local args=(
+    -c "http.connectTimeout=10"
+    -c "http.lowSpeedLimit=1"
+    -c "http.lowSpeedTime=20"
+  )
   if [[ -n "$ip" ]]; then
     args+=(-c "http.curloptResolve=github.com:443:${ip}")
   fi
+  printf '%s\n' "${args[@]}"
+}
+
+push_once() {
+  local ip="$1"
+  local args=()
+  mapfile -t args < <(git_args_for "$ip")
   echo "push attempt: ${ip:-dns}" >&2
-  GIT_TERMINAL_PROMPT=0 git "${args[@]}" push -u "$remote" "$target"
+  timeout 60 env GIT_TERMINAL_PROMPT=0 git "${args[@]}" push -u "$remote" "$target"
+}
+
+show_remote() {
+  local ip="$1"
+  local args=()
+  mapfile -t args < <(git_args_for "$ip")
+  timeout 20 env GIT_TERMINAL_PROMPT=0 git "${args[@]}" ls-remote "$remote" refs/heads/refactor
 }
 
 for ip in "${candidates[@]}"; do
   if push_once "$ip"; then
     echo "remote tip:"
-    GIT_TERMINAL_PROMPT=0 git -c "http.connectTimeout=15" \
-      ${ip:+-c "http.curloptResolve=github.com:443:${ip}"} \
-      ls-remote "$remote" refs/heads/refactor
+    show_remote "$ip" || true
     exit 0
   fi
   echo "push attempt failed: ${ip:-dns}" >&2
