@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P2 进行中；F02-01～F02-06 已完成，下一个 feature：F02-07。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P2 进行中；F02-01～F02-07 已完成，下一个 feature：F02-08。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -141,7 +141,7 @@ tests/
 | F02-04 | 投影与回放 | 08 §5 | F02-02 | `tests/adapters/test_projections.py` 3 passed；全量 171 passed；live/replay 一致；commit `7843d76` | done |
 | F02-05 | 全局 operator registry | 08 §11 | F02-01 | `tests/adapters/test_registry.py` 8 passed；全量 179 passed；commit `b044126` | done |
 | F02-06 | 全局设备账本与 fencing | 08 §11 | F02-01 | `tests/adapters/test_hardware_ledger.py` 9 passed；全量 188 passed；commit `a8a88e5` | done |
-| F02-07 | 启动恢复矩阵 | 08 §7 | F02-02..06 | `tests/adapters/test_recovery.py`；Agent/Task/Lease/Cluster/Report | todo |
+| F02-07 | 启动恢复矩阵 | 08 §7 | F02-02..06 | `tests/adapters/test_recovery.py` 2 passed；全量 190 passed；Agent/Task/Lease/Cluster；commit `cc558e1` | done |
 | F02-08 | SQLite/全局服务适配器套件 | 11 §6 | F02-01..07 | `uv run pytest -q tests/adapters` | todo |
 
 ### 4.4 P3 应用用例、端口与 Fakes
@@ -285,7 +285,8 @@ tests/
 | 2026-10-21 | F02-03 | done | artifact tests 7 passed + error test 1；全量 168 passed；mypy/ruff clean；D-022 | `fe99061` / `origin/refactor` @ `d0c8560` |
 | 2026-10-21 | F02-04 | done | projection tests 3 passed；全量 171 passed；live/replay snapshot 一致；D-023 | `7843d76` / `origin/refactor` @ `25b7e93` |
 | 2026-10-21 | F02-05 | done | registry tests 8 passed；全量 179 passed；mypy/ruff clean；D-024 | `b044126` / `origin/refactor` @ `d3e3303` |
-| 2026-10-21 | F02-06 | done | hardware ledger tests 9 passed；全量 188 passed；mypy/ruff clean；D-025 | `a8a88e5` / `origin/refactor` |
+| 2026-10-21 | F02-06 | done | hardware ledger tests 9 passed；全量 188 passed；mypy/ruff clean；D-025 | `a8a88e5` / `origin/refactor` @ `4e01e03` |
+| 2026-10-21 | F02-07 | done | recovery tests 2 passed；全量 190 passed；mypy/ruff clean；D-026 | `cc558e1` / `origin/refactor` |
 
 ---
 
