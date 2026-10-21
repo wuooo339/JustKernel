@@ -98,3 +98,11 @@
 **Why:** OperatorSpec, TaskContext, and policies are compared and persisted by digest; immutable validated objects keep evidence reproducible and make invalid startup input fail before any agent runs.
 
 **Cost if wrong:** Adding a field changes the digest and requires a new contract version/cluster; that is the intended safety property.
+
+## D-013 Cluster and Direction aggregates
+
+**Decision:** Cluster and Direction are mutable aggregates with explicit command methods and transition guards. Terminal states are irreversible, terminal fields are validated in `__post_init__`, and `max_agents` has a minimum of 6.
+
+**Why:** The SPEC state machines are small but safety-critical; guards keep invalid transitions out of persistence and make event/command tests deterministic.
+
+**Cost if wrong:** A later aggregate split or field addition must update the guard methods and rehydration validation.
