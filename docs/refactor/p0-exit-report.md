@@ -13,7 +13,7 @@ Remote: `origin/refactor` (`https://github.com/wuooo339/JustKernel.git`)
 | F00-03 Package skeleton + CLI | `4d9ef9e` | CLI tests 3 passed; `justkernel --version`; build |
 | F00-04 Architecture gates | `f0b0cdc` | 11 architecture tests; full 15 passed; no legacy literal |
 | F00-05 CI gates | `5998bf2` | ruff + mypy + pytest + build workflow |
-| F00-06 Decisions + exit report | `F00-06 commit` | decision log D-001..D-010; feature log; this report |
+| F00-06 Decisions + exit report | `2888b3d` | decision log D-001..D-010; feature log; this report |
 
 ## Verification at P0 exit
 

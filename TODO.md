@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P0 待开始。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P0 已完成；P1 待开始（下一个 feature：F01-01）。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -115,7 +115,7 @@ tests/
 | F00-03 | 包骨架与 CLI scaffold | 03 §2 | F00-02 | `tests/unit/test_cli.py` 3 passed；`justkernel --version`；commit `4d9ef9e` | done |
 | F00-04 | 架构门禁：import 边界、文件/函数规模、import 无副作用 | 03 §3、11 §8 | F00-03 | `tests/architecture` 11 passed；全量 15 passed；`rg "aworker" src tests` 为空；commit `f0b0cdc` | done |
 | F00-05 | CI：ruff + mypy + pytest + build | 11 §9 | F00-04 | `.github/workflows/ci.yml`；本地等价命令全绿；commit `5998bf2` | done |
-| F00-06 | 基础决策与 feature log 模板 | 03、12 | F00-05 | `docs/refactor/decision-log.md`、`feature-log.md`；无 TBD | todo |
+| F00-06 | 基础决策与 feature log 模板 | 03、12 | F00-05 | `docs/refactor/decision-log.md`、`feature-log.md`、`p0-exit-report.md`；无 TBD；commit `2888b3d` | done |
 
 ### 4.2 P1 领域模型与执行契约
 
@@ -269,14 +269,15 @@ tests/
 | 2026-10-21 | F00-02 | done | `uv sync --locked`；`pytest tests/unit/test_package_identity.py` 1 passed；mypy/ruff clean；`uv build` 产出 justkernel wheel | `3e75f84` / `origin/refactor` @ `0f3a4a9` |
 | 2026-10-21 | F00-03 | done | `pytest tests/unit/test_cli.py` 3 passed；mypy/ruff clean；`justkernel --version`；`uv build` 成功 | `4d9ef9e` / `origin/refactor` @ `2f4a7cd` |
 | 2026-10-21 | F00-04 | done | `tests/architecture` 11 passed；全量 15 passed；mypy/ruff clean；无 legacy 引用 | `f0b0cdc` / `origin/refactor` @ `840e852` |
-| 2026-10-21 | F00-05 | done | CI 工作流；本地 ruff/mypy/pytest 15 passed/build 全绿 | `5998bf2` / `origin/refactor` |
+| 2026-10-21 | F00-05 | done | CI 工作流；本地 ruff/mypy/pytest 15 passed/build 全绿 | `5998bf2` / `origin/refactor` @ `5f1d2db` |
+| 2026-10-21 | F00-06 | done | 决策日志 D-001..D-010；feature log；P0 exit report；全量 15 passed | `2888b3d` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F00-06 基础决策与 feature log** 开始：
+P0 已完成。下一步从 **F01-01 Shared primitives** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f00-06-decisions.md`。
-2. 写 `docs/refactor/decision-log.md`，确认无 TBD。
-3. 更新本文件与 `docs/refactor/feature-log.md`，然后 commit + push。
+1. 写 `docs/superpowers/plans/2026-10-21-f01-01-shared-primitives.md`。
+2. 按 RED→GREEN→验证→commit→push 执行。
+3. 更新本文件与 `docs/refactor/feature-log.md`。
