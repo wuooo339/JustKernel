@@ -11,6 +11,7 @@ from justkernel.agent.state import Role
 from justkernel.candidate.best import BestSelection
 from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
+from justkernel.cluster.direction import Direction
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
 from justkernel.report.report import ExplorationReport
@@ -78,6 +79,15 @@ class CandidateRepositoryPort(Protocol):
     def insert(self, candidate: CandidateVersion) -> None: ...
     def get(self, candidate_id: CandidateId) -> CandidateVersion: ...
     def list_by_cluster(self, cluster_id: ClusterId) -> tuple[CandidateVersion, ...]: ...
+
+
+# ---- directions -------------------------------------------------------------
+@runtime_checkable
+class DirectionRepositoryPort(Protocol):
+    def insert(self, direction: Direction) -> None: ...
+    def update(self, direction: Direction, expected_version: int) -> int: ...
+    def get(self, direction_id: DirectionId) -> Direction: ...
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[Direction, ...]: ...
 
 
 # ---- operator registry ------------------------------------------------------

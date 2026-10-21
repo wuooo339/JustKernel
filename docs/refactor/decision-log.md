@@ -362,3 +362,11 @@
 **Why:** Startup spans several aggregates and a global reservation; validating first avoids orphaned reservations, while role creation must not exceed `max_agents`.
 
 **Cost if wrong:** Initial role skills are currently empty; role skill loading and IMPORT baseline candidate creation remain F06-02+ work. A process crash between reservation and cleanup still requires recovery.
+
+## D-046 Bootstrap modes
+
+**Decision:** `BootstrapService` requires a RUNNING/BOOTSTRAPPING started cluster in the matching mode and an initial mentor. GENERATE inserts an ACTIVE baseline direction only; IMPORT inserts the same direction plus a system-authored root candidate bound to that direction. Neither path sets `baseline_candidate_id` or marks the candidate PASS.
+
+**Why:** The baseline direction and imported root are setup inputs, not evidence. Keeping candidate creation in the same bootstrap path ensures the root candidate has valid provenance and a direction before testing.
+
+**Cost if wrong:** Direction persistence is in-memory until the P7 repository adapter. Re-bootstrap idempotency and baseline establishment remain F06-03.

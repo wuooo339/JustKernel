@@ -12,6 +12,7 @@ from justkernel.application.ports import IdFactoryPort
 from justkernel.candidate.best import BestSelection
 from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
+from justkernel.cluster.direction import Direction
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
 from justkernel.report.report import ExplorationReport
@@ -74,6 +75,33 @@ class FakeIds:
 
 
 # ---- in-memory repositories -------------------------------------------------
+class InMemoryDirectionRepository:
+    def __init__(self) -> None:
+        self._items: dict[DirectionId, Direction] = {}
+        self._versions: dict[DirectionId, int] = {}
+
+    def insert(self, direction: Direction) -> None:
+        if direction.id in self._items:
+            raise ValueError(f"direction already exists: {direction.id}")
+        self._items[direction.id] = direction
+        self._versions[direction.id] = 0
+
+    def update(self, direction: Direction, expected_version: int) -> int:
+        if self._versions.get(direction.id) != expected_version:
+            raise ValueError(f"direction version conflict: {direction.id}")
+        self._items[direction.id] = direction
+        self._versions[direction.id] = expected_version + 1
+        return expected_version + 1
+
+    def get(self, direction_id: DirectionId) -> Direction:
+        return self._items[direction_id]
+
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[Direction, ...]:
+        return tuple(
+            direction for direction in self._items.values() if direction.cluster_id == cluster_id
+        )
+
+
 class InMemoryClusterRepository:
     def __init__(self) -> None:
         self._items: dict[ClusterId, Cluster] = {}
@@ -310,6 +338,7 @@ class InMemoryBudgetLedger:
 class InMemoryRepositories:
     clusters: InMemoryClusterRepository = field(default_factory=InMemoryClusterRepository)
     agents: InMemoryAgentRepository = field(default_factory=InMemoryAgentRepository)
+    directions: InMemoryDirectionRepository = field(default_factory=InMemoryDirectionRepository)
     tasks: InMemoryTaskRepository = field(default_factory=InMemoryTaskRepository)
     candidates: InMemoryCandidateRepository = field(default_factory=InMemoryCandidateRepository)
     records: InMemoryTestRecordRepository = field(default_factory=InMemoryTestRecordRepository)
