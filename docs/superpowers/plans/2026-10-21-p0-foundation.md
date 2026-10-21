@@ -47,14 +47,14 @@
 - Consumes: current `main` at `2fa044f5197a2feecd1982f80db18823bd93f445`.
 - Produces: branch `refactor/justkernel-v2`, tag `legacy-baseline`, baseline report, this plan.
 
-- [ ] **Step 1: Create the branch and tag**
+- [x] **Step 1: Create the branch and tag**
 
 ```bash
 git switch -c refactor/justkernel-v2
 git tag -a legacy-baseline -m "Legacy aworker baseline before justkernel v2 refactor"
 ```
 
-- [ ] **Step 2: Record the baseline prerequisite and result**
+- [x] **Step 2: Record the baseline prerequisite and result**
 
 Run:
 
@@ -66,7 +66,7 @@ uv run pytest -q
 
 Expected: `229 passed, 2 skipped, 1 warning` and exit 0. Save the command, commit SHA, prerequisite, and full output to `docs/refactor/baseline-test-report.txt`.
 
-- [ ] **Step 3: Commit the baseline and plan**
+- [x] **Step 3: Commit the baseline and plan**
 
 ```bash
 git add docs/refactor/baseline-test-report.txt docs/superpowers/plans/2026-10-21-p0-foundation.md
@@ -82,7 +82,7 @@ git commit -m "chore(refactor): record legacy baseline and P0 plan"
 - Create: `tests/architecture/test_file_sizes.py`
 - Create: `tests/architecture/test_import_has_no_side_effects.py`
 - Create: `tests/architecture/test_package_exports.py`
-- Create: `tests/architecture/test_cli_scaffold.py`
+- Create: `tests/unit/test_cli_scaffold.py`
 - Create: `src/justkernel/__init__.py`
 - Create: `src/justkernel/{shared,cluster,agent,comm,task,candidate,testing,report,platform,bootstrap}/__init__.py`
 - Create: `src/justkernel/platform/{persistence,artifacts,runtime,bus,tools,hardware,models,http,security}/__init__.py`
@@ -93,7 +93,7 @@ git commit -m "chore(refactor): record legacy baseline and P0 plan"
 - Consumes: nothing from earlier tasks except the branch.
 - Produces: `justkernel` importable package; `justkernel.bootstrap.cli.main(argv: Sequence[str] | None = None) -> int`; architecture tests that later tasks must keep green.
 
-- [ ] **Step 1: Write the failing architecture tests**
+- [x] **Step 1: Write the failing architecture tests**
 
 Create `tests/architecture/test_import_boundaries.py`:
 
@@ -255,7 +255,7 @@ def test_package_does_not_reexport_legacy_stack() -> None:
     assert not hasattr(justkernel, "aworker")
 ```
 
-Create `tests/architecture/test_cli_scaffold.py`:
+Create `tests/unit/test_cli_scaffold.py`:
 
 ```python
 from __future__ import annotations
@@ -273,7 +273,7 @@ def test_cli_default_message(capsys) -> None:
     assert capsys.readouterr().out == "justkernel: P0 scaffold\n"
 ```
 
-- [ ] **Step 2: Run the tests and verify RED**
+- [x] **Step 2: Run the tests and verify RED**
 
 Run:
 
@@ -283,7 +283,7 @@ uv run pytest -q tests/architecture
 
 Expected: FAIL because `src/justkernel` / `justkernel.bootstrap.cli` does not exist. Record the failure text.
 
-- [ ] **Step 3: Create the package skeleton**
+- [x] **Step 3: Create the package skeleton**
 
 Create `src/justkernel/__init__.py`:
 
@@ -337,7 +337,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 ```
 
-- [ ] **Step 4: Update `pyproject.toml` for the transitional package**
+- [x] **Step 4: Update `pyproject.toml` for the transitional package**
 
 Make these exact changes:
 
@@ -356,7 +356,7 @@ known-first-party = ["justkernel", "aworker"]
 
 Do not rename the distribution yet; P8 performs the final rename and removes `aworker`.
 
-- [ ] **Step 5: Run the tests and verify GREEN**
+- [x] **Step 5: Run the tests and verify GREEN**
 
 Run:
 
@@ -368,7 +368,7 @@ uv run ruff format --check src/justkernel tests/architecture
 
 Expected: all architecture tests pass; ruff clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add pyproject.toml src/justkernel tests/architecture
@@ -389,7 +389,7 @@ git commit -m "test(architecture): add package boundaries and justkernel skeleto
 - Consumes: legacy `aworker` modules and resources; no new package APIs.
 - Produces: four contract tests that must stay green until P8 replaces the legacy adapters.
 
-- [ ] **Step 1: Write the simulator request contract test**
+- [x] **Step 1: Write the simulator request contract test**
 
 Create `tests/characterization/test_simulation_request_contract.py`:
 
@@ -425,7 +425,7 @@ def test_simulation_request_defaults_and_alias() -> None:
     assert request.profile_case_ids == []
 ```
 
-- [ ] **Step 2: Write the skills contract test**
+- [x] **Step 2: Write the skills contract test**
 
 Create `tests/characterization/test_skills_contract.py`:
 
@@ -464,7 +464,7 @@ def test_legacy_skills_have_stable_frontmatter() -> None:
         assert fields["description"]
 ```
 
-- [ ] **Step 3: Write the A2A card contract test**
+- [x] **Step 3: Write the A2A card contract test**
 
 Create `tests/characterization/test_agent_card_contract.py`:
 
@@ -489,7 +489,7 @@ def test_agent_card_defaults_and_transport() -> None:
     assert card.skills == []
 ```
 
-- [ ] **Step 4: Write the verified fixture contract test**
+- [x] **Step 4: Write the verified fixture contract test**
 
 Create `tests/characterization/test_verified_fixture_contract.py`:
 
@@ -522,7 +522,7 @@ def test_verified_fixture_identity_and_hashes() -> None:
     assert all(DIGEST.fullmatch(digest) for digest in digests)
 ```
 
-- [ ] **Step 5: Run the characterization tests**
+- [x] **Step 5: Run the characterization tests**
 
 Run:
 
@@ -532,7 +532,7 @@ uv run pytest -q tests/characterization
 
 Expected: PASS (these tests lock existing behavior; they must not require CANN, torch, models, or network). If a test fails, fix the test's assumptions against the current contract, not the legacy code.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/characterization
@@ -551,7 +551,7 @@ git commit -m "test(characterization): lock reusable legacy contracts"
 - Consumes: P0 baseline, SPEC Appendix A, and current source tree.
 - Produces: one-way mapping from legacy modules/resources to reuse/adapt/delete decisions; accepted foundation decisions.
 
-- [ ] **Step 1: Write `docs/refactor/legacy-inventory.md`**
+- [x] **Step 1: Write `docs/refactor/legacy-inventory.md`**
 
 Include a table with these columns: `Legacy path`, `Responsibility`, `Decision`, `New location`, `Evidence test`. Cover at least:
 
@@ -621,7 +621,7 @@ Mark decisions:
 
 At the end, add a “Reuse evidence” section naming the P0 characterization tests.
 
-- [ ] **Step 2: Write `docs/refactor/decision-log.md`**
+- [x] **Step 2: Write `docs/refactor/decision-log.md`**
 
 Record these decisions as accepted for P0:
 
@@ -638,7 +638,7 @@ D-008 Web tests: Node built-in test runner for plain ES modules; existing .cjs t
 
 For each decision, add one line: why, and what it costs if wrong.
 
-- [ ] **Step 3: Verify links and required rows**
+- [x] **Step 3: Verify links and required rows**
 
 Run:
 
@@ -649,7 +649,7 @@ rg -n "D-00[1-8]" docs/refactor/decision-log.md
 
 Expected: all critical legacy modules and all eight decisions are present.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/refactor/legacy-inventory.md docs/refactor/decision-log.md
@@ -668,7 +668,7 @@ git commit -m "docs(refactor): inventory legacy modules and record foundation de
 - Consumes: architecture and characterization tests from Tasks 2–3.
 - Produces: CI commands that run `mypy`, architecture tests, characterization tests, and the legacy suite.
 
-- [ ] **Step 1: Add mypy and configuration**
+- [x] **Step 1: Add mypy and configuration**
 
 Run:
 
@@ -686,7 +686,7 @@ strict = true
 warn_unused_ignores = true
 ```
 
-- [ ] **Step 2: Add CI steps**
+- [x] **Step 2: Add CI steps**
 
 In `.github/workflows/ci.yml`, after the existing ruff steps, add:
 
@@ -700,7 +700,7 @@ In `.github/workflows/ci.yml`, after the existing ruff steps, add:
 
 Keep the existing `uv run pytest -q` step and all legacy checks. Do not add `src/aworker` to the mypy target.
 
-- [ ] **Step 3: Verify locally**
+- [x] **Step 3: Verify locally**
 
 Run:
 
@@ -713,7 +713,7 @@ uv run ruff format --check src/justkernel tests/architecture tests/characterizat
 
 Expected: mypy success, all selected tests pass, ruff clean.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add pyproject.toml uv.lock .github/workflows/ci.yml
@@ -732,7 +732,7 @@ git commit -m "chore(ci): gate justkernel types, architecture, and legacy contra
 - Consumes: all P0 deliverables.
 - Produces: green P0 evidence and updated roadmap status.
 
-- [ ] **Step 1: Run the complete P0 verification**
+- [x] **Step 1: Run the complete P0 verification**
 
 Run:
 
@@ -756,11 +756,11 @@ Expected:
 
 Record exact counts and commands in the progress log.
 
-- [ ] **Step 2: Update `Refactor/TODO.md`**
+- [x] **Step 2: Update `Refactor/TODO.md`**
 
 Check off `P0-01` through `P0-07` and every P0 exit item only if Step 1 passed. Add a progress row with date, commit range, commands, and result. Leave P1 unchecked.
 
-- [ ] **Step 3: Commit the P0 closeout**
+- [x] **Step 3: Commit the P0 closeout**
 
 ```bash
 git add Refactor/TODO.md docs/superpowers/plans/2026-10-21-p0-foundation.md
@@ -778,3 +778,19 @@ Note: `Refactor/TODO.md` is outside the `JustKernel` git repository; if `git add
 - **Type consistency:** `main(argv: Sequence[str] | None = None) -> int` is used by the scaffold test and the pyproject entry point.
 - **Review focus ownership:** each of the five review-focus items maps to Task 1 (baseline prerequisite), Task 2 (gate honesty), Task 3 (characterization scope), Task 2 (CLI placeholder), and Task 5 (CI compatibility).
 - **Proportion:** P0 is scaffolding and guards; no production domain logic is written before P1.
+
+---
+
+## Execution Record
+
+- Task 1: complete (commits `2fa044f..a1a4a22`; baseline 229 passed, 2 skipped).
+- Task 2: complete (commits `a1a4a22..87ce206`; `uv run pytest -q tests/unit tests/architecture` → 12 passed). Ruling: CLI scaffold tests live in `tests/unit` instead of `tests/architecture`.
+- Task 3: complete (commits `87ce206..bccff05`; `uv run pytest -q tests/characterization` → 4 passed).
+- Task 4: complete (commits `bccff05..519ed67`; `uv run pytest -q tests/unit tests/architecture tests/characterization` → 16 passed).
+- Task 5: complete (commits `519ed67..66524f9`; `uv run pytest -q tests/unit tests/architecture tests/characterization` → 16 passed; mypy success).
+- Task 6: complete (closeout commit; `uv run pytest -q` → 245 passed, 2 skipped; mypy success; ruff check/format clean).
+
+Rulings:
+- Branch in the existing checkout, no separate worktree: the TODO allowed branch or worktree and the legacy tree is frozen. Cost if wrong: the checkout stays on `refactor/justkernel-v2`.
+- CLI scaffold tests in `tests/unit`: keeps the P0 CI unit path non-empty and matches the test's unit scope. Cost if wrong: one path differs from the original plan text.
+- P0 exit evidence stored in `docs/refactor/p0-exit-report.txt`: durable verification record. Cost if wrong: one extra documentation file.
