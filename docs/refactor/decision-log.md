@@ -381,7 +381,7 @@
 
 ## D-048 Feedback handoff
 
-**Decision:** `FeedbackHandoffService` validates mentor/task/candidate/record ownership before changes, fails a matching running old task via `AgentService.fail_task`, closes the old optimizer, builds a new TaskContext with failed-record feedback and candidate history, opens a replacement optimizer, and assigns a new OPTIMIZE task with `retry_of_task_id` and a fixed context digest. The original task/record remain unchanged.
+**Decision:** `FeedbackHandoffService` validates mentor/task/candidate/record ownership before changes, fails a matching running old task via `AgentService.fail_task`, closes the old optimizer, builds a new TaskContext with failed-record feedback and candidate history, opens a replacement optimizer, and assigns a new OPTIMIZE task with `retry_of_task_id` and a fixed context digest. A running old task is preserved as terminal FAILED; record IDs/evidence are never overwritten.
 
 **Why:** A replacement worker must not rely on the old session; the failure evidence and prior attempt must be explicit and immutable in the new task.
 
