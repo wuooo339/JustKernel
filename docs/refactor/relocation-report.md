@@ -78,7 +78,7 @@ git -C ../JustKernel branch --show-current
   -> main
 git worktree list
   -> JustKernel  2fa044f [main]
-  -> Refactor    15cead8 [refactor/justkernel-v2] (before relocation commit)
+  -> Refactor    15cead8 [refactor/justkernel-v2] (before relocation commit b60e6e4)
 ```
 
 ## 4. Decisions
