@@ -530,3 +530,11 @@
 **Why:** Deleting old modules is insufficient if a package entrypoint or runtime compatibility branch can reintroduce the old namespace.
 
 **Cost if wrong:** The guard is textual; dynamically constructed names or generated artifacts are covered only by packaging checks in F08-05.
+
+## D-067 Packaging and supply-chain gate
+
+**Decision:** Whitelist sdist contents and exclude local agent/index state; add `scripts/check_dist.py` to assert wheel/sdist layout, required resources, only `fastapi`/`pyyaml` runtime dependencies, and the single `justkernel` entrypoint. CI runs the checker after `uv build`.
+
+**Why:** A clean package and dependency set are part of the migration contract; accidental `.codegraph`/agent files or old dependencies must fail release checks.
+
+**Cost if wrong:** The checker is not a vulnerability scanner or SBOM/signature verifier. `.gitignore` is still included by Hatch's sdist defaults, which is harmless.

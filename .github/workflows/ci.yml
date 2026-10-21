@@ -24,3 +24,4 @@ jobs:
       - run: node --test tests/web
       - run: uv run pytest -q
       - run: uv build
+      - run: uv run python scripts/check_dist.py

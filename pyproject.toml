@@ -29,6 +29,21 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/justkernel"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "src/justkernel",
+  "tests",
+  "pyproject.toml",
+  "README.md",
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.md",
+  "uv.lock",
+]
+exclude = [
+  ".codegraph", "3q", "opencode.jsonc", "AGENTS.md", ".env", "dist",
+  ".gitignore", ".gitattributes", ".python-version", "SPEC",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
