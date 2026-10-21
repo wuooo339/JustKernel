@@ -31,3 +31,4 @@ class ErrorCode(StrEnum):
     INVALID_MESSAGE = "invalid_message"
     INVALID_EVENT = "invalid_event"
     INVARIANT_VIOLATION = "invariant.violation"
+    CONCURRENCY_CONFLICT = "concurrency.conflict"

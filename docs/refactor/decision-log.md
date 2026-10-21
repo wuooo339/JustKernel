@@ -162,3 +162,11 @@
 **Why:** The schema is part of the evidence and recovery contract. Explicit SQL keeps partial indexes and triggers visible and testable without an ORM.
 
 **Cost if wrong:** Schema changes require a new migration version; existing journals must be migrated forward, never edited in place.
+
+## D-021 UnitOfWork and optimistic concurrency
+
+**Decision:** Use cases run inside a `UnitOfWork` backed by one SQLite transaction. Cluster/Agent updates require an expected version and bump it; stale writes raise `ConcurrencyError`. Events and outbox entries participate in the same transaction. Outbox idempotency keys use `INSERT OR IGNORE`.
+
+**Why:** Aggregate writes, audit events, and delivery records must fail or commit together. Optimistic versions prevent lost updates without long-lived locks.
+
+**Cost if wrong:** A caller must track the expected version; a stale update must reload and retry, never overwrite silently.

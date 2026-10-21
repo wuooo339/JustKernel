@@ -6,6 +6,7 @@ from justkernel.cluster.errors import ClusterError, DirectionError
 from justkernel.cluster.invariants import InvariantError
 from justkernel.cluster.operator_spec import OperatorSpecError
 from justkernel.comm.errors import AccessDeniedError, ChannelError, MessageError
+from justkernel.platform.persistence.errors import ConcurrencyError
 from justkernel.report.errors import ReportError
 from justkernel.shared.error_codes import ErrorCode
 from justkernel.shared.errors import (
@@ -34,6 +35,7 @@ ERROR_CLASSES = (
     ChannelError,
     MessageError,
     ReportError,
+    ConcurrencyError,
     InvalidClockError,
     InvalidDigestError,
     InvalidIdError,
