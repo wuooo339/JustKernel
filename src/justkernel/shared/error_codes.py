@@ -38,3 +38,7 @@ class ErrorCode(StrEnum):
     PROJECTION_INVALID = "projection.invalid"
     REGISTRY_CONFLICT = "registry.conflict"
     REGISTRY_OPERATOR_ACTIVE = "registry.operator_active"
+    HARDWARE_ERROR = "hardware.error"
+    HARDWARE_LEASE_CONFLICT = "hardware.lease_conflict"
+    HARDWARE_FENCING_REJECTED = "hardware.fencing_rejected"
+    HARDWARE_QUARANTINED = "hardware.quarantined"

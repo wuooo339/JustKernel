@@ -194,3 +194,11 @@
 **Why:** Operator uniqueness must be global, not per-cluster SQLite. A partial unique index gives atomic arbitration across connections/processes without an application lock.
 
 **Cost if wrong:** Terminal release must be driven by the journal terminal commit; a stuck active row blocks new clusters until recovery releases it.
+
+## D-025 Global hardware ledger and fencing
+
+**Decision:** `hardware.db` owns device leases, queue entries, and quarantine. A partial unique index allows one active lease per device; fencing tokens are monotonic per device and checked on execution/release. TTL expiry marks the lease EXPIRED but keeps `execution_active` until `confirm_stopped` clears it.
+
+**Why:** Device arbitration must be global and safe across clusters/processes. Fencing prevents an old/stale executor from starting or overwriting a newer execution.
+
+**Cost if wrong:** A device can remain blocked after a crash until the service confirms the old process stopped; that is intentional over unsafe reassignment.
