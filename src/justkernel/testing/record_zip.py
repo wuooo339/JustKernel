@@ -105,6 +105,7 @@ def _manifest(
             "outcome": record.outcome.value,
             "executed": record.executed,
             "coverage": record.coverage.value,
+            "late_completion": record.late_completion,
             "created_at": record.created_at,
             "environment": dict(record.environment.values),
             "files": {name: digest(value) for name, value in contents.items()},

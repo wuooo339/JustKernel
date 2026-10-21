@@ -59,6 +59,7 @@ class TestRecord:
     job_id: str | None = None
     audit_id: str | None = None
     summary: str = ""
+    late_completion: bool = False
 
     def __post_init__(self) -> None:
         if not self.backend:
@@ -66,6 +67,8 @@ class TestRecord:
         if self.created_at < 0:
             raise TestRecordError("created_at must be non-negative")
         self._check_execution()
+        if self.late_completion and not self.executed:
+            raise TestRecordError("late completion requires an executed record")
         if self.outcome is TestOutcome.PASS and not self.executed:
             raise TestRecordError("PASS requires an executed record")
 
@@ -91,6 +94,7 @@ class TestRecord:
     def is_full_pass(self) -> bool:
         return (
             self.executed
+            and not self.late_completion
             and self.outcome is TestOutcome.PASS
             and self.coverage is TestCoverage.FULL
         )

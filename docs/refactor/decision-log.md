@@ -418,3 +418,11 @@
 **Why:** COMPLETED must only be reachable through validated evidence plus a linked report; a failed final check must not overwrite the last valid best.
 
 **Cost if wrong:** Performance-target profile gating is not yet enforced here. A report write failure after selection validation can leave a VALIDATED selection without cluster completion.
+
+## D-053 Resume and late results
+
+**Decision:** `ResumeService.resume()` only transitions a PAUSED cluster to RUNNING and never starts or replays tasks/jobs. A late result requires an INTERRUPTED TEST/PROFILE task and matching INTERRUPTED job, appends a `late_completion` TestRecord with the original task/job ids, and leaves both terminal states unchanged. Late records are excluded from `is_full_pass`.
+
+**Why:** Recovery must preserve audit history without silently converting late execution into baseline/best evidence or rerunning old side effects.
+
+**Cost if wrong:** Resume does not yet verify device leases/artifacts or wake the supervisor. Task/job interruption must come from the recovery path; late archives are limited to one record per task.

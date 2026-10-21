@@ -260,6 +260,25 @@ class AgentService:
         self._update_agent(worker)
         return task
 
+    def interrupt_task(
+        self,
+        *,
+        mentor_id: AgentId,
+        task_id: TaskId,
+        reason: str,
+        now_ms: int,
+    ) -> Task:
+        task = self.tasks.get(task_id)
+        if task.mentor_id != mentor_id:
+            raise AgentError("task does not belong to this mentor")
+        worker = self.agents.get(task.worker_id)
+        task.interrupt(reason, now_ms)
+        if worker.state is AgentState.RUNNING:
+            worker.interrupt()
+        self._update_task(task)
+        self._update_agent(worker)
+        return task
+
     def fail_task(
         self,
         *,
