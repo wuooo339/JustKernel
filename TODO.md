@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P6 进行中；F06-01～F06-02 已完成，下一个 feature：F06-03。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P6 进行中；F06-01～F06-03 已完成，下一个 feature：F06-04。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -184,7 +184,7 @@ tests/
 | --- | --- | --- | --- | --- | --- |
 | F06-01 | OperatorSpec 启动校验与集群启动 | 13 §1、06 §5 | F05-06 | `tests/application/test_start_cluster.py` 7 passed；422/409；全量 315 passed；commit `d5431f1` | done |
 | F06-02 | GENERATE/IMPORT 与根候选 | 13 §2 | F06-01 | `tests/application/test_bootstrap_modes.py` 4 passed；根候选/system 作者；全量 319 passed；commit `3d81a00` | done |
-| F06-03 | baseline 建立与 bootstrap 预算 | 13 §2/§7 | F06-02 | `tests/application/test_baseline.py`；完整 PASS 才建基线 | todo |
+| F06-03 | baseline 建立与 bootstrap 预算 | 13 §2/§7 | F06-02 | `tests/application/test_baseline.py` 6 passed；完整 PASS/预算耗尽；全量 325 passed；commit `5f806a9` | done |
 | F06-04 | 反馈包与换 worker 续接 | 13 §3 | F06-03 | `tests/application/test_feedback_handoff.py`；QA-17 | todo |
 | F06-05 | Inbox/wake/单 Turn/WAIT/debounce | 13 §4 | F06-01 | `tests/application/test_wake_scheduler.py`；重复事件/无增量 | todo |
 | F06-06 | watchdog、停滞与暂停 | 13 §4 | F06-05 | `tests/application/test_watchdog.py`；合法 WAIT 不误报 | todo |
@@ -309,13 +309,14 @@ tests/
 | 2026-10-21 | F05-06 | done | evidence-chain tests 4 passed；全量 308 passed；mypy/ruff clean；D-044；P5 exit report | `74b40ee` / `origin/refactor` |
 | 2026-10-21 | F06-01 | done | startup tests 7 passed；全量 315 passed；mypy/ruff clean；D-045 | `d5431f1` / `origin/refactor` |
 | 2026-10-21 | F06-02 | done | bootstrap tests 4 passed；全量 319 passed；mypy/ruff clean；D-046 | `3d81a00` / `origin/refactor` |
+| 2026-10-21 | F06-03 | done | baseline tests 6 passed；全量 325 passed；mypy/ruff clean；D-047 | `5f806a9` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F06-03 baseline 建立与 bootstrap 预算** 开始：
+从 **F06-04 反馈包与换 worker 续接** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f06-03-baseline.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f06-04-feedback-handoff.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
 3. 更新本文件与 `docs/refactor/feature-log.md`。
