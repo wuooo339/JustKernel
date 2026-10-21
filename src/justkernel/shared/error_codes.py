@@ -50,3 +50,5 @@ class ErrorCode(StrEnum):
     RUNTIME_STATE = "runtime.state"
     CHECKPOINT_INVALID = "checkpoint.invalid"
     SKILL_INVALID = "skill.invalid"
+    TOOL_DENIED = "tool.denied"
+    TOOL_NOT_FOUND = "tool.not_found"

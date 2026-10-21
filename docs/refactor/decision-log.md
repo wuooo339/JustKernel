@@ -290,3 +290,11 @@
 **Why:** Role prompts are part of the capability boundary but not a substitute for ACL. Built-in skills give the first runnable tester/profiler contract while allowing user overrides.
 
 **Cost if wrong:** A new role/backend requires a resource skill and loader registration; prompt changes require version updates.
+
+## D-037 Tool registry and object grants
+
+**Decision:** `ToolRegistry` exposes exactly the role capability matrix and enforces task-scoped object grants before invoking a handler. Supervisor/mentor may read candidates and records across their cluster; worker roles must match candidate/task/artifact/record/tool-job IDs. Denied calls never invoke a handler. Board access remains separated from object grants.
+
+**Why:** Capability checks alone do not stop a worker from reading another task's artifact or record. Registry-level authorization is a second enforcement point beneath application services.
+
+**Cost if wrong:** Services must populate grants from TaskContext; missing grants fail closed. The registry is not a substitute for database-level authorization.
