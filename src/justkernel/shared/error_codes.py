@@ -60,3 +60,4 @@ class ErrorCode(StrEnum):
     TOOL_BACKEND_INVALID = "tool.backend_invalid"
     REQUEST_INVALID = "request.invalid"
     IDEMPOTENCY_CONFLICT = "idempotency.conflict"
+    NOT_FOUND = "not_found"
