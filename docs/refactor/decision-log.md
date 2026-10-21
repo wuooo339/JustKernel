@@ -378,3 +378,11 @@
 **Why:** Baseline creation is the transition from generation/import to optimization; it must be evidence-gated and bounded by an explicit bootstrap budget.
 
 **Cost if wrong:** Attempt counts are in-memory per service. Policy-digest/environment binding and failure report generation remain later convergence/report work.
+
+## D-048 Feedback handoff
+
+**Decision:** `FeedbackHandoffService` validates mentor/task/candidate/record ownership before changes, fails a matching running old task via `AgentService.fail_task`, closes the old optimizer, builds a new TaskContext with failed-record feedback and candidate history, opens a replacement optimizer, and assigns a new OPTIMIZE task with `retry_of_task_id` and a fixed context digest. The original task/record remain unchanged.
+
+**Why:** A replacement worker must not rely on the old session; the failure evidence and prior attempt must be explicit and immutable in the new task.
+
+**Cost if wrong:** Resource grants are caller-supplied and must already target the new task. Context persistence and worker-Lease cleanup are separate P7/P6 concerns.

@@ -139,10 +139,47 @@ class AgentService:
         candidate_id: CandidateId | None = None,
         skill_ref: SkillRef | None = None,
         retry_of_task_id: TaskId | None = None,
+        task_id: TaskId | None = None,
         created_at: int = 0,
     ) -> Task:
         mentor = self.agents.get(mentor_id)
         worker = self.agents.get(worker_id)
+        return self._create_assigned_task(
+            mentor,
+            worker,
+            kind,
+            direction_id,
+            operator_spec_ref,
+            context_ref,
+            context_digest,
+            budget_ref,
+            objective,
+            constraints,
+            candidate_id,
+            skill_ref,
+            retry_of_task_id,
+            task_id,
+            created_at,
+        )
+
+    def _create_assigned_task(
+        self,
+        mentor: AgentInstance,
+        worker: AgentInstance,
+        kind: TaskKind,
+        direction_id: DirectionId,
+        operator_spec_ref: OperatorRef,
+        context_ref: str,
+        context_digest: Digest,
+        budget_ref: str,
+        objective: str,
+        constraints: tuple[str, ...],
+        candidate_id: CandidateId | None,
+        skill_ref: SkillRef | None,
+        retry_of_task_id: TaskId | None,
+        task_id: TaskId | None,
+        created_at: int,
+    ) -> Task:
         task = self._new_task(
             mentor,
             worker,
@@ -157,6 +194,7 @@ class AgentService:
             candidate_id,
             skill_ref,
             retry_of_task_id,
+            task_id,
             created_at,
         )
         worker.start_task(task.id)
@@ -179,10 +217,11 @@ class AgentService:
         candidate_id: CandidateId | None,
         skill_ref: SkillRef | None,
         retry_of_task_id: TaskId | None,
+        task_id: TaskId | None,
         created_at: int,
     ) -> Task:
         task = Task(
-            id=self.ids.task_id(),
+            id=task_id or self.ids.task_id(),
             cluster_id=worker.cluster_id,
             mentor_id=mentor.id,
             worker_id=worker.id,
@@ -217,6 +256,26 @@ class AgentService:
         worker = self.agents.get(task.worker_id)
         task.succeed(result_ref, now_ms)
         worker.complete_task()
+        self._update_task(task)
+        self._update_agent(worker)
+        return task
+
+    def fail_task(
+        self,
+        *,
+        mentor_id: AgentId,
+        task_id: TaskId,
+        reason: str,
+        now_ms: int,
+    ) -> Task:
+        task = self.tasks.get(task_id)
+        if task.mentor_id != mentor_id:
+            raise AgentError("task does not belong to this mentor")
+        worker = self.agents.get(task.worker_id)
+        if worker.current_task_id != task.id or worker.state is not AgentState.RUNNING:
+            raise AgentError("worker is not running this task")
+        task.fail(reason, now_ms)
+        worker.fail()
         self._update_task(task)
         self._update_agent(worker)
         return task
