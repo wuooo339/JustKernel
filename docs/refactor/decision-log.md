@@ -458,3 +458,11 @@
 **Why:** The UI and clients need deterministic replay of the append-only event log before live followers/heartbeats are added.
 
 **Cost if wrong:** The stream currently ends after the replay batch and does not yet tail live events or emit 20s keepalives. SQLite connections must be configured thread-safe for the shared API adapter.
+
+## D-058 A2A cluster gateway
+
+**Decision:** Expose one A2A agent card per cluster with only `cluster-status` and `cluster-message`. Status returns cluster summary; messages require topic/message/delivery_id, are published to a dedicated external channel with a human principal, and are idempotent by delivery_id. Worker/board channel targets are rejected.
+
+**Why:** External clients need read/limited-write access without an agent identity or private worker-channel access.
+
+**Cost if wrong:** Delivery IDs are process-local; no authentication/trusted-network gate is implemented yet. External messages are archived on the external channel but not automatically converted into board posts.

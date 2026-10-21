@@ -18,6 +18,7 @@ class ChannelKind(StrEnum):
     WORKER = "WORKER"
     HARDWARE = "HARDWARE"
     CONTROL = "CONTROL"
+    EXTERNAL = "EXTERNAL"
 
 
 # ---- Channel ----------------------------------------------------------------
@@ -51,6 +52,10 @@ class Channel:
         return cls(ChannelKind.CONTROL)
 
     @classmethod
+    def external(cls) -> Self:
+        return cls(ChannelKind.EXTERNAL)
+
+    @classmethod
     def worker(cls, mentor_id: AgentId, worker_id: AgentId) -> Self:
         return cls(ChannelKind.WORKER, mentor_id=mentor_id, worker_id=worker_id)
 
@@ -64,6 +69,8 @@ class Channel:
             return cls.hardware()
         if name == "control":
             return cls.control()
+        if name == "external":
+            return cls.external()
         if name.startswith("worker:"):
             parts = name.split(":")
             if len(parts) != 3:

@@ -17,6 +17,7 @@ class Resource(StrEnum):
     WORKER_CHANNEL = "WORKER_CHANNEL"
     HARDWARE_QUEUE = "HARDWARE_QUEUE"
     CONTROL = "CONTROL"
+    EXTERNAL = "EXTERNAL"
 
 
 # ---- resource_for -----------------------------------------------------------
@@ -29,6 +30,8 @@ def resource_for(channel: Channel) -> Resource:
         return Resource.WORKER_CHANNEL
     if channel.kind is ChannelKind.HARDWARE:
         return Resource.HARDWARE_QUEUE
+    if channel.kind is ChannelKind.EXTERNAL:
+        return Resource.EXTERNAL
     return Resource.CONTROL
 
 
@@ -47,6 +50,8 @@ def can_read(role: Role, actor: Principal, channel: Channel) -> bool:
         return actor.agent_id in (channel.mentor_id, channel.worker_id)
     if resource is Resource.HARDWARE_QUEUE:
         return role in (Role.TESTER, Role.PROFILER, Role.SUPERVISOR, Role.MENTOR)
+    if resource is Resource.EXTERNAL:
+        return False
     return False
 
 
@@ -65,6 +70,8 @@ def can_write(role: Role, actor: Principal, channel: Channel) -> bool:
         return actor.agent_id in (channel.mentor_id, channel.worker_id)
     if resource is Resource.HARDWARE_QUEUE:
         return role in (Role.TESTER, Role.PROFILER)
+    if resource is Resource.EXTERNAL:
+        return False
     return False
 
 

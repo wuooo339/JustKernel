@@ -44,4 +44,5 @@ class ApiContext:
     cluster_service: ClusterService | None = None
     start_cluster: ClusterStartService | None = None
     events: EventStore | None = None
+    a2a_deliveries: set[str] = field(default_factory=set)
     now_ms: Callable[[], int] = field(default=_now_ms)

@@ -16,6 +16,7 @@ from justkernel.platform.http.errors import (
     request_id_for,
 )
 from justkernel.platform.http.idempotency import IdempotencyMiddleware, IdempotencyStore
+from justkernel.platform.http.routes_a2a import register_a2a_routes
 from justkernel.platform.http.routes_agents import register_agent_routes
 from justkernel.platform.http.routes_candidates import (
     register_candidate_routes,
@@ -90,6 +91,7 @@ def _install_handlers(app: FastAPI) -> None:
 def _register_api_routes(app: FastAPI, context: ApiContext) -> None:
     register_cluster_read_routes(app, context)
     register_cluster_command_routes(app, context)
+    register_a2a_routes(app, context)
     register_agent_routes(app, context)
     register_task_routes(app, context)
     register_candidate_routes(app, context)

@@ -26,6 +26,7 @@ class MessageType(StrEnum):
     HARDWARE_QUEUE_EVENT = "HardwareQueueEvent"
     DECISION = "Decision"
     AGENT_LIFECYCLE = "AgentLifecycle"
+    EXTERNAL_MESSAGE = "ExternalMessage"
 
 
 MESSAGE_CHANNEL: dict[MessageType, ChannelKind] = {
@@ -40,6 +41,7 @@ MESSAGE_CHANNEL: dict[MessageType, ChannelKind] = {
     MessageType.TEST_RECORD_CREATED: ChannelKind.WORKER,
     MessageType.HARDWARE_QUEUE_EVENT: ChannelKind.HARDWARE,
     MessageType.AGENT_LIFECYCLE: ChannelKind.CONTROL,
+    MessageType.EXTERNAL_MESSAGE: ChannelKind.EXTERNAL,
 }
 
 BOARD_CHANNELS = frozenset({ChannelKind.MENTOR_BOARD, ChannelKind.CONSULTANT_BOARD})
