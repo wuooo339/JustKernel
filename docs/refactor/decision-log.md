@@ -394,3 +394,11 @@
 **Why:** Wake scheduling must be deterministic and avoid duplicate model turns or races when multiple events arrive during a running Turn.
 
 **Cost if wrong:** Scheduler state is in-memory and does not yet share the transaction/outbox with event append. Event ordering uses arrival order rather than the persisted event sequence, and watchdog behavior is F06-06.
+
+## D-050 Watchdog stall detection
+
+**Decision:** `WatchdogService` consumes an explicit activity snapshot (active tasks, turns, pending wakes, valid WAITs). A RUNNING cluster with none of these emits one supervisor-wake action; a repeated check beyond `max_stalled_wakes` pauses it. Activity or a non-RUNNING state resets the counter.
+
+**Why:** Watchdog decisions must separate idle from legitimate WAIT and avoid repeatedly waking a supervisor when nothing has changed.
+
+**Cost if wrong:** Activity is currently supplied by the caller rather than computed from repositories/runtime. The result carries a `CLUSTER_STALLED` action/event type but does not yet append an outbox event.
