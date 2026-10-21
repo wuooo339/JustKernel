@@ -8,6 +8,7 @@ from justkernel.agent.agent import AgentInstance
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
 from justkernel.application.ports import IdFactoryPort
+from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
@@ -146,11 +147,30 @@ class InMemoryTaskRepository:
         return self._versions[task_id]
 
 
+class InMemoryCandidateRepository:
+    def __init__(self) -> None:
+        self._items: dict[CandidateId, CandidateVersion] = {}
+
+    def insert(self, candidate: CandidateVersion) -> None:
+        if candidate.id in self._items:
+            raise ValueError(f"candidate already exists: {candidate.id}")
+        self._items[candidate.id] = candidate
+
+    def get(self, candidate_id: CandidateId) -> CandidateVersion:
+        return self._items[candidate_id]
+
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[CandidateVersion, ...]:
+        return tuple(
+            candidate for candidate in self._items.values() if candidate.cluster_id == cluster_id
+        )
+
+
 @dataclass(slots=True)
 class InMemoryRepositories:
     clusters: InMemoryClusterRepository = field(default_factory=InMemoryClusterRepository)
     agents: InMemoryAgentRepository = field(default_factory=InMemoryAgentRepository)
     tasks: InMemoryTaskRepository = field(default_factory=InMemoryTaskRepository)
+    candidates: InMemoryCandidateRepository = field(default_factory=InMemoryCandidateRepository)
 
 
 # ---- message bus ------------------------------------------------------------

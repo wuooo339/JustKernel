@@ -7,6 +7,7 @@ from typing import Protocol, runtime_checkable
 from justkernel.agent.agent import AgentInstance
 from justkernel.agent.skills import SkillRef
 from justkernel.agent.state import Role
+from justkernel.candidate.candidate import CandidateVersion
 from justkernel.cluster.cluster import Cluster
 from justkernel.comm.channels import Channel
 from justkernel.comm.message import Message
@@ -65,6 +66,13 @@ class TaskRepositoryPort(Protocol):
     def update(self, task: Task, expected_version: int) -> int: ...
     def get(self, task_id: TaskId) -> Task: ...
     def version(self, task_id: TaskId) -> int: ...
+
+
+@runtime_checkable
+class CandidateRepositoryPort(Protocol):
+    def insert(self, candidate: CandidateVersion) -> None: ...
+    def get(self, candidate_id: CandidateId) -> CandidateVersion: ...
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[CandidateVersion, ...]: ...
 
 
 # ---- messaging --------------------------------------------------------------

@@ -234,3 +234,11 @@
 **Why:** Worker ownership, role/kind matching, and one-running-task rules span aggregates; the application service is the first layer that can enforce them before persistence.
 
 **Cost if wrong:** A worker/task change must update the aggregate, invariant, and service together; the service never silently reassigns ownership.
+
+## D-030 Candidate import and commit
+
+**Decision:** `CandidateService` imports root candidates with system provenance and commits candidates only from RUNNING GENERATE/OPTIMIZE tasks whose worker is an OPTIMIZER. GENERATE has no parent; OPTIMIZE requires an existing same-cluster base candidate.
+
+**Why:** Candidate provenance is evidence. Enforcing it at the application boundary prevents a test task or non-optimizer from creating a candidate and keeps the version DAG valid.
+
+**Cost if wrong:** A task/candidate flow must pass through this service; a new provenance source requires a new use case and test.
