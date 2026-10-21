@@ -8,23 +8,24 @@
 # The script temporarily switches to gresces, pushes, and always restores
 # secserg. It never prints a token.
 #
-# Some networks resolve github.com to an unreachable address while the API
-# and alternate GitHub edge IPs work. Set GITHUB_RESOLVE_IP to override the
-# fallback, or set it to an empty string to use normal DNS.
+# GitHub connectivity is intermittent on this network. By default the script
+# tries normal DNS and then several known GitHub edge IPs with a short connect
+# timeout. Set GITHUB_RESOLVE_IP to force one address; set it to an empty
+# string to use normal DNS only.
 set -euo pipefail
 
 remote="${REMOTE:-origin}"
 target="${1:-HEAD:refactor}"
-resolve_ip="${GITHUB_RESOLVE_IP-140.82.112.3}"
 
 if ! command -v gh >/dev/null 2>&1; then
   echo "gh is required for authenticated pushes" >&2
   exit 1
 fi
 
-git_args=()
-if [[ -n "$resolve_ip" ]]; then
-  git_args=(-c "http.curloptResolve=github.com:443:${resolve_ip}")
+if [[ -n "${GITHUB_RESOLVE_IP+x}" ]]; then
+  candidates=("$GITHUB_RESOLVE_IP")
+else
+  candidates=("" "140.82.112.3" "140.82.113.3" "20.27.177.113")
 fi
 
 restore() {
@@ -33,6 +34,27 @@ restore() {
 trap restore EXIT
 
 gh auth switch --user gresces >/dev/null
-GIT_TERMINAL_PROMPT=0 git "${git_args[@]}" push -u "$remote" "$target"
-echo "remote tip:"
-GIT_TERMINAL_PROMPT=0 git "${git_args[@]}" ls-remote "$remote" refs/heads/refactor
+
+push_once() {
+  local ip="$1"
+  local args=(-c "http.connectTimeout=15")
+  if [[ -n "$ip" ]]; then
+    args+=(-c "http.curloptResolve=github.com:443:${ip}")
+  fi
+  echo "push attempt: ${ip:-dns}" >&2
+  GIT_TERMINAL_PROMPT=0 git "${args[@]}" push -u "$remote" "$target"
+}
+
+for ip in "${candidates[@]}"; do
+  if push_once "$ip"; then
+    echo "remote tip:"
+    GIT_TERMINAL_PROMPT=0 git -c "http.connectTimeout=15" \
+      ${ip:+-c "http.curloptResolve=github.com:443:${ip}"} \
+      ls-remote "$remote" refs/heads/refactor
+    exit 0
+  fi
+  echo "push attempt failed: ${ip:-dns}" >&2
+done
+
+echo "push failed after all resolver attempts" >&2
+exit 1

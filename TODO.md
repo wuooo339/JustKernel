@@ -271,7 +271,7 @@ tests/
 | 2026-10-21 | F00-04 | done | `tests/architecture` 11 passed；全量 15 passed；mypy/ruff clean；无 legacy 引用 | `f0b0cdc` / `origin/refactor` @ `840e852` |
 | 2026-10-21 | F00-05 | done | CI 工作流；本地 ruff/mypy/pytest 15 passed/build 全绿 | `5998bf2` / `origin/refactor` @ `5f1d2db` |
 | 2026-10-21 | F00-06 | done | 决策日志 D-001..D-010；feature log；P0 exit report；全量 15 passed | `2888b3d` / `origin/refactor` |
-| 2026-10-21 | F01-01 | done | shared tests 19 passed；全量 34 passed；mypy/ruff clean；clock 决策 D-011 | `7c6986c` / `origin/refactor` |
+| 2026-10-21 | F01-01 | done | shared tests 19 passed；全量 34 passed；mypy/ruff clean；clock 决策 D-011 | `7c6986c` / `origin/refactor` @ `c0e4d5e` |
 
 ---
 
