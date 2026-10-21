@@ -56,6 +56,10 @@ class TestRecordId(Identifier):
     """Identifier of a TestRecord."""
 
 
+class BestSelectionId(Identifier):
+    """Identifier of a best-candidate selection."""
+
+
 class MessageId(Identifier):
     """Identifier of an idempotent message."""
 

@@ -13,6 +13,7 @@ from justkernel.shared.errors import (
 )
 from justkernel.shared.ids import (
     AgentId,
+    BestSelectionId,
     CandidateId,
     ClusterId,
     DirectionId,
@@ -28,6 +29,7 @@ from justkernel.shared.principal import Principal, PrincipalKind
 
 __all__ = [
     "AgentId",
+    "BestSelectionId",
     "CandidateId",
     "Clock",
     "ClusterId",

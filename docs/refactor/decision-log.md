@@ -122,3 +122,11 @@
 **Why:** These constraints prevent malformed tasks from reaching workers/tools and keep terminal evidence distinguishable from a running task.
 
 **Cost if wrong:** A future task kind must extend the kind table and its terminal-result contract.
+
+## D-016 Candidate immutability and best selection
+
+**Decision:** `CandidateVersion` is frozen; `SourceRevision` normalizes files and computes a canonical digest. `CandidateGraph` requires parents to exist in the same cluster. `BestSelection` is a separate frozen state machine; only `VALIDATED` may update `cluster.best_candidate_id` (application layer).
+
+**Why:** Candidate source is evidence, not mutable workspace state. Keeping best selection independent prevents a passing test from silently changing the candidate entity or an unvalidated nomination from becoming best.
+
+**Cost if wrong:** Re-importing or re-submitting the same source must use a new CandidateId; best validation needs final task/record IDs.
