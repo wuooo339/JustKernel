@@ -254,9 +254,9 @@ uv run pytest -q
 - 当前本地分支：`refactor/justkernel-v2`（`Refactor/` worktree）
 - 每次 feature 完成后：
   ```bash
-  git push origin HEAD:refactor
-  git ls-remote origin refs/heads/refactor
+  scripts/push_refactor.sh
   ```
+  该脚本临时切换到有写权限的 GitHub 账号 `gresces`，推送后恢复默认账号 `secserg`；不输出 token。
 - 推送前必须满足：目标测试通过、全量 `pytest` 通过、`mypy`/`ruff` 干净。
 - 推送失败时不得把 TODO 标为 `done`；在进度表记录失败原因并重试。
 
