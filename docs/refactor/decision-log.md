@@ -522,3 +522,11 @@
 **Why:** Local state, secrets and singleton control-plane ownership need one deterministic, permission-safe initialization path.
 
 **Cost if wrong:** The lock is filesystem-local and advisory; cluster/demo/worker do not acquire it until server startup wiring. Network filesystems may not provide reliable `flock`.
+
+## D-066 Legacy-reference guard
+
+**Decision:** Extend the architecture gate to scan source/tests, `pyproject.toml`, CLI/config runtime code and the legacy importer for legacy package names and environment prefixes. The test constructs the forbidden tokens dynamically so it does not match itself. Documentation that explains independence is excluded.
+
+**Why:** Deleting old modules is insufficient if a package entrypoint or runtime compatibility branch can reintroduce the old namespace.
+
+**Cost if wrong:** The guard is textual; dynamically constructed names or generated artifacts are covered only by packaging checks in F08-05.
