@@ -72,4 +72,5 @@ A feature is `done` only after its tests pass, it is committed, and the commit i
 | F08-01 | 2026-10-21 | `3084021` | legacy import tests 2 passed; full 391 passed; mypy/ruff clean; D-063 | `origin/refactor` @ `d312a29` |
 | F08-02 | 2026-10-21 | `e4fef3c` | CLI/config tests 5 passed; full 396 passed; mypy/ruff clean; D-064 | `origin/refactor` @ `709b9eb` |
 | F08-03 | 2026-10-21 | `50b8035` | data-root tests 3 passed; full 399 passed; mypy/ruff clean; D-065 | `origin/refactor` @ `700acac` |
-| F08-04 | 2026-10-21 | `ad8a951` | no-legacy tests 4 passed; full 402 passed; mypy/ruff clean; D-066 | `origin/refactor` (with F08-04 docs commit) |
+| F08-04 | 2026-10-21 | `ad8a951` | no-legacy tests 4 passed; full 402 passed; mypy/ruff clean; D-066 | `origin/refactor` @ `6b67659` |
+| F08-05 | 2026-10-21 | `471f8a2` | packaging tests 3 passed + check_dist; full 405 passed; D-067 | `origin/refactor` (with F08-05 docs commit) |
