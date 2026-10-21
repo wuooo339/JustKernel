@@ -9,33 +9,24 @@ wheels/
 # Virtual environments
 .venv
 
-.runtime-tools/
-.protocol-schema/
-.protocol-opencode-v2.json
-.justkernel/
-.env
-
 # Local state and credentials
+.justkernel/
 .justkernel*/
-models.local.toml
+.env
 .env.*
 !.env.example
+models.local.toml
+
+# Tool caches
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 pytest-of-*/
-/lab/
-/reports/
-.protocol*
-/source-packages/
 
-# Downloaded contest sources have separate redistribution terms.
-/src/aworker/lab/resources/confusion_mul_grad/project/
-# Private historical optimization baseline; not part of the public example.
-/src/aworker/lab/resources/rotary_pos_emb/kernel.asc
-/docs/images/execution-record.png
-/docs/images/simulation.png
-auth.json
-*.pem
-*.key
-cookies*.json
-storage-state*.json
+# Local refactor workspace and duplicate spec archive
+.superpowers/
+SPEC.zip
+
+# Platform artifacts
+.DS_Store
+.justkernel-test-tmp/

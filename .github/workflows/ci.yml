@@ -15,27 +15,8 @@ jobs:
           python-version: '3.13'
           enable-cache: true
       - run: uv sync --locked
-      - run: uv run ruff check src tests tools
-      - run: uv run ruff format --check src tests tools
+      - run: uv run ruff check src tests
+      - run: uv run ruff format --check src tests
       - run: uv run mypy src/justkernel
-      - name: New package architecture gates
-        run: uv run pytest -q tests/unit tests/architecture
-      - name: Legacy characterization contracts
-        run: uv run pytest -q tests/characterization
-      - name: Preview without official template or CANN
-        run: uv run pytest -q tests/test_demo.py
-      - run: uv run python tools/import_official_template.py
-      - name: CPU simulator reference dependencies
-        if: runner.os == 'Linux'
-        run: uv sync --locked --extra simulator
       - run: uv run pytest -q
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: node --test tests/web_visualization.test.cjs tests/web_activity.test.cjs tests/web_conversation.test.cjs
-      - run: node --check src/aworker/lab/resources/web/app.js
-      - run: node --check src/aworker/lab/resources/web/visualization.js
-      - run: node --check src/aworker/lab/resources/web/workbench.js
-      - run: node --check src/aworker/lab/resources/web/conversation.js
       - run: uv build
-      - run: uv run python tools/package_source.py

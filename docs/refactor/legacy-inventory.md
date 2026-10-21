@@ -1,6 +1,6 @@
 # Legacy Inventory and Migration Map
 
-> Status: P0 inventory. The legacy `src/aworker/` tree is frozen; new code lives in `src/justkernel/`.
+> Status: P0 inventory. Legacy paths are relative to `../JustKernel/`; the new project lives in `Refactor/src/justkernel/`.
 > Decisions: `reuse` (keep the behavior behind a new or existing port), `adapt` (extract/normalize into the new architecture), `delete` (do not migrate), `legacy-only` (read-only migration input), `new` (no legacy counterpart).
 > Evidence: characterization tests in `tests/characterization/` and the baseline report in `docs/refactor/baseline-test-report.txt`.
 
@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | `src/aworker/__init__.py` | Package marker and Settings re-export | `delete` | `src/justkernel/__init__.py` | import smoke |
 | `src/aworker/__main__.py` | `python -m aworker` entry point | `delete` | `justkernel.bootstrap.cli` | CLI scaffold test |
-| `src/aworker/cli.py` | Compatibility entry point | `delete` | `justkernel` remains this legacy CLI until P8; new scaffold is `justkernel-next` | CLI scaffold test |
+| `src/aworker/cli.py` | Compatibility entry point | `delete` | stays in the legacy `JustKernel/` worktree; new project exposes `justkernel` -> `justkernel.bootstrap.cli:main` | CLI scaffold test |
 | `src/aworker/config.py` | `AWORKER_*` settings, model/browser/SSH fields | `adapt` | `justkernel.platform.config` with `JUSTKERNEL_*` | P1/P8 config tests |
 | `src/aworker/messages.py` | LangChain message text helpers | `adapt` | runtime message normalization | P4 runtime tests |
 | `src/aworker/models.py` | LangChain model construction from client credentials | `adapt` | `justkernel.platform.models` | P4 model routing tests |

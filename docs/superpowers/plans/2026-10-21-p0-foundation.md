@@ -8,7 +8,9 @@
 
 **Tech Stack:** Python 3.13, uv, pytest, ruff, mypy, argparse.
 
-**Spec:** `Refactor/SPEC/README.md` and the P0 section of `Refactor/TODO.md`.
+> **Relocation (2026-10-21):** P0 was executed in the legacy `JustKernel/` worktree, then the project moved to the `Refactor/` worktree. Paths below are relative to `Refactor/`; legacy paths are under `../JustKernel/`. See "Relocation amendment" at the end.
+
+**Spec:** `SPEC/README.md` and the P0 section of `TODO.md`.
 
 ## Global Constraints
 
@@ -789,7 +791,7 @@ git add Refactor/TODO.md docs/superpowers/plans/2026-10-21-p0-foundation.md
 git commit -m "docs(refactor): close P0 foundation checklist"
 ```
 
-Note: `Refactor/TODO.md` is outside the `JustKernel` git repository; if `git add` cannot see it, commit only the plan file and report the TODO update in the final message.
+Note: `TODO.md` is in the same `Refactor/` worktree; commit it with the plan.
 
 ---
 
@@ -818,3 +820,26 @@ Rulings:
 - `justkernel` keeps the legacy CLI until P8; `justkernel-next` is the new scaffold: reassigning `justkernel` in P0 would break the README/start scripts. Cost if wrong: two CLI names temporarily, and P8 must complete the switch.
 - Architecture gate rejects cross-package relative imports (`level >= 2`), not only absolute `justkernel.platform` imports: prevents bypassing the dependency rule. Cost if wrong: a legitimate cross-package relative import must be written as an absolute import.
 - P0 exit evidence stored in `docs/refactor/p0-exit-report.txt`: durable verification record. Cost if wrong: one extra documentation file.
+
+---
+
+## Relocation Amendment (2026-10-21)
+
+The P0 work was relocated from the legacy `JustKernel/` worktree into a new
+`Refactor/` worktree of the same git repository.
+
+Current layout:
+
+- `JustKernel/` — `main` worktree, legacy `aworker` implementation, read-only reference.
+- `Refactor/` — `refactor/justkernel-v2` worktree, new `justkernel` project root.
+
+Superseding decisions:
+
+- `Refactor/pyproject.toml` names the project `justkernel`, packages only `src/justkernel`,
+  and maps `justkernel` to `justkernel.bootstrap.cli:main`. No `justkernel-next` alias.
+- `src/aworker` is not present in the new project; the old package stays in `JustKernel/`.
+- `tests/characterization/conftest.py` adds `../JustKernel/src` locally and skips the
+  legacy contracts when that tree is absent (CI).
+- The P0 exit evidence after relocation is in `docs/refactor/p0-exit-report.txt`.
+- Local full suite: 18 passed (including characterization with the legacy sibling tree).
+- Clean-checkout CI: 14 passed, 4 skipped (characterization), plus mypy, ruff, and build.

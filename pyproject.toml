@@ -1,7 +1,7 @@
 [project]
-name = "aworker"
-version = "0.2.0"
-description = "JustKernel: observable Deep Agents teams for Ascend kernel engineering."
+name = "justkernel"
+version = "0.1.0"
+description = "JustKernel: a single-operator agent cluster for Ascend kernel engineering."
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -26,10 +26,7 @@ dependencies = [
 ]
 
 [project.scripts]
-justkernel = "aworker.lab.cli:main"
-justkernel-next = "justkernel.bootstrap.cli:main"
-aworker = "aworker.cli:main"
-aworker-lab = "aworker.lab.cli:main"
+justkernel = "justkernel.bootstrap.cli:main"
 
 [project.optional-dependencies]
 simulator = [
@@ -45,49 +42,47 @@ dev = [
     "ruff>=0.9",
 ]
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/justkernel", "src/aworker"]
-
-[tool.hatch.build]
-exclude = [
-    "src/aworker/lab/resources/confusion_mul_grad/project/**",
-    "src/aworker/lab/resources/rotary_pos_emb/kernel.asc",
-    "docs/images/execution-record.png", "docs/images/simulation.png",
-]
+packages = ["src/justkernel"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/src", "/tests", "/docs", "/examples", "/tools", "/.github",
-    "/AGENTS.md", "/README.md", "/LICENSE", "/CONTRIBUTING.md", "/SECURITY.md",
-    "/pyproject.toml", "/uv.lock", "/models.toml", "/.env.example", "/.gitignore", "/.gitattributes",
-    "/.python-version", "/start.ps1", "/restart.ps1", "/start.sh", "/start.command",
-    "/启动演示.cmd", "/重启面板.cmd",
+    "/src",
+    "/tests",
+    "/docs",
+    "/SPEC",
+    "/TODO.md",
+    "/AGENTS.md",
+    "/README.md",
+    "/LICENSE",
+    "/CONTRIBUTING.md",
+    "/SECURITY.md",
     "/THIRD_PARTY_NOTICES.md",
+    "/pyproject.toml",
+    "/uv.lock",
+    "/.gitignore",
+    "/.gitattributes",
+    "/.python-version",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py313"
-extend-exclude = ["src/aworker/lab/resources/confusion_mul_grad/project"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["justkernel", "aworker"]
+known-first-party = ["justkernel"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--basetemp=.justkernel-test-tmp"
+pythonpath = ["src", "../JustKernel/src"]
 
 [tool.mypy]
 python_version = "3.13"
@@ -97,3 +92,8 @@ warn_unused_ignores = true
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

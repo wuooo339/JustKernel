@@ -161,76 +161,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aworker"
-version = "0.2.0"
-source = { editable = "." }
-dependencies = [
-    { name = "a2a-sdk" },
-    { name = "asyncssh" },
-    { name = "cryptography" },
-    { name = "deepagents" },
-    { name = "fastapi" },
-    { name = "httpx" },
-    { name = "langchain" },
-    { name = "langchain-deepseek" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
-    { name = "langgraph-checkpoint-sqlite" },
-    { name = "langsmith" },
-    { name = "playwright" },
-    { name = "pydantic-settings" },
-    { name = "sse-starlette" },
-    { name = "starlette" },
-    { name = "uvicorn", extra = ["standard"] },
-]
-
-[package.optional-dependencies]
-simulator = [
-    { name = "numpy" },
-    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pillow" },
-    { name = "pytest" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "a2a-sdk", specifier = ">=1.2.2" },
-    { name = "asyncssh", specifier = ">=2.24.1" },
-    { name = "cryptography", specifier = ">=50.0.2" },
-    { name = "deepagents", specifier = "==0.7.25" },
-    { name = "fastapi", specifier = ">=0.143.1" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "langchain", specifier = ">=1.4.5" },
-    { name = "langchain-deepseek", specifier = ">=1.1.1" },
-    { name = "langchain-openai", specifier = "==1.7.2" },
-    { name = "langgraph", specifier = ">=1.2.15" },
-    { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.2" },
-    { name = "langsmith", specifier = ">=0.14.8" },
-    { name = "numpy", marker = "extra == 'simulator'", specifier = ">=2,<3" },
-    { name = "playwright", specifier = ">=1.64.0" },
-    { name = "pydantic-settings", specifier = ">=2.16.0" },
-    { name = "sse-starlette", specifier = ">=3.5.0" },
-    { name = "starlette", specifier = ">=1.8.0" },
-    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'simulator'", specifier = "==2.14.1+cpu", index = "https://download.pytorch.org/whl/cpu" },
-    { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
-]
-provides-extras = ["simulator"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.15" },
-    { name = "pillow", specifier = ">=13.0.0" },
-    { name = "pytest", specifier = ">=8.0" },
-    { name = "ruff", specifier = ">=0.9" },
-]
-
-[[package]]
 name = "bracex"
 version = "3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1005,6 +935,76 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/33/a2/c92f0a7ed439c490d2c8ad712fdb074c311afa4f77870987826a3b1483ba/jsonpointer-3.2.1.tar.gz", hash = "sha256:47c846513b3a4ec46eecef1105207fba075e2a3659048e362bd7daff0fc33342", size = 11309, upload-time = "2026-10-10T21:11:06.988Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/29/accef8eea16670b88f3a23102c35dee62c6f159db30d9628908043b3e21b/jsonpointer-3.2.1-py3-none-any.whl", hash = "sha256:b19ee68644e9ffb51440448d8f7811af2b7406eea1db90603e93f5849323119a", size = 8332, upload-time = "2026-10-10T21:11:05.648Z" },
+]
+
+[[package]]
+name = "justkernel"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "a2a-sdk" },
+    { name = "asyncssh" },
+    { name = "cryptography" },
+    { name = "deepagents" },
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "langchain" },
+    { name = "langchain-deepseek" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+    { name = "langgraph-checkpoint-sqlite" },
+    { name = "langsmith" },
+    { name = "playwright" },
+    { name = "pydantic-settings" },
+    { name = "sse-starlette" },
+    { name = "starlette" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.optional-dependencies]
+simulator = [
+    { name = "numpy" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pillow" },
+    { name = "pytest" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "a2a-sdk", specifier = ">=1.2.2" },
+    { name = "asyncssh", specifier = ">=2.24.1" },
+    { name = "cryptography", specifier = ">=50.0.2" },
+    { name = "deepagents", specifier = "==0.7.25" },
+    { name = "fastapi", specifier = ">=0.143.1" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "langchain", specifier = ">=1.4.5" },
+    { name = "langchain-deepseek", specifier = ">=1.1.1" },
+    { name = "langchain-openai", specifier = "==1.7.2" },
+    { name = "langgraph", specifier = ">=1.2.15" },
+    { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.2" },
+    { name = "langsmith", specifier = ">=0.14.8" },
+    { name = "numpy", marker = "extra == 'simulator'", specifier = ">=2,<3" },
+    { name = "playwright", specifier = ">=1.64.0" },
+    { name = "pydantic-settings", specifier = ">=2.16.0" },
+    { name = "sse-starlette", specifier = ">=3.5.0" },
+    { name = "starlette", specifier = ">=1.8.0" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux' and extra == 'simulator'", specifier = "==2.14.1+cpu", index = "https://download.pytorch.org/whl/cpu" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.54.0" },
+]
+provides-extras = ["simulator"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.15" },
+    { name = "pillow", specifier = ">=13.0.0" },
+    { name = "pytest", specifier = ">=8.0" },
+    { name = "ruff", specifier = ">=0.9" },
 ]
 
 [[package]]

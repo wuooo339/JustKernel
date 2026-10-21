@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-SKILLS_ROOT = ROOT / "src" / "aworker" / "lab" / "resources" / "skills"
+REFACTOR_ROOT = Path(__file__).resolve().parents[2]
+LEGACY_ROOT = REFACTOR_ROOT.parent / "JustKernel"
+SKILLS_ROOT = LEGACY_ROOT / "src" / "aworker" / "lab" / "resources" / "skills"
 EXPECTED = {
     "compliance-review",
     "evidence-distillation",

@@ -4,8 +4,9 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-FIXTURE = ROOT / "examples" / "confusionmulgrad" / "verified" / "baseline.json"
+REFACTOR_ROOT = Path(__file__).resolve().parents[2]
+LEGACY_ROOT = REFACTOR_ROOT.parent / "JustKernel"
+FIXTURE = LEGACY_ROOT / "examples" / "confusionmulgrad" / "verified" / "baseline.json"
 DIGEST = re.compile(r"^[a-f0-9]{64}$")
 
 

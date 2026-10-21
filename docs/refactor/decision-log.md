@@ -37,19 +37,19 @@
 
 ## D-005 Transitional packages
 
-**Decision:** `src/justkernel` and `src/aworker` coexist through P7. New code must never import `aworker`. P8 removes the old package and switches the distribution/CLI to `justkernel`.
+**Decision:** The new project lives in the `Refactor/` worktree and contains only `src/justkernel`. The legacy `aworker` implementation stays in the `JustKernel/` main worktree. Characterization tests read `../JustKernel/src` locally and skip when that tree is absent.
 
-**Why:** A big-bang rewrite would lose the running legacy implementation and its 229-test baseline. Parallel packages let us reuse adapters while keeping the old app runnable for characterization.
+**Why:** A git worktree keeps one history while giving the new project a clean root and leaving the running legacy implementation untouched. The old 229-test baseline stays available for reference without polluting the new wheel.
 
-**Cost if wrong:** Temporary duplicate code and a larger wheel; P8 must delete the old package and add a hard no-`aworker` CI gate, otherwise the transition becomes permanent.
+**Cost if wrong:** Two worktrees must be kept in sync at the branch level; characterization tests can only run where `../JustKernel` exists.
 
 ## D-006 CLI naming
 
-**Decision:** `justkernel` stays mapped to the working legacy CLI until P8. The new scaffold is exposed as `justkernel-next`; `aworker` and `aworker-lab` remain transitional aliases. At P8, `justkernel` switches to `justkernel.bootstrap.cli:main` and all old aliases are removed.
+**Decision:** In `Refactor/`, `justkernel` maps directly to `justkernel.bootstrap.cli:main`. The legacy CLI remains in `../JustKernel/` under the old package; no `aworker` or `justkernel-next` alias exists in the new project.
 
-**Why:** README and start scripts already invoke `uv run justkernel demo/serve`. Reassigning `justkernel` to a P0 placeholder would break the documented legacy app during P0–P7. A temporary `justkernel-next` gives the new CLI a real entry point without a backward-compatibility break.
+**Why:** The new project is a separate worktree with its own `pyproject.toml`; it does not need to preserve the legacy console entry point. The old app remains runnable from its own worktree.
 
-**Cost if wrong:** Two CLI names exist temporarily and P8 must update README/scripts/CI in one cutover; if P8 misses it, `justkernel` would launch the legacy app after the old package is deleted.
+**Cost if wrong:** Users must know which worktree they are in; P8/documentation must make the new root the default.
 
 ## D-007 Type checking
 
@@ -71,6 +71,7 @@
 
 These are smaller process decisions made while executing the P0 plan:
 
-- **Branch in place, no worktree:** work happens on `refactor/justkernel-v2` in the existing checkout. The TODO allowed “branch or worktree”; the legacy tree is frozen and the user approved P0 execution. Cost if wrong: the main checkout is on the refactor branch and must be switched back before finishing.
+- **Worktree split:** `JustKernel/` is the `main` worktree (legacy); `Refactor/` is the `refactor/justkernel-v2` worktree (new project). This replaced the earlier in-place branch decision. Cost if wrong: two worktree paths must be documented.
 - **CLI scaffold tests in `tests/unit`:** CLI behavior is a unit contract, and the P0 CI command names `tests/unit`; the test was moved from `tests/architecture` to keep that path non-empty and semantically correct. Cost if wrong: one path differs from the original plan text.
+- **Legacy characterization is local-only:** `tests/characterization/conftest.py` adds `../JustKernel/src` and skips when absent. Cost if wrong: CI does not exercise the legacy contracts; local migration work must run them before deleting an adapter.
 - **Baseline prerequisite is explicit:** the report records that `tools/import_official_template.py` must run before the legacy suite. Without it, the baseline shows 117 setup errors rather than real failures. Cost if wrong: a future run misreads missing fixture data as a regression.

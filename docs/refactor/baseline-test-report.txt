@@ -1,6 +1,9 @@
 JustKernel legacy baseline test report
 ======================================
 
+> Historical: recorded in the legacy `JustKernel/` worktree before the `Refactor/` split.
+> Paths and counts below refer to that legacy tree.
+
 Date: 2026-10-21
 Branch: refactor/justkernel-v2
 Baseline tag: legacy-baseline

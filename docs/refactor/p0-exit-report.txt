@@ -2,76 +2,90 @@ JustKernel v2 P0 exit verification
 ===================================
 
 Date: 2026-10-21
-Branch: refactor/justkernel-v2
+Project root: /home/gresces/Projects/JustKernel/Refactor
+Branch: refactor/justkernel-v2 (worktree)
+Legacy root: /home/gresces/Projects/JustKernel/JustKernel (main worktree)
 P0 plan: docs/superpowers/plans/2026-10-21-p0-foundation.md
 Legacy baseline tag: legacy-baseline
 Legacy baseline commit: 2fa044f5197a2feecd1982f80db18823bd93f445
 
+Historical evidence (before relocation, in the legacy worktree)
+---------------------------------------------------------------
+- uv run python tools/import_official_template.py -> 34 files imported, exit 0.
+- uv run pytest -q -> 247 passed, 2 skipped, 1 warning in 37.79s.
+- uv run mypy src/justkernel -> success, 21 files.
+- uv run ruff check src tests tools -> all checks passed.
+- uv run ruff format --check src tests tools -> 136 files formatted.
+- New package tests: 18 passed (4 unit + 10 architecture + 4 characterization).
+
+Post-relocation verification (new project root, 2026-10-21)
+-----------------------------------------------------------
 Environment:
   uv 0.13.4
   Python 3.13 (uv-managed)
   mypy 2.4.0
-  pytest/ruff from uv.lock
+  pytest/ruff from Refactor/uv.lock
 
-Commands and results
---------------------
-1. uv run python tools/import_official_template.py
-   Result: Verified 34 official files; imported locally; exit 0.
+Commands and results:
+1. uv sync
+   Result: exit 0; installed justkernel 0.1.0, removed legacy aworker package.
 
 2. uv run pytest -q
-   Result: 247 passed, 2 skipped, 1 warning in 38.10s; exit 0.
-   Breakdown: 229 legacy tests + 18 new architecture/unit/characterization tests.
+   Result: 18 passed in 2.47s; exit 0.
+   Note: characterization tests use the sibling legacy tree at ../JustKernel/src.
+   In a clean checkout without that tree, tests/characterization/conftest.py
+   ignores those 4 test modules by design.
 
-3. uv run pytest -q tests/unit tests/architecture tests/characterization
-   Result: 18 passed in 1.26s; exit 0.
-
-4. uv run mypy src/justkernel
+3. uv run mypy src/justkernel
    Result: Success: no issues found in 21 source files; exit 0.
 
-5. uv run ruff check src tests tools
+4. uv run ruff check src tests
    Result: All checks passed!; exit 0.
 
-6. uv run ruff format --check src tests tools
-   Result: 136 files already formatted; exit 0.
+5. uv run ruff format --check src tests
+   Result: 32 files already formatted; exit 0.
 
-7. uv run justkernel-next --version
+6. uv run justkernel --version
    Result: `justkernel 0.1.0`; exit 0.
 
-8. uv run justkernel demo --help
-   Result: legacy `justkernel` entry point still serves the old CLI; exit 0.
+7. uv build
+   Result: built justkernel-0.1.0.tar.gz and justkernel-0.1.0-py3-none-any.whl; exit 0.
+   Wheel contains only justkernel package modules (28 files).
 
-Deliverables
-------------
-- Branch refactor/justkernel-v2 and tag legacy-baseline.
+Deliverables in Refactor/
+-------------------------
+- SPEC/ (v2.1 source of truth)
+- TODO.md (P0 complete; P1 next)
+- README.md, CONTRIBUTING.md, SECURITY.md, LICENSE, THIRD_PARTY_NOTICES.md
+- pyproject.toml (name justkernel, only src/justkernel)
+- src/justkernel package skeleton
+- src/justkernel/bootstrap/cli.py version/placeholder scaffold
+- tests/unit/test_cli_scaffold.py
+- tests/architecture/test_import_boundaries.py
+- tests/architecture/test_file_sizes.py
+- tests/architecture/test_import_has_no_side_effects.py
+- tests/architecture/test_package_exports.py
+- tests/characterization/ four legacy contract tests + local-only conftest
+- .github/workflows/ci.yml (ruff + mypy + pytest + build)
 - docs/refactor/baseline-test-report.txt
 - docs/refactor/legacy-inventory.md
 - docs/refactor/decision-log.md
 - docs/refactor/p0-exit-report.txt
 - docs/superpowers/plans/2026-10-21-p0-foundation.md
-- src/justkernel package skeleton (domain/platform/bootstrap packages, web/resources placeholders)
-- src/justkernel/bootstrap/cli.py version/placeholder scaffold
-- tests/unit/test_cli_scaffold.py (CLI scaffold + transitional entry-point contract)
-- tests/architecture/test_import_boundaries.py
-- tests/architecture/test_file_sizes.py
-- tests/architecture/test_import_has_no_side_effects.py
-- tests/architecture/test_package_exports.py
-- tests/characterization/ four legacy contract tests
-- pyproject.toml: justkernel script, transitional dual package, mypy config
-- .github/workflows/ci.yml: mypy + architecture + characterization gates
 
 Rulings / deviations
 --------------------
-- CLI scaffold tests live in tests/unit instead of tests/architecture.
-- `justkernel` keeps the legacy CLI until P8; the new scaffold is `justkernel-next`.
-- The architecture import gate now rejects cross-package relative imports (`level >= 2`), not just absolute `justkernel.platform` imports.
-- Work is on a branch in the existing checkout, not a separate worktree.
-- The legacy baseline prerequisite (official template import) is explicit.
-- P0 exit evidence is stored in this file in addition to the progress log.
+- Generic repo vs worktree: JustKernel/ is the main worktree (legacy); Refactor/ is the
+  refactor/justkernel-v2 worktree (new project). This replaced the earlier in-place branch.
+- CLI scaffold tests live in tests/unit; CLI behavior is a unit contract.
+- The new project has no src/aworker; legacy characterization imports ../JustKernel/src.
+- Architecture import gate rejects cross-package relative imports (level >= 2).
+- The legacy baseline prerequisite (official template import) is explicit in the
+  baseline report; it only applies to the legacy worktree.
 
 Known limitations
 -----------------
-- `src/aworker/` still exists by design; P8 removes it.
-- Distribution name is still `aworker` by design; P8 renames it to `justkernel`.
-- `justkernel-next` is temporary; P8 moves it to `justkernel` and removes the legacy alias.
+- Characterization tests are local-only; CI ignores them without ../JustKernel.
 - No domain/application logic exists yet; P1 starts the domain model.
-- Characterization tests are temporary and must be replaced by adapter contract tests before deletion in P8.
+- P0 did not implement storage, runtime, tool/hardware service, orchestration, API, or web.
+- The legacy worktree remains the only place the old 229-test suite can run.

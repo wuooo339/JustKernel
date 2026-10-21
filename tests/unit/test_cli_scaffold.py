@@ -25,11 +25,11 @@ def test_cli_reads_process_arguments(monkeypatch, capsys) -> None:
     assert capsys.readouterr().out == "justkernel 0.1.0\n"
 
 
-def test_transitional_entry_points_preserve_legacy_justkernel() -> None:
+def test_entry_point_uses_justkernel_cli() -> None:
     pyproject = tomllib.loads(
         (Path(__file__).resolve().parents[2] / "pyproject.toml").read_text(encoding="utf-8")
     )
     scripts = pyproject["project"]["scripts"]
 
-    assert scripts["justkernel"] == "aworker.lab.cli:main"
-    assert scripts["justkernel-next"] == "justkernel.bootstrap.cli:main"
+    assert scripts["justkernel"] == "justkernel.bootstrap.cli:main"
+    assert "justkernel-next" not in scripts
