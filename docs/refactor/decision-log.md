@@ -474,3 +474,11 @@
 **Why:** Human-facing exports and text downloads must not leak registered credentials or private absolute paths, while worker artifacts still require object ownership.
 
 **Cost if wrong:** Human status is header-based until authentication exists. Zip content may contain secrets because binary archives are not redacted; later artifact sanitization is required for untrusted skill output.
+
+## D-060 Web reducer and selectors
+
+**Decision:** Add dependency-free ES modules with a pure event reducer, contiguous-sequence buffering, idempotent replay and read-model selectors. Unknown events advance the cursor without mutating entities. Live dispatch and sorted replay share the reducer. Node's built-in test runner and CI execute the frontend state tests.
+
+**Why:** Live SSE and replay/demo must produce identical UI state; buffering missing sequences prevents out-of-order events from corrupting entity state.
+
+**Cost if wrong:** The reducer covers the current event vocabulary; new event types require explicit projections. Selectors are read-only and do not yet include hardware/agent detail views.
