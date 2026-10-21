@@ -8,7 +8,6 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from justkernel import __version__
-from justkernel.platform.data_root import ServiceLock, initialize_data_root
 from justkernel.platform.config import (
     AppConfig,
     ConfigError,
@@ -16,6 +15,7 @@ from justkernel.platform.config import (
     apply_cli,
     load_config,
 )
+from justkernel.platform.data_root import ServiceLock, initialize_data_root
 from justkernel.platform.persistence.database import connect
 from justkernel.platform.persistence.legacy_import import LegacyImporter
 from justkernel.platform.persistence.migrations import apply_migrations
