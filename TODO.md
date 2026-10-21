@@ -114,7 +114,7 @@ tests/
 | F00-02 | `pyproject.toml`、最小 `justkernel` 包、依赖基线、`uv.lock` | 03 §2、12 §7 | F00-01 | `uv sync --locked`；`python -c "import justkernel"`；`uv build` 只产出 `justkernel`；commit `3e75f84` | done |
 | F00-03 | 包骨架与 CLI scaffold | 03 §2 | F00-02 | `tests/unit/test_cli.py` 3 passed；`justkernel --version`；commit `4d9ef9e` | done |
 | F00-04 | 架构门禁：import 边界、文件/函数规模、import 无副作用 | 03 §3、11 §8 | F00-03 | `tests/architecture` 11 passed；全量 15 passed；`rg "aworker" src tests` 为空；commit `f0b0cdc` | done |
-| F00-05 | CI：ruff + mypy + pytest + build | 11 §9 | F00-04 | `.github/workflows/ci.yml` 本地等价命令全绿 | todo |
+| F00-05 | CI：ruff + mypy + pytest + build | 11 §9 | F00-04 | `.github/workflows/ci.yml`；本地等价命令全绿；commit `5998bf2` | done |
 | F00-06 | 基础决策与 feature log 模板 | 03、12 | F00-05 | `docs/refactor/decision-log.md`、`feature-log.md`；无 TBD | todo |
 
 ### 4.2 P1 领域模型与执行契约
@@ -268,14 +268,15 @@ tests/
 | 2026-10-21 | F00-01 | done | 无旧 `src`/`tests`；README 声明独立；SPEC/TODO 保留 | `df324b3` / `origin/refactor` @ `df324b3` |
 | 2026-10-21 | F00-02 | done | `uv sync --locked`；`pytest tests/unit/test_package_identity.py` 1 passed；mypy/ruff clean；`uv build` 产出 justkernel wheel | `3e75f84` / `origin/refactor` @ `0f3a4a9` |
 | 2026-10-21 | F00-03 | done | `pytest tests/unit/test_cli.py` 3 passed；mypy/ruff clean；`justkernel --version`；`uv build` 成功 | `4d9ef9e` / `origin/refactor` @ `2f4a7cd` |
-| 2026-10-21 | F00-04 | done | `tests/architecture` 11 passed；全量 15 passed；mypy/ruff clean；无 legacy 引用 | `f0b0cdc` / `origin/refactor` |
+| 2026-10-21 | F00-04 | done | `tests/architecture` 11 passed；全量 15 passed；mypy/ruff clean；无 legacy 引用 | `f0b0cdc` / `origin/refactor` @ `840e852` |
+| 2026-10-21 | F00-05 | done | CI 工作流；本地 ruff/mypy/pytest 15 passed/build 全绿 | `5998bf2` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F00-05 CI 门禁** 开始：
+从 **F00-06 基础决策与 feature log** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f00-05-ci.md`。
-2. 按 RED→GREEN→验证→commit→push 执行。
-3. 更新本文件与 `docs/refactor/feature-log.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f00-06-decisions.md`。
+2. 写 `docs/refactor/decision-log.md`，确认无 TBD。
+3. 更新本文件与 `docs/refactor/feature-log.md`，然后 commit + push。
