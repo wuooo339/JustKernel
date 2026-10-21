@@ -322,3 +322,11 @@
 **Why:** The ledger enforces one lease per device, but without a queue claim path, queued jobs could never be dispatched or safely recovered.
 
 **Cost if wrong:** A crash between lease acquisition and queue-row update can leave a LEASED row; recovery must reconcile by job/lease. Queue state is not yet wired into ToolJob completion (F05-06).
+
+## D-041 TestRecord zip contract
+
+**Decision:** Build deterministic TestRecord zips with a generated manifest, README, and checksums. `manifest.files` excludes manifest/checksums; `checksums.sha256` covers every other entry. Validation requires the full file set, at least one candidate source, safe paths, matching hashes, JSON semantics, and audit/executed consistency (`results.executed` must match). Audit records must use CANCELLED/UNKNOWN, NONE coverage, null task/job, and an audit id.
+
+**Why:** A TestRecord is only evidence if its archive is complete and tamper-evident. Separating format/readers, builder, and validator keeps each domain module under 300 lines.
+
+**Cost if wrong:** Payloads are still supplied by the backend/service; F05-06 must ensure real source/log/results replace placeholders. Profile/trace external references are not yet represented.
