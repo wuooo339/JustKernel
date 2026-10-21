@@ -498,3 +498,11 @@
 **Why:** UI/demo and replay must be demonstrable without models or devices while exercising the same reducer used by live data.
 
 **Cost if wrong:** The fixture is static and must be updated when event vocabulary or DTO fields change. It is not a backend demo API.
+
+## D-063 Legacy read-only import
+
+**Decision:** Add migration 2 with `legacy_imports`/`legacy_records`, guarded by update/delete triggers. `LegacyImporter` opens the old SQLite file read-only (`mode=ro`, `query_only`), maps legacy teams/members/runs/experiences/events into separate LEGACY rows, and uses the source SHA-256 for idempotency. It creates no active clusters, candidates or board posts.
+
+**Why:** Legacy evidence must remain viewable without contaminating a new cluster's active state or best selection.
+
+**Cost if wrong:** Imported payloads are stored as JSON and are not yet exposed through a dedicated legacy API/UI. Old schemas beyond the synthetic table set require explicit mapping.

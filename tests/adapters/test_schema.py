@@ -199,7 +199,7 @@ def test_migrations_create_core_tables_and_are_idempotent() -> None:
     assert tables >= CORE_TABLES
 
     assert apply_migrations(connection) == 0
-    assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
+    assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 2
 
 
 # ---- partial unique indexes -------------------------------------------------

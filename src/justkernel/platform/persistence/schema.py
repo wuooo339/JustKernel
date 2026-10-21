@@ -294,3 +294,38 @@ CREATE TABLE IF NOT EXISTS budget_ledger (
   created_at INTEGER NOT NULL
 );
 """
+
+
+LEGACY_SCHEMA = """
+CREATE TABLE IF NOT EXISTS legacy_imports (
+  id TEXT PRIMARY KEY,
+  source_path TEXT NOT NULL,
+  source_digest TEXT NOT NULL,
+  imported_at INTEGER NOT NULL,
+  record_count INTEGER NOT NULL,
+  UNIQUE(source_path, source_digest)
+);
+
+CREATE TABLE IF NOT EXISTS legacy_records (
+  id TEXT PRIMARY KEY,
+  import_id TEXT NOT NULL REFERENCES legacy_imports(id),
+  kind TEXT NOT NULL,
+  legacy_id TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  readonly INTEGER NOT NULL DEFAULT 1 CHECK (readonly = 1),
+  UNIQUE(import_id, kind, legacy_id)
+);
+
+CREATE TRIGGER IF NOT EXISTS legacy_records_no_update
+BEFORE UPDATE ON legacy_records
+BEGIN
+  SELECT RAISE(ABORT, 'legacy records are read-only');
+END;
+
+CREATE TRIGGER IF NOT EXISTS legacy_records_no_delete
+BEFORE DELETE ON legacy_records
+BEGIN
+  SELECT RAISE(ABORT, 'legacy records are read-only');
+END;
+"""

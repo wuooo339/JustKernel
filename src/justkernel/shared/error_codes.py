@@ -59,5 +59,6 @@ class ErrorCode(StrEnum):
     TOOL_NOT_FOUND = "tool.not_found"
     TOOL_BACKEND_INVALID = "tool.backend_invalid"
     REQUEST_INVALID = "request.invalid"
+    MIGRATION_ERROR = "migration.error"
     IDEMPOTENCY_CONFLICT = "idempotency.conflict"
     NOT_FOUND = "not_found"

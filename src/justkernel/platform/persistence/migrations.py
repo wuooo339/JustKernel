@@ -6,7 +6,7 @@ import sqlite3
 from dataclasses import dataclass
 from time import time_ns
 
-from justkernel.platform.persistence.schema import INITIAL_SCHEMA
+from justkernel.platform.persistence.schema import INITIAL_SCHEMA, LEGACY_SCHEMA
 
 
 # ---- Migration --------------------------------------------------------------
@@ -16,7 +16,10 @@ class Migration:
     sql: str
 
 
-MIGRATIONS: tuple[Migration, ...] = (Migration(version=1, sql=INITIAL_SCHEMA),)
+MIGRATIONS: tuple[Migration, ...] = (
+    Migration(version=1, sql=INITIAL_SCHEMA),
+    Migration(version=2, sql=LEGACY_SCHEMA),
+)
 
 
 # ---- apply_migrations -------------------------------------------------------
