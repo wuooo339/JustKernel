@@ -82,3 +82,11 @@
 **Why:** The new product model is a replacement, not a migration of the old implementation. Old code remains in its own worktree for reference only.
 
 **Cost if wrong:** A genuinely needed old adapter must be reimplemented behind a new port and tested in the new project.
+
+## D-011 Clock unit
+
+**Decision:** `Clock.now_ms()` returns Unix epoch **milliseconds** as an `int`. `FakeClock` is the deterministic test implementation; persisted `created_at`/`expires_at` values use the same unit.
+
+**Why:** SPEC stores timestamps as integers. Milliseconds give deterministic ordering and lease TTL precision without floating-point timestamps.
+
+**Cost if wrong:** A future integration that speaks seconds must convert at its boundary; changing stored semantics would require a migration.
