@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P1 已完成；P2 待开始（下一个 feature：F02-01）。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P2 进行中；F02-01 已完成，下一个 feature：F02-02。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -135,7 +135,7 @@ tests/
 
 | ID | Feature | SPEC | 依赖 | 验收测试 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| F02-01 | journal schema、迁移器、部分唯一索引、事件触发器 | 08 §3/§12 | F01-09 | `tests/adapters/test_schema.py`；重复迁移幂等 | todo |
+| F02-01 | journal schema、迁移器、部分唯一索引、事件触发器 | 08 §3/§12 | F01-09 | `tests/adapters/test_schema.py` 8 passed；全量 155 passed；commit `5ddaf51` | done |
 | F02-02 | 仓储、UnitOfWork、事件 append、outbox | 08 §3/§6 | F02-01 | `tests/adapters/test_uow_events.py`；回滚/版本冲突/幂等 | todo |
 | F02-03 | 内容寻址制品库 | 08 §4 | F02-01 | `tests/adapters/test_artifact_store.py`；哈希/路径/权限/去重 | todo |
 | F02-04 | 投影与回放 | 08 §5 | F02-02 | `tests/adapters/test_projections.py`；live/replay 一致 | todo |
@@ -279,7 +279,8 @@ tests/
 | 2026-10-21 | F01-06 | done | candidate tests 13 passed；全量 91 passed；mypy/ruff clean；D-016 | `494046d` / `origin/refactor` @ `96f3bbb` |
 | 2026-10-21 | F01-07 | done | record/lease/report tests 17 passed；全量 108 passed；mypy/ruff clean；D-017 | `c78099c` / `origin/refactor` @ `0476eb4` |
 | 2026-10-21 | F01-08 | done | comm tests 23 passed；全量 131 passed；mypy/ruff clean；D-018 | `b5b5bc4` / `origin/refactor` @ `468f3e5` |
-| 2026-10-21 | F01-09 | done | invariants/events/error-codes/inbox 16 passed；全量 147 passed；mypy/ruff clean；D-019 | `8c08d45` / `origin/refactor` |
+| 2026-10-21 | F01-09 | done | invariants/events/error-codes/inbox 16 passed；全量 147 passed；mypy/ruff clean；D-019 | `8c08d45` (+ registry fix) / `origin/refactor` @ `b09ae4f` |
+| 2026-10-21 | F02-01 | done | schema tests 8 passed；全量 155 passed；mypy/ruff clean；D-020 | `5ddaf51` / `origin/refactor` |
 
 ---
 
