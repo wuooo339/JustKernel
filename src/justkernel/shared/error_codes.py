@@ -42,3 +42,4 @@ class ErrorCode(StrEnum):
     HARDWARE_LEASE_CONFLICT = "hardware.lease_conflict"
     HARDWARE_FENCING_REJECTED = "hardware.fencing_rejected"
     HARDWARE_QUARANTINED = "hardware.quarantined"
+    INVALID_TOOL_JOB = "invalid_tool_job"

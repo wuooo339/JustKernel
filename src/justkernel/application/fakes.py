@@ -26,6 +26,8 @@ from justkernel.shared.ids import (
     TestRecordId,
 )
 from justkernel.task.task import Task
+from justkernel.testing.job import ToolJob
+from justkernel.testing.record import TestRecord
 
 
 # ---- FakeIds ----------------------------------------------------------------
@@ -165,12 +167,63 @@ class InMemoryCandidateRepository:
         )
 
 
+class InMemoryTestRecordRepository:
+    def __init__(self) -> None:
+        self._items: dict[str, TestRecord] = {}
+        self._by_task: dict[TaskId, str] = {}
+
+    def append(self, record: TestRecord) -> None:
+        if record.id.value in self._items:
+            raise ValueError(f"record already exists: {record.id}")
+        self._items[record.id.value] = record
+        if record.task_id is not None:
+            self._by_task[record.task_id] = record.id.value
+
+    def get(self, record_id: str) -> TestRecord:
+        return self._items[record_id]
+
+    def get_by_task(self, task_id: TaskId) -> TestRecord | None:
+        record_id = self._by_task.get(task_id)
+        return self._items[record_id] if record_id is not None else None
+
+    def list_by_candidate(self, candidate_id: CandidateId) -> tuple[TestRecord, ...]:
+        return tuple(
+            record for record in self._items.values() if record.candidate_id == candidate_id
+        )
+
+
+class InMemoryToolJobRepository:
+    def __init__(self) -> None:
+        self._items: dict[str, ToolJob] = {}
+        self._by_task: dict[TaskId, str] = {}
+
+    def insert(self, job: ToolJob) -> None:
+        if job.id in self._items:
+            raise ValueError(f"tool job already exists: {job.id}")
+        self._items[job.id] = job
+        self._by_task[job.task_id] = job.id
+
+    def update(self, job: ToolJob) -> None:
+        if job.id not in self._items:
+            raise KeyError(job.id)
+        self._items[job.id] = job
+
+    def get(self, job_id: str) -> ToolJob:
+        return self._items[job_id]
+
+    def get_by_task(self, task_id: TaskId) -> ToolJob | None:
+        job_id = self._by_task.get(task_id)
+        return self._items[job_id] if job_id is not None else None
+
+
 @dataclass(slots=True)
 class InMemoryRepositories:
     clusters: InMemoryClusterRepository = field(default_factory=InMemoryClusterRepository)
     agents: InMemoryAgentRepository = field(default_factory=InMemoryAgentRepository)
     tasks: InMemoryTaskRepository = field(default_factory=InMemoryTaskRepository)
     candidates: InMemoryCandidateRepository = field(default_factory=InMemoryCandidateRepository)
+    records: InMemoryTestRecordRepository = field(default_factory=InMemoryTestRecordRepository)
+    jobs: InMemoryToolJobRepository = field(default_factory=InMemoryToolJobRepository)
 
 
 # ---- message bus ------------------------------------------------------------

@@ -242,3 +242,11 @@
 **Why:** Candidate provenance is evidence. Enforcing it at the application boundary prevents a test task or non-optimizer from creating a candidate and keeps the version DAG valid.
 
 **Cost if wrong:** A task/candidate flow must pass through this service; a new provenance source requires a new use case and test.
+
+## D-031 ToolJob idempotency and record sealing
+
+**Decision:** A ToolJob is keyed by task and request digest; the same request returns the existing job, a conflicting request raises. TestRecord sealing requires the matching TEST/PROFILE task and job, appends one immutable record, and marks the job SUCCEEDED. Audit records have no task/job and are `executed=false`.
+
+**Why:** Duplicate submissions and duplicate terminal records would corrupt evidence. Request digests distinguish an idempotent retry from a conflicting request.
+
+**Cost if wrong:** A parameter change requires a new Task/Job; old jobs/records remain immutable for audit.

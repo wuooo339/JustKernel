@@ -25,6 +25,8 @@ from justkernel.shared.ids import (
     TestRecordId,
 )
 from justkernel.task.task import Task
+from justkernel.testing.job import ToolJob
+from justkernel.testing.record import TestRecord
 
 
 # ---- IdFactoryPort ----------------------------------------------------------
@@ -76,6 +78,22 @@ class CandidateRepositoryPort(Protocol):
 
 
 # ---- messaging --------------------------------------------------------------
+@runtime_checkable
+class TestRecordRepositoryPort(Protocol):
+    def append(self, record: TestRecord) -> None: ...
+    def get(self, record_id: TestRecordId) -> TestRecord: ...
+    def get_by_task(self, task_id: TaskId) -> TestRecord | None: ...
+    def list_by_candidate(self, candidate_id: CandidateId) -> tuple[TestRecord, ...]: ...
+
+
+@runtime_checkable
+class ToolJobRepositoryPort(Protocol):
+    def insert(self, job: ToolJob) -> None: ...
+    def update(self, job: ToolJob) -> None: ...
+    def get(self, job_id: str) -> ToolJob: ...
+    def get_by_task(self, task_id: TaskId) -> ToolJob | None: ...
+
+
 @runtime_checkable
 class MessageBusPort(Protocol):
     def publish(self, message: Message) -> bool: ...
