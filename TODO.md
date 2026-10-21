@@ -2,7 +2,7 @@
 
 > 依据：[SPEC v2.1](SPEC/README.md)（2026-10-21）  
 > 工作区：`Refactor/` 是**独立新项目**，与旧实现并列。  
-> 状态：P6 进行中；F06-01～F06-04 已完成，下一个 feature：F06-05。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
+> 状态：P6 进行中；F06-01～F06-05 已完成，下一个 feature：F06-06。所有 feature 只有在测试通过、提交并推送后才能标为 `done`。  
 > 唯一架构事实来源：`SPEC/`。不使用旧实现的标准、旧测试或旧兼容结论。
 
 ---
@@ -186,7 +186,7 @@ tests/
 | F06-02 | GENERATE/IMPORT 与根候选 | 13 §2 | F06-01 | `tests/application/test_bootstrap_modes.py` 4 passed；根候选/system 作者；全量 319 passed；commit `3d81a00` | done |
 | F06-03 | baseline 建立与 bootstrap 预算 | 13 §2/§7 | F06-02 | `tests/application/test_baseline.py` 6 passed；完整 PASS/预算耗尽；全量 325 passed；commit `5f806a9` | done |
 | F06-04 | 反馈包与换 worker 续接 | 13 §3 | F06-03 | `tests/application/test_feedback_handoff.py` 4 passed；QA-17；全量 329 passed；commit `4e406cb` | done |
-| F06-05 | Inbox/wake/单 Turn/WAIT/debounce | 13 §4 | F06-01 | `tests/application/test_wake_scheduler.py`；重复事件/无增量 | todo |
+| F06-05 | Inbox/wake/单 Turn/WAIT/debounce | 13 §4 | F06-01 | `tests/application/test_wake_scheduler.py` 7 passed；重复事件/WAIT；全量 336 passed；commit `975ab81` | done |
 | F06-06 | watchdog、停滞与暂停 | 13 §4 | F06-05 | `tests/application/test_watchdog.py`；合法 WAIT 不误报 | todo |
 | F06-07 | 预算、plateau、重复候选 | 13 §7 | F06-03 | `tests/application/test_budget.py`；最终验证预留 | todo |
 | F06-08 | 收敛、BestSelection、报告 | 07 §7、13 §6 | F06-03/07 | `tests/application/test_convergence.py`；失败提名不覆盖旧 best | todo |
@@ -311,13 +311,14 @@ tests/
 | 2026-10-21 | F06-02 | done | bootstrap tests 4 passed；全量 319 passed；mypy/ruff clean；D-046 | `3d81a00` / `origin/refactor` |
 | 2026-10-21 | F06-03 | done | baseline tests 6 passed；全量 325 passed；mypy/ruff clean；D-047 | `5f806a9` / `origin/refactor` |
 | 2026-10-21 | F06-04 | done | feedback-handoff tests 4 passed；全量 329 passed；mypy/ruff clean；D-048 | `4e406cb` / `origin/refactor` |
+| 2026-10-21 | F06-05 | done | wake-scheduler tests 7 passed；全量 336 passed；mypy/ruff clean；D-049 | `975ab81` / `origin/refactor` |
 
 ---
 
 ## 8. 下一步
 
-从 **F06-05 Inbox/wake/单 Turn/WAIT/debounce** 开始：
+从 **F06-06 watchdog、停滞与暂停** 开始：
 
-1. 写 `docs/superpowers/plans/2026-10-21-f06-05-wake-scheduler.md`。
+1. 写 `docs/superpowers/plans/2026-10-21-f06-06-watchdog.md`。
 2. 按 RED→GREEN→验证→commit→push 执行。
 3. 更新本文件与 `docs/refactor/feature-log.md`。
