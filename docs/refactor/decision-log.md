@@ -482,3 +482,11 @@
 **Why:** Live SSE and replay/demo must produce identical UI state; buffering missing sequences prevents out-of-order events from corrupting entity state.
 
 **Cost if wrong:** The reducer covers the current event vocabulary; new event types require explicit projections. Selectors are read-only and do not yet include hardware/agent detail views.
+
+## D-061 Web views and accessibility
+
+**Decision:** Implement framework-free HTML-string views with centralized escaping, accessible section/table/list structure, explicit PENDING vs VALIDATED best markers, visible failed candidates, and `—` for unknown metrics. Tests are DOM-free Node assertions.
+
+**Why:** Views must be testable without a browser toolchain while preserving evidence semantics and safe rendering.
+
+**Cost if wrong:** HTML strings are not yet mounted into a browser shell; CSP and live DOM updates remain F07-08/frontend-shell work.
