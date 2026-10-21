@@ -221,6 +221,9 @@ class AgentService:
         self._update_agent(worker)
         return task
 
+    def get_agent(self, agent_id: AgentId) -> AgentInstance:
+        return self.agents.get(agent_id)
+
     def _active_agents(self, cluster_id: ClusterId) -> tuple[AgentInstance, ...]:
         return tuple(
             agent

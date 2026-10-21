@@ -298,3 +298,11 @@
 **Why:** Capability checks alone do not stop a worker from reading another task's artifact or record. Registry-level authorization is a second enforcement point beneath application services.
 
 **Cost if wrong:** Services must populate grants from TaskContext; missing grants fail closed. The registry is not a substitute for database-level authorization.
+
+## D-038 Runtime lifecycle, cap, and lease cleanup
+
+**Decision:** Keep the domain `max_agents` check and `AgentRuntimePool` cap independent but both at 100. `WorkerLifecycle` validates ownership/task state before releasing a worker's tracked leases; `AgentLeaseBook` owns the agent-to-lease mapping; `AgentRuntimePool.close_all()` refuses active turns and closes every remaining session.
+
+**Why:** Domain state and runtime sessions can diverge during shutdown. Explicit lifecycle ownership prevents a closed worker from leaving a leased device or an open session behind.
+
+**Cost if wrong:** Callers must use `WorkerLifecycle` instead of `AgentService.close_worker` when leases exist. A crash between lease release and domain close still needs recovery by lease/job inspection.

@@ -172,6 +172,20 @@ class AgentRuntimePool:
         self._by_process[session.process_index].discard(agent_id)
         return session
 
+    def close_all(self) -> int:
+        if self._active_turns:
+            raise RuntimeStateError("cannot close the pool while turns are active")
+        closed = 0
+        for session in tuple(self._sessions.values()):
+            if session.state is AgentState.CLOSED:
+                continue
+            if session.state is AgentState.RUNNING:
+                session.state = AgentState.INTERRUPTED
+                session.current_turn_id = None
+            self.close_agent(session.agent_id)
+            closed += 1
+        return closed
+
     def get(self, agent_id: AgentId) -> RuntimeSession:
         session = self._sessions.get(agent_id)
         if session is None:
