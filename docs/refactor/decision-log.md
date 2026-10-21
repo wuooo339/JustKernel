@@ -138,3 +138,11 @@
 **Why:** TestRecord is evidence, not scratch state; audit records must never look like executed PASS. Lease transitions are safety-critical, and report references must stay internally consistent.
 
 **Cost if wrong:** Re-testing creates a new record; a lease recovery path must use a new lease or an explicit expired-state transition.
+
+## D-018 ACL and message routing
+
+**Decision:** ACL is a pure role/principal/channel function. Worker tool sets exclude all board tools structurally. The message envelope fixes each `MessageType` to one channel kind and rejects board recipients or worker messages without a recipient.
+
+**Why:** Prompt-level restrictions are not an ACL boundary. Centralizing access and message/channel consistency keeps worker isolation testable and prevents routing mistakes before persistence.
+
+**Cost if wrong:** A new channel/message type must be added to both the channel table and ACL matrix, with a test for each role.
