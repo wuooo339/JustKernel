@@ -426,3 +426,11 @@
 **Why:** Recovery must preserve audit history without silently converting late execution into baseline/best evidence or rerunning old side effects.
 
 **Cost if wrong:** Resume does not yet verify device leases/artifacts or wake the supervisor. Task/job interruption must come from the recovery path; late archives are limited to one record per task.
+
+## D-054 Fake closed-loop acceptance
+
+**Decision:** The fake e2e suite drives the real application services through generate/bootstrap, baseline, optimization, testing, best nomination, convergence/report, failed-candidate handoff, profile gating, duplicate wake/candidate handling, watchdog WAIT, pause/resume, registry/device exclusivity and bootstrap-budget failure. `BestSelectionService` gains an optional `profile_required` gate for performance-target nominations.
+
+**Why:** P6 needs an integration proof that the independent services compose without real models/devices while preserving evidence and terminal-state guarantees.
+
+**Cost if wrong:** The loop uses in-memory repositories and a deterministic fake tool backend; profile threshold/regression comparison and HTTP/UI wiring remain future work.

@@ -27,6 +27,7 @@ from justkernel.shared.ids import (
     TestRecordId,
 )
 from justkernel.testing.record import TestRecord
+from justkernel.testing.state import TestCoverage, TestOutcome, TestRecordKind
 
 
 # ---- BestSelectionService ---------------------------------------------------
@@ -40,6 +41,7 @@ class BestSelectionService:
         ids: IdFactoryPort,
         *,
         evidence: EvidenceGate | None = None,
+        profile_required: bool = False,
     ) -> None:
         self.clusters = clusters
         self.candidates = candidates
@@ -47,6 +49,7 @@ class BestSelectionService:
         self.selections = selections
         self.ids = ids
         self.evidence = evidence
+        self.profile_required = profile_required
 
     def nominate_best(
         self,
@@ -106,8 +109,20 @@ class BestSelectionService:
                 for record in records:
                     self.evidence.require(record)
             require_full_pass(records)
+            if self.profile_required and not self._has_profile(records):
+                raise BestSelectionError("comparable PROFILE evidence is required")
         except (EvidenceError, InvariantError) as error:
             raise BestSelectionError("full PASS evidence is required") from error
+
+    @staticmethod
+    def _has_profile(records: Sequence[TestRecord]) -> bool:
+        return any(
+            record.kind is TestRecordKind.PROFILE
+            and record.executed
+            and record.outcome is TestOutcome.PASS
+            and record.coverage is TestCoverage.FULL
+            for record in records
+        )
 
 
 # ---- ReportService ----------------------------------------------------------
