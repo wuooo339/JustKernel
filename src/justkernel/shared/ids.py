@@ -70,3 +70,7 @@ class EventId(Identifier):
 
 class LeaseId(Identifier):
     """Identifier of a hardware lease."""
+
+
+class WakeId(Identifier):
+    """Identifier of a persisted wake request."""

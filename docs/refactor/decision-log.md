@@ -386,3 +386,11 @@
 **Why:** A replacement worker must not rely on the old session; the failure evidence and prior attempt must be explicit and immutable in the new task.
 
 **Cost if wrong:** Resource grants are caller-supplied and must already target the new task. Context persistence and worker-Lease cleanup are separate P7/P6 concerns.
+
+## D-049 Wake scheduler
+
+**Decision:** `WakeScheduler` deduplicates `(agent_id,event_id)`, merges pending events with `wake_debounce_ms`, allows one CLAIMED turn per agent, keeps notifications pending while RUNNING, and schedules a one-shot deadline wake from an explicit WAIT. Stale expected agent versions cannot be claimed.
+
+**Why:** Wake scheduling must be deterministic and avoid duplicate model turns or races when multiple events arrive during a running Turn.
+
+**Cost if wrong:** Scheduler state is in-memory and does not yet share the transaction/outbox with event append. Event ordering uses arrival order rather than the persisted event sequence, and watchdog behavior is F06-06.
