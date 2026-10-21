@@ -226,3 +226,11 @@
 **Why:** Lifecycle rules stay in the aggregate; the service owns persistence/version coordination without duplicating transition logic.
 
 **Cost if wrong:** Concurrent callers can conflict on version and must reload; the service never silently overwrites.
+
+## D-029 Worker lifecycle and task dispatch
+
+**Decision:** `AgentService` creates non-worker agents, opens/closes mentor-owned workers, dispatches tasks through `validate_task_assignment`, and completes tasks by mutating both Task and Worker. Max-agent and supervisor uniqueness checks are application-level; optimistic versions are used for updates.
+
+**Why:** Worker ownership, role/kind matching, and one-running-task rules span aggregates; the application service is the first layer that can enforce them before persistence.
+
+**Cost if wrong:** A worker/task change must update the aggregate, invariant, and service together; the service never silently reassigns ownership.

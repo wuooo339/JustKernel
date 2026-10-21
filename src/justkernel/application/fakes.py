@@ -117,6 +117,9 @@ class InMemoryAgentRepository:
     def version(self, agent_id: AgentId) -> int:
         return self._versions[agent_id]
 
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[AgentInstance, ...]:
+        return tuple(agent for agent in self._items.values() if agent.cluster_id == cluster_id)
+
 
 class InMemoryTaskRepository:
     def __init__(self) -> None:

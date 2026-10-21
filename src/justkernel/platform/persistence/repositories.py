@@ -114,6 +114,16 @@ class AgentRepository:
         ).fetchone()
         if row is None:
             raise KeyError(agent_id)
+        return self._from_row(row)
+
+    def list_by_cluster(self, cluster_id: ClusterId) -> tuple[AgentInstance, ...]:
+        rows = self.connection.execute(
+            "SELECT * FROM agents WHERE cluster_id = ? ORDER BY created_at, id",
+            (cluster_id.value,),
+        ).fetchall()
+        return tuple(self._from_row(row) for row in rows)
+
+    def _from_row(self, row: sqlite3.Row) -> AgentInstance:
         skills = tuple(
             SkillRef(
                 name=item["name"],
