@@ -154,3 +154,11 @@
 **Why:** Stable codes make API/error handling testable; one event envelope keeps replay/serialization consistent; pure validators can be reused by application services before persistence.
 
 **Cost if wrong:** Adding a code/event/invariant requires updating the registry and its table-driven test.
+
+## D-020 SQLite journal schema
+
+**Decision:** The cluster journal uses standard-library `sqlite3` with explicit, idempotent DDL and ordered versioned migrations. Partial unique indexes enforce supervisor/direction/task/record/wake constraints; append-only triggers reject event updates/deletes.
+
+**Why:** The schema is part of the evidence and recovery contract. Explicit SQL keeps partial indexes and triggers visible and testable without an ORM.
+
+**Cost if wrong:** Schema changes require a new migration version; existing journals must be migrated forward, never edited in place.
