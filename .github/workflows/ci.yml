@@ -18,9 +18,9 @@ jobs:
       - run: uv run ruff check src tests
       - run: uv run ruff format --check src tests
       - run: uv run mypy src/justkernel
-      - run: uv run pytest -q
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: node --test tests/web
+      - run: uv run pytest -q
       - run: uv build

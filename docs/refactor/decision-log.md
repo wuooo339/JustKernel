@@ -490,3 +490,11 @@
 **Why:** Views must be testable without a browser toolchain while preserving evidence semantics and safe rendering.
 
 **Cost if wrong:** HTML strings are not yet mounted into a browser shell; CSP and live DOM updates remain F07-08/frontend-shell work.
+
+## D-062 Demo replay fixture
+
+**Decision:** Ship a synthetic JSON event fixture with a JS wrapper that replays through the production web reducer. Node tests validate state/views; Python e2e validates fixture metadata/order and invokes the JS replay. CI installs Node before pytest.
+
+**Why:** UI/demo and replay must be demonstrable without models or devices while exercising the same reducer used by live data.
+
+**Cost if wrong:** The fixture is static and must be updated when event vocabulary or DTO fields change. It is not a backend demo API.

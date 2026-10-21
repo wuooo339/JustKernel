@@ -1,0 +1,246 @@
+{
+  "meta": {
+    "mode": "demo",
+    "source": "synthetic",
+    "model_calls": 0,
+    "device_calls": 0,
+    "description": "Deterministic generate -> baseline -> optimize -> best replay; no model or device execution."
+  },
+  "events": [
+    {
+      "seq": 1,
+      "id": "demo-e01",
+      "type": "cluster.started",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1000,
+      "payload": {"cluster_id": "demo-cluster", "state": "RUNNING", "phase": "BOOTSTRAPPING"}
+    },
+    {
+      "seq": 2,
+      "id": "demo-e02",
+      "type": "agent.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1010,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "agent_id": "demo-supervisor",
+        "role": "SUPERVISOR",
+        "mentor_id": null,
+        "model_profile": "demo-model",
+        "state": "IDLE"
+      }
+    },
+    {
+      "seq": 3,
+      "id": "demo-e03",
+      "type": "agent.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1020,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "agent_id": "demo-mentor",
+        "role": "MENTOR",
+        "mentor_id": null,
+        "model_profile": "demo-model",
+        "state": "IDLE"
+      }
+    },
+    {
+      "seq": 4,
+      "id": "demo-e04",
+      "type": "agent.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1030,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "agent_id": "demo-optimizer",
+        "role": "OPTIMIZER",
+        "mentor_id": "demo-mentor",
+        "model_profile": "demo-model",
+        "state": "IDLE"
+      }
+    },
+    {
+      "seq": 5,
+      "id": "demo-e05",
+      "type": "agent.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1040,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "agent_id": "demo-tester",
+        "role": "TESTER",
+        "mentor_id": "demo-mentor",
+        "model_profile": "demo-model",
+        "state": "IDLE"
+      }
+    },
+    {
+      "seq": 6,
+      "id": "demo-e06",
+      "type": "candidate.committed",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1100,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "candidate_id": "demo-candidate-0",
+        "parent_id": null,
+        "direction_id": "demo-direction",
+        "created_at": 1100
+      }
+    },
+    {
+      "seq": 7,
+      "id": "demo-e07",
+      "type": "test_record.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1110,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "record_id": "demo-record-0",
+        "candidate_id": "demo-candidate-0",
+        "kind": "TEST",
+        "outcome": "PASS",
+        "coverage": "FULL",
+        "executed": true,
+        "backend": "cann-simulation",
+        "created_at": 1110
+      }
+    },
+    {
+      "seq": 8,
+      "id": "demo-e08",
+      "type": "baseline.established",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1120,
+      "payload": {"cluster_id": "demo-cluster", "candidate_id": "demo-candidate-0"}
+    },
+    {
+      "seq": 9,
+      "id": "demo-e09",
+      "type": "candidate.committed",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1200,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "candidate_id": "demo-candidate-1",
+        "parent_id": "demo-candidate-0",
+        "direction_id": "demo-direction",
+        "created_at": 1200
+      }
+    },
+    {
+      "seq": 10,
+      "id": "demo-e10",
+      "type": "test_record.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1210,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "record_id": "demo-record-1",
+        "candidate_id": "demo-candidate-1",
+        "kind": "TEST",
+        "outcome": "FAIL",
+        "coverage": "FULL",
+        "executed": true,
+        "backend": "cann-simulation",
+        "created_at": 1210
+      }
+    },
+    {
+      "seq": 11,
+      "id": "demo-e11",
+      "type": "candidate.committed",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1300,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "candidate_id": "demo-candidate-2",
+        "parent_id": "demo-candidate-1",
+        "direction_id": "demo-direction",
+        "created_at": 1300
+      }
+    },
+    {
+      "seq": 12,
+      "id": "demo-e12",
+      "type": "test_record.created",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1310,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "record_id": "demo-record-2",
+        "candidate_id": "demo-candidate-2",
+        "kind": "TEST",
+        "outcome": "PASS",
+        "coverage": "FULL",
+        "executed": true,
+        "backend": "cann-simulation",
+        "created_at": 1310
+      }
+    },
+    {
+      "seq": 13,
+      "id": "demo-e13",
+      "type": "best.nominated",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1400,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "selection_id": "demo-selection",
+        "candidate_id": "demo-candidate-2",
+        "created_at": 1400
+      }
+    },
+    {
+      "seq": 14,
+      "id": "demo-e14",
+      "type": "best.validated",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1450,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "selection_id": "demo-selection",
+        "candidate_id": "demo-candidate-2"
+      }
+    },
+    {
+      "seq": 15,
+      "id": "demo-e15",
+      "type": "board.posted",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1500,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "post_id": "demo-post-1",
+        "board": "mentor",
+        "topic": "baseline",
+        "author_agent_id": "demo-mentor",
+        "payload": {"summary": "first candidate passed the complete test pack"}
+      }
+    },
+    {
+      "seq": 16,
+      "id": "demo-e16",
+      "type": "board.posted",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1510,
+      "payload": {
+        "cluster_id": "demo-cluster",
+        "post_id": "demo-post-2",
+        "board": "mentor",
+        "topic": "failure",
+        "author_agent_id": "demo-mentor",
+        "payload": {"summary": "candidate 1 failed precision and remains visible"}
+      }
+    },
+    {
+      "seq": 17,
+      "id": "demo-e17",
+      "type": "cluster.completed",
+      "cluster_id": "demo-cluster",
+      "occurred_at": 1600,
+      "payload": {"cluster_id": "demo-cluster", "state": "COMPLETED", "phase": "FINALIZING"}
+    }
+  ]
+}
