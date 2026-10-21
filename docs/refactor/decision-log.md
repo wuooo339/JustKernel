@@ -402,3 +402,11 @@
 **Why:** Watchdog decisions must separate idle from legitimate WAIT and avoid repeatedly waking a supervisor when nothing has changed.
 
 **Cost if wrong:** Activity is currently supplied by the caller rather than computed from repositories/runtime. The result carries a `CLUSTER_STALLED` action/event type but does not yet append an outbox event.
+
+## D-051 Budget, plateau and duplicate candidates
+
+**Decision:** `BudgetService` isolates `final_validation_reserve` from exploration availability, delegates actual reservations/settlements to the ledger, and tracks comparable rounds, plateau streaks, consecutive failures and caps in memory. Only comparable rounds count; improvement resets plateau/failures. `CandidateService.find_duplicate()` returns the earliest same-source candidate without deleting either candidate.
+
+**Why:** Final validation must not be starved by exploration, and plateau decisions must not treat tool failures as performance plateaus. Duplicate candidates retain provenance while allowing the mentor/supervisor to avoid automatic re-experimentation.
+
+**Cost if wrong:** Round/failure counters and duplicate decisions are not persisted; the caller must honor `can_explore`/duplicate results. Budget ledger atomicity between reserve calls remains the adapter's responsibility.

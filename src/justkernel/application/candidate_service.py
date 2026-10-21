@@ -76,6 +76,24 @@ class CandidateService:
         self.candidates.insert(candidate)
         return candidate
 
+    def find_duplicate(self, candidate_id: CandidateId) -> CandidateVersion | None:
+        candidate = self.candidates.get(candidate_id)
+        matches = [
+            other
+            for other in self.candidates.list_by_cluster(candidate.cluster_id)
+            if other.id != candidate.id and other.source.digest == candidate.source.digest
+        ]
+        if not matches:
+            return None
+        earliest = min(
+            [candidate, *matches],
+            key=lambda item: (item.created_at, item.id.value),
+        )
+        return None if earliest.id == candidate.id else earliest
+
+    def is_duplicate(self, candidate_id: CandidateId) -> bool:
+        return self.find_duplicate(candidate_id) is not None
+
     def _commit_source(
         self, task_id: TaskId, author_agent_id: AgentId
     ) -> tuple[Task, AgentInstance]:

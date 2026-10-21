@@ -27,6 +27,7 @@ class ErrorCode(StrEnum):
     BASELINE_INVALID = "baseline.invalid"
     HANDOFF_INVALID = "handoff.invalid"
     WAKE_INVALID = "wake.invalid"
+    BUDGET_ERROR = "budget.error"
     INVALID_LEASE_TRANSITION = "invalid_lease_transition"
     INVALID_REPORT = "invalid_report"
     INVALID_CHANNEL = "invalid_channel"
