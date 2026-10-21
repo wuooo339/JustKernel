@@ -6,8 +6,17 @@ import sqlite3
 
 
 # ---- connect ----------------------------------------------------------------
-def connect(path: str = ":memory:", *, foreign_keys: bool = True) -> sqlite3.Connection:
-    connection = sqlite3.connect(path, isolation_level=None)
+def connect(
+    path: str = ":memory:",
+    *,
+    foreign_keys: bool = True,
+    check_same_thread: bool = True,
+) -> sqlite3.Connection:
+    connection = sqlite3.connect(
+        path,
+        isolation_level=None,
+        check_same_thread=check_same_thread,
+    )
     connection.row_factory = sqlite3.Row
     if foreign_keys:
         connection.execute("PRAGMA foreign_keys = ON")

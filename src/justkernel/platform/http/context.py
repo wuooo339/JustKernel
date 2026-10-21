@@ -21,6 +21,7 @@ from justkernel.application.ports import (
 )
 from justkernel.application.start_cluster_service import ClusterStartService
 from justkernel.platform.hardware.queue import HardwareQueue
+from justkernel.platform.persistence.events import EventStore
 
 
 def _now_ms() -> int:
@@ -42,4 +43,5 @@ class ApiContext:
     hardware: HardwareQueue | None = None
     cluster_service: ClusterService | None = None
     start_cluster: ClusterStartService | None = None
+    events: EventStore | None = None
     now_ms: Callable[[], int] = field(default=_now_ms)

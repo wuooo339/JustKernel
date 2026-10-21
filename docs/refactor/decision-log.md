@@ -450,3 +450,11 @@
 **Why:** The UI/API needs DTO-only reads and auditable commands before SSE/A2A can be layered on. Keeping route groups separate respects file-size gates.
 
 **Cost if wrong:** Task cancellation, agent close, human message posting and full event pagination remain for later features. Task context returns its authorized snapshot metadata, not the full resource because contexts are not yet persisted; hardware device inventory is empty until a device config adapter exists.
+
+## D-057 SSE replay
+
+**Decision:** Expose event pagination and a finite SSE replay stream over `EventStore`. SSE cursor comes from `Last-Event-ID` when present, otherwise `after`; only `seq > cursor` events are emitted, capped at 200. Data is the DTO envelope, never DB columns.
+
+**Why:** The UI and clients need deterministic replay of the append-only event log before live followers/heartbeats are added.
+
+**Cost if wrong:** The stream currently ends after the replay batch and does not yet tail live events or emit 20s keepalives. SQLite connections must be configured thread-safe for the shared API adapter.

@@ -158,3 +158,19 @@ class ReportView:
     failures: tuple[str, ...]
     decision: str
     created_at: int
+
+
+@dataclass(frozen=True, slots=True)
+class EventView:
+    seq: int
+    id: str
+    cluster_id: str
+    type: str
+    occurred_at: int
+    payload: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class EventPage:
+    events: tuple[EventView, ...]
+    next_after: int
