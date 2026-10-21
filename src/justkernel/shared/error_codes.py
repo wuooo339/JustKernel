@@ -36,3 +36,5 @@ class ErrorCode(StrEnum):
     ARTIFACT_MISSING = "artifact.missing"
     ARTIFACT_CORRUPT = "artifact.corrupt"
     PROJECTION_INVALID = "projection.invalid"
+    REGISTRY_CONFLICT = "registry.conflict"
+    REGISTRY_OPERATOR_ACTIVE = "registry.operator_active"

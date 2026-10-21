@@ -186,3 +186,11 @@
 **Why:** The board, cluster graph, candidate graph, and queue must be reproducible and consistent between live mode and replay. Cursor isolation lets each view advance independently.
 
 **Cost if wrong:** A projection schema change requires resetting its cursor and rebuilding; view state is not treated as authoritative evidence.
+
+## D-024 Global operator registry
+
+**Decision:** `registry.db` uses `cluster_registry` with a partial unique index on active `operator_id`. Reservation uses a unique `reservation_key`; retry with the same key is idempotent. Terminal release (`COMPLETED/STOPPED/FAILED`) is idempotent and frees the operator for a new cluster.
+
+**Why:** Operator uniqueness must be global, not per-cluster SQLite. A partial unique index gives atomic arbitration across connections/processes without an application lock.
+
+**Cost if wrong:** Terminal release must be driven by the journal terminal commit; a stuck active row blocks new clusters until recovery releases it.
