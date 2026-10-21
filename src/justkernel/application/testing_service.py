@@ -13,7 +13,7 @@ from justkernel.application.ports import (
     ToolJobRepositoryPort,
 )
 from justkernel.shared.digest import Digest
-from justkernel.shared.ids import AgentId, CandidateId, TaskId
+from justkernel.shared.ids import AgentId, CandidateId, TaskId, TestRecordId
 from justkernel.shared.json import digest_json
 from justkernel.task.state import TaskKind, TaskState
 from justkernel.task.task import Task
@@ -95,6 +95,7 @@ class TestingService:
         backend: str,
         created_at: int,
         summary: str = "",
+        record_id: TestRecordId | None = None,
     ) -> TestRecord:
         task, job = self._seal_source(task_id)
         candidate_id, skill_ref = self._record_inputs(task)
@@ -110,6 +111,7 @@ class TestingService:
             backend,
             created_at,
             summary,
+            record_id,
         )
         self.records.append(record)
         self._save_job(job.succeed(record.id.value, created_at))
@@ -148,10 +150,11 @@ class TestingService:
         backend: str,
         created_at: int,
         summary: str,
+        record_id: TestRecordId | None,
     ) -> TestRecord:
         kind = TestRecordKind.TEST if task.kind is TaskKind.TEST else TestRecordKind.PROFILE
         return TestRecord(
-            id=self.ids.test_record_id(),
+            id=record_id or self.ids.test_record_id(),
             candidate_id=candidate_id,
             kind=kind,
             skill_ref=skill_ref,

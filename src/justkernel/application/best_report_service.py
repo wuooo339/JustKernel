@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from justkernel.application.evidence_chain import EvidenceError, EvidenceGate
 from justkernel.application.ports import (
     BestSelectionRepositoryPort,
     CandidateRepositoryPort,
@@ -37,12 +38,15 @@ class BestSelectionService:
         records: TestRecordRepositoryPort,
         selections: BestSelectionRepositoryPort,
         ids: IdFactoryPort,
+        *,
+        evidence: EvidenceGate | None = None,
     ) -> None:
         self.clusters = clusters
         self.candidates = candidates
         self.records = records
         self.selections = selections
         self.ids = ids
+        self.evidence = evidence
 
     def nominate_best(
         self,
@@ -98,8 +102,11 @@ class BestSelectionService:
 
     def _require_full_pass(self, records: Sequence[TestRecord]) -> None:
         try:
+            if self.evidence is not None:
+                for record in records:
+                    self.evidence.require(record)
             require_full_pass(records)
-        except InvariantError as error:
+        except (EvidenceError, InvariantError) as error:
             raise BestSelectionError("full PASS evidence is required") from error
 
 

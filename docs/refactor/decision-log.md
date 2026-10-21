@@ -346,3 +346,11 @@
 **Why:** Context and feedback are the optimizer's entire input boundary; enforcing binding and grant checks prevents a task from reading another task's private artifacts.
 
 **Cost if wrong:** Contexts are not yet persisted by a repository, and feedback record/skill/environment digests are not cross-validated here. F05-06 must persist the context ref/digest and package real evidence.
+
+## D-044 Evidence chain and archive gate
+
+**Decision:** `EvidenceChainService` allocates the record id before building the archive, validates/stores the archive, then seals the same record id. `EvidenceGate` revalidates the stored archive and compares manifest fields against the record before best nomination. A fabricated PASS with no matching archive is rejected. Existing callers without a gate keep their behavior.
+
+**Why:** A record object alone is not evidence. The gate closes the gap between a PASS-typed record and a real, executed, checksummed archive.
+
+**Cost if wrong:** Payload construction remains the caller's responsibility; the chain does not yet synthesize task/context/skill payloads from services. A crash after artifact store success but before record seal can leave an unreferenced artifact.
